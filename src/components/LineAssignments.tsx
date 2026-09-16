@@ -168,6 +168,7 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
                       <option value="">— status —</option>
                       <option value="Scheduled">Scheduled</option>
                       <option value="Not Scheduled">Not Scheduled</option>
+                      <option value="PM">PM</option>
                     </select>
                     <input
                       placeholder="Note (e.g. ZBS-6)"

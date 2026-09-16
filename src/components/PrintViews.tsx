@@ -1,4 +1,4 @@
-import type { DailyBoard, WorkOrder } from "../types";
+import type { DailyBoard, LineSlot, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -144,6 +144,15 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
+// Matches the fill colors the original "3rd Shift | Line Assignments" sheet
+// used for a line's header block, keyed off the same status text the sheet
+// itself carried (Scheduled = navy/blue, Not Scheduled = gray, PM = blue-gray).
+function statusKey(status: LineSlot["status"]): "scheduled" | "not-scheduled" | "pm" {
+  if (status === "Scheduled") return "scheduled";
+  if (status === "PM") return "pm";
+  return "not-scheduled";
+}
+
 export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
   if (!board) {
     return (
@@ -157,66 +166,40 @@ export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
 
   return (
     <div className="print-assignments">
-      <div className="print-board-header">
-        <h1>
-          {board.shiftLabel} | Line Assignments
-        </h1>
-        <div className="print-board-meta">
-          <span>{board.date}</span>
-          <span>Dept. Leader: {board.deptLeader || "—"}</span>
-        </div>
-        <div className="print-board-banner">
+      <div className="print-assign-title">{board.shiftLabel} | Line Assignments</div>
+      <div className="print-assign-banner">
+        <span className="print-assign-banner-date">{board.date}</span>
+        <span className="print-assign-banner-safety">
           REPORT ANY SAFETY, QUALITY AND MAJOR PRODUCTION DOWNTIME ISSUES IMMEDIATELY
-        </div>
+        </span>
+        <span className="print-assign-banner-leader">Dept. Leader: {board.deptLeader || "—"}</span>
       </div>
 
-      {bands.map((band, bandIdx) => {
-        const namesPerSlot = band.map((slot) =>
-          slot.assigned
-            .split(",")
-            .map((n) => n.trim())
-            .filter(Boolean),
-        );
-        const maxNames = Math.max(0, ...namesPerSlot.map((n) => n.length));
-        const nameRows = Array.from({ length: maxNames });
-
-        return (
-          <table className="print-assign-table" key={bandIdx}>
-            <tbody>
-              <tr className="print-assign-line-row">
-                {band.map((slot) => (
-                  <td key={slot.id} className={slot.status === "Scheduled" ? "print-assign-scheduled" : ""}>
-                    {slot.line}
-                  </td>
-                ))}
-              </tr>
-              <tr className="print-assign-status-row">
-                {band.map((slot) => (
-                  <td key={slot.id} className={slot.status === "Scheduled" ? "print-assign-scheduled" : ""}>
-                    {slot.status || "—"}
-                  </td>
-                ))}
-              </tr>
-              <tr className="print-assign-note-row">
-                {band.map((slot) => (
-                  <td key={slot.id} className={slot.status === "Scheduled" ? "print-assign-scheduled" : ""}>
-                    {slot.subNote}
-                  </td>
-                ))}
-              </tr>
-              {nameRows.map((_, rowIdx) => (
-                <tr key={rowIdx}>
-                  {namesPerSlot.map((names, slotIdx) => (
-                    <td key={band[slotIdx].id} className={band[slotIdx].status === "Scheduled" ? "print-assign-scheduled" : ""}>
-                      {names[rowIdx] ?? ""}
-                    </td>
+      {bands.map((band, bandIdx) => (
+        <div className="print-assign-band-row" key={bandIdx}>
+          {band.map((slot) => {
+            const names = slot.assigned
+              .split(",")
+              .map((n) => n.trim())
+              .filter(Boolean);
+            const key = statusKey(slot.status);
+            return (
+              <div className="print-assign-col" key={slot.id}>
+                <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
+                <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
+                <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
+                <div className="print-assign-names">
+                  {names.map((name, i) => (
+                    <div className="print-assign-name-row" key={i}>
+                      {name}
+                    </div>
                   ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        );
-      })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }

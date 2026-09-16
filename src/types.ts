@@ -29,7 +29,7 @@ export type ChangeoverCode = "" | "S1" | "S1 Count Change" | "S3" | "S4";
 export interface LineSlot {
   id: string;
   line: string;
-  status: "" | "Scheduled" | "Not Scheduled";
+  status: "" | "Scheduled" | "Not Scheduled" | "PM";
   subNote: string;
   assigned: string;
 }

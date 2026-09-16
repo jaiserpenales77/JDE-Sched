@@ -439,10 +439,13 @@ tr.hl-bulk select {
 
 .slot-status-Scheduled { background: #dcfce7; }
 .slot-status-Not-Scheduled { background: #f1f5f9; }
+.slot-status-PM { background: #bdd7ee; }
 .slot-status-Scheduled,
 .slot-status-Not-Scheduled,
+.slot-status-PM,
 .slot-status-Scheduled .slot-line-input,
-.slot-status-Not-Scheduled .slot-line-input {
+.slot-status-Not-Scheduled .slot-line-input,
+.slot-status-PM .slot-line-input {
   color: #1f2937;
 }
 
@@ -745,51 +748,125 @@ tr.print-divider td {
   vertical-align: middle;
 }
 
-.print-board-header {
-  text-align: left;
-  margin-bottom: 8px;
-  color: #000;
-}
-.print-board-header h1 {
-  font-size: 16pt;
-  margin: 0 0 4px;
-}
-.print-board-meta {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  font-size: 9pt;
-  margin-bottom: 4px;
-}
-.print-board-banner {
-  border: 2px solid #000;
-  padding: 4px;
+/* Colors lifted straight from the original workbook's cell fills:
+   #1F3864 navy / #D9E2F3 banner blue / #BF9000 safety-banner gold /
+   #8C8C8C "Not Scheduled" gray / #A9B7CE "Scheduled" status-label blue /
+   #3B67AE "Scheduled" ZBS-note blue / #BFBFBF "Not Scheduled" ZBS-note gray /
+   #2E75B6 "PM" status-label blue. */
+
+.print-assign-title {
+  background: #1f3864;
+  color: #fff;
   font-weight: 700;
-  font-size: 9pt;
+  font-size: 20pt;
   text-align: center;
+  padding: 10px 6px;
 }
 
-.print-assign-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-  margin-top: 10px;
+.print-assign-banner {
+  background: #d9e2f3;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 12px;
+}
+.print-assign-banner-date {
+  font-weight: 700;
+  font-size: 10pt;
+  color: #1f3864;
+  white-space: nowrap;
+}
+.print-assign-banner-safety {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13pt;
+  color: #bf9000;
+}
+.print-assign-banner-leader {
+  font-weight: 700;
+  font-size: 10pt;
+  color: #1f3864;
+  white-space: nowrap;
+}
+
+.print-assign-band-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
   font-family: Calibri, Arial, sans-serif;
-  font-size: 8.5pt;
   color: #000;
 }
-.print-assign-table td {
-  border: 1px solid #000;
-  padding: 3px 5px;
-  vertical-align: top;
-  overflow-wrap: break-word;
+.print-assign-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
-.print-assign-line-row td {
+
+.print-assign-name {
   font-weight: 700;
+  font-size: 13pt;
+  padding: 6px 8px;
 }
-.print-assign-status-row td {
-  font-style: italic;
+.print-assign-status {
+  font-weight: 700;
+  font-size: 8pt;
+  text-align: center;
+  padding: 3px 4px;
 }
-.print-assign-scheduled {
-  background: #dcfce7;
+.print-assign-note {
+  font-weight: 700;
+  font-size: 8pt;
+  text-align: center;
+  padding: 3px 4px;
+}
+
+.print-assign-scheduled.print-assign-name {
+  background: #1f3864;
+  color: #fff;
+}
+.print-assign-scheduled.print-assign-status {
+  background: #a9b7ce;
+  color: #fff;
+}
+.print-assign-scheduled.print-assign-note {
+  background: #3b67ae;
+  color: #fff;
+}
+
+.print-assign-not-scheduled.print-assign-name,
+.print-assign-not-scheduled.print-assign-status {
+  background: #8c8c8c;
+  color: #fff;
+}
+.print-assign-not-scheduled.print-assign-note {
+  background: #bfbfbf;
+  color: #404040;
+}
+
+.print-assign-pm.print-assign-name {
+  background: #8c8c8c;
+  color: #fff;
+}
+.print-assign-pm.print-assign-status {
+  background: #2e75b6;
+  color: #fff;
+}
+.print-assign-pm.print-assign-note {
+  background: #bfbfbf;
+  color: #404040;
+}
+
+.print-assign-names {
+  display: flex;
+  flex-direction: column;
+}
+.print-assign-name-row {
+  font-size: 10pt;
+  text-align: center;
+  padding: 3px 4px;
+}
+.print-assign-name-row:nth-child(even) {
+  background: #f2f2f2;
 }
