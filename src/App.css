@@ -1035,6 +1035,23 @@ tr.print-divider td {
   padding: 20px;
 }
 
+.snap-guide {
+  position: absolute;
+  background: #ff3b8d;
+  pointer-events: none;
+  z-index: 5;
+}
+.snap-guide-v {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+.snap-guide-h {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
 .layout-box {
   position: absolute;
   background: #fff;

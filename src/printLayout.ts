@@ -37,6 +37,107 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+// Snap-to-alignment (move/resize), similar to Figma/PowerPoint smart
+// guides: aligns the dragged box's edges/center with other boxes' edges/
+// center (and the page edges/center), and while resizing also offers to
+// match another box's exact width/height so lines up neatly the same size.
+
+const SNAP_THRESHOLD = 1.2; // percent of the page axis
+
+export interface SnapResult extends BoxLayout {
+  guideX?: number; // % position of a vertical guide line to draw, if snapped on x
+  guideY?: number; // % position of a horizontal guide line to draw, if snapped on y
+}
+
+function closestTarget(value: number, targets: number[]): number | null {
+  let best: number | null = null;
+  let bestDiff = SNAP_THRESHOLD;
+  for (const t of targets) {
+    const diff = Math.abs(value - t);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = t;
+    }
+  }
+  return best;
+}
+
+export function snapMove(rect: BoxLayout, others: BoxLayout[]): SnapResult {
+  const xTargets = [0, 50, 100];
+  const yTargets = [0, 50, 100];
+  for (const o of others) {
+    xTargets.push(o.x, o.x + o.width / 2, o.x + o.width);
+    yTargets.push(o.y, o.y + o.height / 2, o.y + o.height);
+  }
+
+  const xCandidates = [rect.x, rect.x + rect.width / 2, rect.x + rect.width];
+  const yCandidates = [rect.y, rect.y + rect.height / 2, rect.y + rect.height];
+
+  let bestX: { delta: number; diff: number; guide: number } | null = null;
+  for (const c of xCandidates) {
+    const snap = closestTarget(c, xTargets);
+    if (snap === null) continue;
+    const diff = Math.abs(snap - c);
+    if (!bestX || diff < bestX.diff) bestX = { delta: snap - c, diff, guide: snap };
+  }
+  let bestY: { delta: number; diff: number; guide: number } | null = null;
+  for (const c of yCandidates) {
+    const snap = closestTarget(c, yTargets);
+    if (snap === null) continue;
+    const diff = Math.abs(snap - c);
+    if (!bestY || diff < bestY.diff) bestY = { delta: snap - c, diff, guide: snap };
+  }
+
+  return {
+    x: bestX ? rect.x + bestX.delta : rect.x,
+    y: bestY ? rect.y + bestY.delta : rect.y,
+    width: rect.width,
+    height: rect.height,
+    guideX: bestX?.guide,
+    guideY: bestY?.guide,
+  };
+}
+
+export function snapResize(rect: BoxLayout, others: BoxLayout[]): SnapResult {
+  const right = rect.x + rect.width;
+  const bottom = rect.y + rect.height;
+
+  const xEdgeTargets = [100];
+  const yEdgeTargets = [100];
+  const widthTargets: number[] = [];
+  const heightTargets: number[] = [];
+  for (const o of others) {
+    xEdgeTargets.push(o.x, o.x + o.width / 2, o.x + o.width);
+    yEdgeTargets.push(o.y, o.y + o.height / 2, o.y + o.height);
+    widthTargets.push(o.width);
+    heightTargets.push(o.height);
+  }
+
+  let width = rect.width;
+  let guideX: number | undefined;
+  const snapRight = closestTarget(right, xEdgeTargets);
+  const snapWidth = closestTarget(rect.width, widthTargets);
+  if (snapRight !== null && (snapWidth === null || Math.abs(snapRight - right) <= Math.abs(snapWidth - rect.width))) {
+    width = snapRight - rect.x;
+    guideX = snapRight;
+  } else if (snapWidth !== null) {
+    width = snapWidth;
+  }
+
+  let height = rect.height;
+  let guideY: number | undefined;
+  const snapBottom = closestTarget(bottom, yEdgeTargets);
+  const snapHeight = closestTarget(rect.height, heightTargets);
+  if (snapBottom !== null && (snapHeight === null || Math.abs(snapBottom - bottom) <= Math.abs(snapHeight - rect.height))) {
+    height = snapBottom - rect.y;
+    guideY = snapBottom;
+  } else if (snapHeight !== null) {
+    height = snapHeight;
+  }
+
+  return { x: rect.x, y: rect.y, width, height, guideX, guideY };
+}
+
 // First-name lookup: the day board and the skills roster were kept as two
 // separate sheets in the original workbook and don't always agree on a
 // person's last name/nickname (e.g. roster "Vicky LL" vs board "Vicky

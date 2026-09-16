@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { BoxLayout, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings } from "../types";
-import { buildFirstNameRoleMap, clamp, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import { buildFirstNameRoleMap, clamp, lineBoxKey, resolveBoxLayout, roomBoxKey, snapMove, snapResize } from "../printLayout";
 import { LineBoxContent, RoomBoxContent } from "./PrintViews";
 
 interface Props {
@@ -28,6 +28,7 @@ interface DragState {
 export default function PrintLayoutEditor({ board, employees, settings, setSettings }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [guides, setGuides] = useState<{ x?: number; y?: number }>({});
   const roleMap = buildFirstNameRoleMap(employees);
 
   const boxes: BoxDef[] = [
@@ -36,6 +37,14 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
       ? board.roomSections.map((section): BoxDef => ({ key: roomBoxKey(section.title), kind: "room", section }))
       : []),
   ];
+
+  // Every box's current rect, keyed the same way boxLayouts is, so snap
+  // targets always reflect what's actually on screen right now.
+  function allRects(): Map<string, BoxLayout> {
+    const map = new Map<string, BoxLayout>();
+    boxes.forEach((b, i) => map.set(b.key, resolveBoxLayout(b.key, i, settings.boxLayouts)));
+    return map;
+  }
 
   function updateLayout(key: string, rect: BoxLayout) {
     setSettings((s) => ({ ...s, boxLayouts: { ...s.boxLayouts, [key]: rect } }));
@@ -55,7 +64,7 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
     const dxPct = ((e.clientX - drag.startX) / canvasRect.width) * 100;
     const dyPct = ((e.clientY - drag.startY) / canvasRect.height) * 100;
 
-    const next: BoxLayout =
+    const raw: BoxLayout =
       drag.mode === "move"
         ? {
             ...drag.startRect,
@@ -68,11 +77,22 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
             height: clamp(drag.startRect.height + dyPct, MIN_SIZE, 100 - drag.startRect.y),
           };
 
+    const others = [...allRects().entries()].filter(([key]) => key !== drag.key).map(([, rect]) => rect);
+    const snapped = drag.mode === "move" ? snapMove(raw, others) : snapResize(raw, others);
+    const next: BoxLayout = {
+      x: clamp(snapped.x, 0, 100 - snapped.width),
+      y: clamp(snapped.y, 0, 100 - snapped.height),
+      width: clamp(snapped.width, MIN_SIZE, 100 - snapped.x),
+      height: clamp(snapped.height, MIN_SIZE, 100 - snapped.y),
+    };
+
+    setGuides({ x: snapped.guideX, y: snapped.guideY });
     updateLayout(drag.key, next);
   }
 
   function onPointerUp() {
     setDrag(null);
+    setGuides({});
   }
 
   function resetLayout() {
@@ -98,7 +118,8 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
       <h2>🖱 Print Layout Editor</h2>
       <p className="panel-hint">
         Live preview of what will print. Drag a box to move it; drag the handle in its bottom-right corner to
-        resize. Changes save automatically.
+        resize. Boxes snap to align with other boxes' edges, centers and sizes (pink guide line) — and to the page
+        edges/center. Changes save automatically.
       </p>
       <div
         ref={canvasRef}
@@ -109,6 +130,8 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
         onPointerCancel={onPointerUp}
       >
         {boxes.length === 0 && <div className="layout-empty">No boxes to arrange yet — add a line or room section first.</div>}
+        {drag && guides.x !== undefined && <div className="snap-guide snap-guide-v" style={{ left: `${guides.x}%` }} />}
+        {drag && guides.y !== undefined && <div className="snap-guide snap-guide-h" style={{ top: `${guides.y}%` }} />}
         {boxes.map((box, i) => {
           const rect = resolveBoxLayout(box.key, i, settings.boxLayouts);
           return (
