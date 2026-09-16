@@ -182,7 +182,12 @@ function App() {
             />
             <PrintDesignSettings settings={data.printSettings} setSettings={setPrintSettings} />
             {data.printSettings.freeFormLayout && selectedBoard && (
-              <PrintLayoutEditor board={selectedBoard} settings={data.printSettings} setSettings={setPrintSettings} />
+              <PrintLayoutEditor
+                board={selectedBoard}
+                employees={data.employees}
+                settings={data.printSettings}
+                setSettings={setPrintSettings}
+              />
             )}
           </>
         )}

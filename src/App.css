@@ -1037,31 +1037,21 @@ tr.print-divider td {
 
 .layout-box {
   position: absolute;
-  background: var(--accent);
-  color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: #fff;
+  border: 1px dashed rgba(0, 0, 0, 0.3);
   border-radius: 4px;
-  padding: 4px 6px;
-  font-size: 11px;
-  line-height: 1.3;
   cursor: grab;
-  overflow: hidden;
   user-select: none;
   box-sizing: border-box;
+  transition: box-shadow 0.1s ease;
+}
+.layout-box:hover {
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .layout-box:active {
   cursor: grabbing;
   z-index: 2;
-}
-.layout-box-title {
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.layout-box-subtitle {
-  opacity: 0.85;
-  font-size: 10px;
+  box-shadow: 0 0 0 2px var(--accent);
 }
 .layout-box-resize {
   position: absolute;
@@ -1070,8 +1060,9 @@ tr.print-divider td {
   width: 14px;
   height: 14px;
   cursor: nwse-resize;
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.35);
   border-top-left-radius: 4px;
+  z-index: 3;
 }
 
 /* ---------- Name multi-select (assigned employees) ---------- */

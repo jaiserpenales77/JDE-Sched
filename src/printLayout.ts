@@ -1,4 +1,4 @@
-import type { BoxLayout } from "./types";
+import type { BoxLayout, Employee } from "./types";
 
 // Stable keys for a box's saved position/size, independent of the
 // underlying slot/section's generated id (which is regenerated every time
@@ -35,4 +35,17 @@ export function resolveBoxLayout(key: string, index: number, layouts: Record<str
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
+}
+
+// First-name lookup: the day board and the skills roster were kept as two
+// separate sheets in the original workbook and don't always agree on a
+// person's last name/nickname (e.g. roster "Vicky LL" vs board "Vicky
+// Rama") - first name is the reliable common key between them.
+export function buildFirstNameRoleMap(employees: Employee[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const e of employees) {
+    const first = e.name.trim().split(/\s+/)[0]?.toLowerCase();
+    if (first) map.set(first, e.role);
+  }
+  return map;
 }

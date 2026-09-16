@@ -9,7 +9,7 @@ import {
   isOilRow,
   isBulkHighlightRow,
 } from "../scheduleLogic";
-import { lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import { buildFirstNameRoleMap, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -155,19 +155,6 @@ function statusKey(status: LineSlot["status"]): "scheduled" | "not-scheduled" | 
   return "not-scheduled";
 }
 
-// First-name lookup: the day board and the skills roster were kept as two
-// separate sheets in the original workbook and don't always agree on a
-// person's last name/nickname (e.g. roster "Vicky LL" vs board "Vicky
-// Rama") - first name is the reliable common key between them.
-function buildFirstNameRoleMap(employees: Employee[]): Map<string, string> {
-  const map = new Map<string, string>();
-  for (const e of employees) {
-    const first = e.name.trim().split(/\s+/)[0]?.toLowerCase();
-    if (first) map.set(first, e.role);
-  }
-  return map;
-}
-
 // The original sheet hand-highlighted Line Leaders (dark green) and
 // MLL/MLT crew (navy) by name within the assigned-names lists.
 function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: boolean): string {
@@ -180,7 +167,7 @@ function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: bool
   return "";
 }
 
-function LineBoxContent({
+export function LineBoxContent({
   slot,
   roleMap,
   settings,
@@ -210,7 +197,7 @@ function LineBoxContent({
   );
 }
 
-function RoomBoxContent({
+export function RoomBoxContent({
   section,
   roleMap,
   settings,

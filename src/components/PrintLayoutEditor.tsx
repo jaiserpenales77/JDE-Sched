@@ -1,19 +1,17 @@
 import { useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
-import type { BoxLayout, DailyBoard, PrintAssignSettings } from "../types";
-import { clamp, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { BoxLayout, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings } from "../types";
+import { buildFirstNameRoleMap, clamp, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import { LineBoxContent, RoomBoxContent } from "./PrintViews";
 
 interface Props {
   board: DailyBoard;
+  employees: Employee[];
   settings: PrintAssignSettings;
   setSettings: (updater: (s: PrintAssignSettings) => PrintAssignSettings) => void;
 }
 
-interface BoxDef {
-  key: string;
-  title: string;
-  subtitle: string;
-}
+type BoxDef = { key: string; kind: "line"; slot: LineSlot } | { key: string; kind: "room"; section: ListSection };
 
 const MIN_SIZE = 5;
 
@@ -27,18 +25,15 @@ interface DragState {
   startRect: BoxLayout;
 }
 
-export default function PrintLayoutEditor({ board, settings, setSettings }: Props) {
+export default function PrintLayoutEditor({ board, employees, settings, setSettings }: Props) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const roleMap = buildFirstNameRoleMap(employees);
 
   const boxes: BoxDef[] = [
-    ...board.lineSlots.map((s) => ({ key: lineBoxKey(s.line), title: s.line || "(unnamed line)", subtitle: s.status || "—" })),
+    ...board.lineSlots.map((slot): BoxDef => ({ key: lineBoxKey(slot.line), kind: "line", slot })),
     ...(settings.includeRoomSections
-      ? board.roomSections.map((s) => ({
-          key: roomBoxKey(s.title),
-          title: s.title || "(unnamed section)",
-          subtitle: `${s.items.length} name${s.items.length === 1 ? "" : "s"}`,
-        }))
+      ? board.roomSections.map((section): BoxDef => ({ key: roomBoxKey(section.title), kind: "room", section }))
       : []),
   ];
 
@@ -87,17 +82,28 @@ export default function PrintLayoutEditor({ board, settings, setSettings }: Prop
 
   const aspect = settings.orientation === "landscape" ? "11 / 8.5" : "8.5 / 11";
 
+  const cssVars = {
+    "--print-title-color": settings.titleColor,
+    "--print-banner-color": settings.bannerColor,
+    "--print-banner-text-color": settings.bannerTextColor,
+    "--print-scheduled-color": settings.scheduledColor,
+    "--print-not-scheduled-color": settings.notScheduledColor,
+    "--print-pm-color": settings.pmColor,
+    "--print-leader-color": settings.leaderColor,
+    "--print-crew-color": settings.crewColor,
+  } as CSSProperties;
+
   return (
     <div className="panel">
       <h2>🖱 Print Layout Editor</h2>
       <p className="panel-hint">
-        Drag a box to move it; drag the handle in its bottom-right corner to resize. Roughly matches the printed
-        page's proportions. Changes save automatically.
+        Live preview of what will print. Drag a box to move it; drag the handle in its bottom-right corner to
+        resize. Changes save automatically.
       </p>
       <div
         ref={canvasRef}
         className="layout-canvas"
-        style={{ aspectRatio: aspect }}
+        style={{ aspectRatio: aspect, ...cssVars }}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
@@ -108,7 +114,7 @@ export default function PrintLayoutEditor({ board, settings, setSettings }: Prop
           return (
             <div
               key={box.key}
-              className="layout-box"
+              className="layout-box print-assign-col-absolute"
               style={{
                 left: `${rect.x}%`,
                 top: `${rect.y}%`,
@@ -117,8 +123,11 @@ export default function PrintLayoutEditor({ board, settings, setSettings }: Prop
               }}
               onPointerDown={(e) => beginDrag(e, box.key, i, "move")}
             >
-              <div className="layout-box-title">{box.title}</div>
-              <div className="layout-box-subtitle">{box.subtitle}</div>
+              {box.kind === "line" ? (
+                <LineBoxContent slot={box.slot} roleMap={roleMap} settings={settings} />
+              ) : (
+                <RoomBoxContent section={box.section} roleMap={roleMap} settings={settings} />
+              )}
               <div className="layout-box-resize" onPointerDown={(e) => beginDrag(e, box.key, i, "resize")} />
             </div>
           );
