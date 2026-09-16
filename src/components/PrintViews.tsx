@@ -23,7 +23,7 @@ function pct(n: number | ""): string {
   return n === "" ? "" : `${(Number(n) * 100).toFixed(1)}%`;
 }
 
-export function PrintSchedule({ workOrders }: { workOrders: WorkOrder[] }) {
+export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders: WorkOrder[]; scheduledLines?: string[] }) {
   const groups = groupByLine(workOrders);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
@@ -64,11 +64,14 @@ export function PrintSchedule({ workOrders }: { workOrders: WorkOrder[] }) {
               </td>
             </tr>
           )}
-          {groups.map((group, groupIdx) => (
+          {groups.map((group, groupIdx) => {
+            const isScheduled = scheduledLines.includes(group.line);
+            return (
             <Fragment key={group.line}>
               {group.rows.map((row, idx) => {
                 const next = group.rows[idx + 1];
                 const chg = changeoverCode(row, next);
+                const isFirstOfGroup = idx === 0;
                 const isLastOfGroup = idx === group.rows.length - 1;
                 let hl = "";
                 if (isAllergenRow(row)) hl = "print-hl-allergen";
@@ -82,8 +85,11 @@ export function PrintSchedule({ workOrders }: { workOrders: WorkOrder[] }) {
                       : row.lineStatus === "Trial"
                         ? "print-line-trial"
                         : "";
+                const scheduledCls = isScheduled
+                  ? `print-line-scheduled ${isFirstOfGroup ? "print-line-scheduled-first" : ""} ${isLastOfGroup ? "print-line-scheduled-last" : ""}`
+                  : "";
                 return (
-                  <tr key={row.id} className={`${hl} ${isLastOfGroup ? "print-divider" : ""}`}>
+                  <tr key={row.id} className={`${hl} ${isLastOfGroup ? "print-divider" : ""} ${scheduledCls}`}>
                     <td className={lineCls}>{row.line}</td>
                     <td>{row.wo}</td>
                     <td>{row.seq}</td>
@@ -109,7 +115,8 @@ export function PrintSchedule({ workOrders }: { workOrders: WorkOrder[] }) {
                 </tr>
               )}
             </Fragment>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

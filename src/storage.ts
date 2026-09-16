@@ -40,6 +40,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
     employees: Array.isArray(raw.employees) ? raw.employees : [],
     printSettings: normalizePrintSettings(raw.printSettings),
+    scheduledLines: Array.isArray(raw.scheduledLines) ? raw.scheduledLines : [],
   };
 }
 
@@ -72,5 +73,5 @@ export function resetToSeed(): AppData {
 }
 
 export function emptyData(): AppData {
-  return { workOrders: [], boards: [], employees: [], printSettings: { ...defaultPrintSettings } };
+  return { workOrders: [], boards: [], employees: [], printSettings: { ...defaultPrintSettings }, scheduledLines: [] };
 }

@@ -13,6 +13,8 @@ import {
 interface Props {
   workOrders: WorkOrder[];
   setWorkOrders: (updater: (wos: WorkOrder[]) => WorkOrder[]) => void;
+  scheduledLines: string[];
+  setScheduledLines: (updater: (lines: string[]) => string[]) => void;
 }
 
 const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: boolean }[] = [
@@ -35,9 +37,13 @@ function fmtChg(code: string) {
   return code === "" ? "—" : code;
 }
 
-export default function ProductionSchedule({ workOrders, setWorkOrders }: Props) {
+export default function ProductionSchedule({ workOrders, setWorkOrders, scheduledLines, setScheduledLines }: Props) {
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
+
+  function toggleScheduledLine(line: string, checked: boolean) {
+    setScheduledLines((lines) => (checked ? [...lines, line] : lines.filter((l) => l !== line)));
+  }
 
   function updateRow(id: string, field: keyof WorkOrder, value: string | number) {
     setWorkOrders((wos) => wos.map((w) => (w.id === id ? { ...w, [field]: value } : w)));
@@ -61,10 +67,12 @@ export default function ProductionSchedule({ workOrders, setWorkOrders }: Props)
   function deleteLine(line: string) {
     if (!confirm(`Remove line "${line}" and all its work orders?`)) return;
     setWorkOrders((wos) => wos.filter((w) => w.line.trim() !== line));
+    setScheduledLines((lines) => lines.filter((l) => l !== line));
   }
 
   function renameLine(oldLine: string, newLine: string) {
     setWorkOrders((wos) => wos.map((w) => (w.line.trim() === oldLine ? { ...w, line: newLine } : w)));
+    setScheduledLines((lines) => lines.map((l) => (l === oldLine ? newLine : l)));
   }
 
   function addNewLine() {
@@ -94,6 +102,27 @@ export default function ProductionSchedule({ workOrders, setWorkOrders }: Props)
         <span className="chg-S3">S3</span> = bulk item differs · <span className="chg-S4">S4</span> = bottle size
         differs. % Actual Complete, Bottles Remaining and Changeover are calculated automatically.
       </div>
+
+      {groups.length > 0 && (
+        <div className="panel">
+          <h2>Scheduled Lines</h2>
+          <p className="panel-hint">
+            Check a line to highlight its whole block with a green border on the print report.
+          </p>
+          <div className="scheduled-lines-grid">
+            {groups.map((group) => (
+              <label className="scheduled-line-checkbox" key={group.line}>
+                <input
+                  type="checkbox"
+                  checked={scheduledLines.includes(group.line)}
+                  onChange={(e) => toggleScheduledLine(group.line, e.target.checked)}
+                />
+                {group.line}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
 
       {groups.length === 0 && (
         <div className="empty-state panel">No work orders yet. Add a production line below to get started.</div>

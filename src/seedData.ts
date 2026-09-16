@@ -216,5 +216,6 @@ export function buildSeedData(): AppData {
     boards: seedBoards,
     employees: seedEmployees,
     printSettings: { ...defaultPrintSettings },
+    scheduledLines: [],
   };
 }

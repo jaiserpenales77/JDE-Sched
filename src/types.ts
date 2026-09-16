@@ -152,4 +152,7 @@ export interface AppData {
   boards: DailyBoard[];
   employees: Employee[];
   printSettings: PrintAssignSettings;
+  // Production lines checked in the "Scheduled Lines" panel - highlighted
+  // with a green border around the line's whole block on the print report.
+  scheduledLines: string[];
 }

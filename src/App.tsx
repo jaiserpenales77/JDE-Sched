@@ -124,6 +124,9 @@ function App() {
   function setPrintSettings(updater: (s: PrintAssignSettings) => PrintAssignSettings) {
     setData((d) => ({ ...d, printSettings: updater(d.printSettings) }));
   }
+  function setScheduledLines(updater: (lines: string[]) => string[]) {
+    setData((d) => ({ ...d, scheduledLines: updater(d.scheduledLines) }));
+  }
 
   async function handleJsonImport(file: File) {
     try {
@@ -230,7 +233,14 @@ function App() {
       </header>
 
       <main className="app-main">
-        {tab === "schedule" && <ProductionSchedule workOrders={data.workOrders} setWorkOrders={setWorkOrders} />}
+        {tab === "schedule" && (
+          <ProductionSchedule
+            workOrders={data.workOrders}
+            setWorkOrders={setWorkOrders}
+            scheduledLines={data.scheduledLines}
+            setScheduledLines={setScheduledLines}
+          />
+        )}
         {tab === "assignments" && (
           <>
             <LineAssignments
@@ -260,7 +270,7 @@ function App() {
       </footer>
 
       <div className="print-root">
-        <PrintSchedule workOrders={data.workOrders} />
+        <PrintSchedule workOrders={data.workOrders} scheduledLines={data.scheduledLines} />
         <PrintAssignments board={selectedBoard} employees={data.employees} settings={data.printSettings} />
       </div>
     </div>
