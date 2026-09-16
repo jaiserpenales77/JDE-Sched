@@ -757,34 +757,12 @@ tr.print-divider td {
   border-bottom: 3px solid #000080;
 }
 
-.print-legend {
-  margin-top: 10px;
-  font-size: 8pt;
-  color: #000;
-}
-.print-legend ul {
-  list-style: none;
+/* A blank, borderless row between each production line's group of work
+   orders - visual breathing room in addition to the navy divider line. */
+tr.print-line-spacer td {
+  height: 8px;
   padding: 0;
-  margin: 4px 0 0;
-}
-.print-legend li {
-  margin-bottom: 3px;
-}
-.print-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  border: 1px solid #999;
-  margin-right: 5px;
-  vertical-align: middle;
-}
-.print-divider-swatch {
-  display: inline-block;
-  width: 20px;
-  height: 3px;
-  background: #000080;
-  margin-right: 5px;
-  vertical-align: middle;
+  border: none;
 }
 
 /* Colors lifted straight from the original workbook's cell fills:

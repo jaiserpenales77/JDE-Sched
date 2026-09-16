@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { CSSProperties } from "react";
 import type { CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
 import {
@@ -63,77 +64,54 @@ export function PrintSchedule({ workOrders }: { workOrders: WorkOrder[] }) {
               </td>
             </tr>
           )}
-          {groups.map((group) =>
-            group.rows.map((row, idx) => {
-              const next = group.rows[idx + 1];
-              const chg = changeoverCode(row, next);
-              const isLastOfGroup = idx === group.rows.length - 1;
-              let hl = "";
-              if (isAllergenRow(row)) hl = "print-hl-allergen";
-              else if (isOilRow(row)) hl = "print-hl-oil";
-              else if (isBulkHighlightRow(row)) hl = "print-hl-bulk";
-              const lineCls =
-                row.lineStatus === "Ready"
-                  ? "print-line-ready"
-                  : row.lineStatus === "PM"
-                    ? "print-line-pm"
-                    : row.lineStatus === "Trial"
-                      ? "print-line-trial"
-                      : "";
-              return (
-                <tr key={row.id} className={`${hl} ${isLastOfGroup ? "print-divider" : ""}`}>
-                  <td className={lineCls}>{row.line}</td>
-                  <td>{row.wo}</td>
-                  <td>{row.seq}</td>
-                  <td>{row.item}</td>
-                  <td className="print-left">{row.description}</td>
-                  <td>{row.count}</td>
-                  <td>{row.bulkItem}</td>
-                  <td>{row.bottleSize}</td>
-                  <td className="print-left">{row.capDescription}</td>
-                  <td>{row.allergen}</td>
-                  <td className="print-left">{row.remarks}</td>
-                  <td className="print-num">{row.woQuantity}</td>
-                  <td className="print-num">{row.percentComplete}</td>
-                  <td className="print-num print-formula-col">{pct(percentActual(row))}</td>
-                  <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
-                  <td className="print-formula-col">{chg}</td>
+          {groups.map((group, groupIdx) => (
+            <Fragment key={group.line}>
+              {group.rows.map((row, idx) => {
+                const next = group.rows[idx + 1];
+                const chg = changeoverCode(row, next);
+                const isLastOfGroup = idx === group.rows.length - 1;
+                let hl = "";
+                if (isAllergenRow(row)) hl = "print-hl-allergen";
+                else if (isOilRow(row)) hl = "print-hl-oil";
+                else if (isBulkHighlightRow(row)) hl = "print-hl-bulk";
+                const lineCls =
+                  row.lineStatus === "Ready"
+                    ? "print-line-ready"
+                    : row.lineStatus === "PM"
+                      ? "print-line-pm"
+                      : row.lineStatus === "Trial"
+                        ? "print-line-trial"
+                        : "";
+                return (
+                  <tr key={row.id} className={`${hl} ${isLastOfGroup ? "print-divider" : ""}`}>
+                    <td className={lineCls}>{row.line}</td>
+                    <td>{row.wo}</td>
+                    <td>{row.seq}</td>
+                    <td>{row.item}</td>
+                    <td className="print-left">{row.description}</td>
+                    <td>{row.count}</td>
+                    <td>{row.bulkItem}</td>
+                    <td>{row.bottleSize}</td>
+                    <td className="print-left">{row.capDescription}</td>
+                    <td>{row.allergen}</td>
+                    <td className="print-left">{row.remarks}</td>
+                    <td className="print-num">{row.woQuantity}</td>
+                    <td className="print-num">{row.percentComplete}</td>
+                    <td className="print-num print-formula-col">{pct(percentActual(row))}</td>
+                    <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
+                    <td className="print-formula-col">{chg}</td>
+                  </tr>
+                );
+              })}
+              {groupIdx < groups.length - 1 && (
+                <tr className="print-line-spacer" aria-hidden="true">
+                  <td colSpan={16} />
                 </tr>
-              );
-            }),
-          )}
+              )}
+            </Fragment>
+          ))}
         </tbody>
       </table>
-
-      <div className="print-legend">
-        <strong>LEGEND</strong>
-        <ul>
-          <li>
-            <span className="print-swatch" style={{ background: "#fff9db" }} /> % Actual Complete, Bottles Remaining
-            and Changeover are system-calculated - do not overwrite.
-          </li>
-          <li>
-            <span className="print-swatch" style={{ background: "#f8cbad" }} /> Allergen (column J) is anything
-            other than N - verify before running.
-          </li>
-          <li>
-            <span className="print-swatch" style={{ background: "#fff2cc" }} /> Product description contains "oil".
-          </li>
-          <li>
-            <span className="print-swatch" style={{ background: "#bdd7ee" }} /> Bulk item A662 / A624, or the line
-            has a work order marked PM.
-          </li>
-          <li>
-            <span className="print-swatch" style={{ background: "#c6efce" }} /> Line has a work order marked Ready.
-          </li>
-          <li>
-            <span className="print-swatch" style={{ background: "#d9d2e9" }} /> Line has a work order marked Trial.
-          </li>
-          <li>
-            <span className="print-divider-swatch" /> Divider between production lines.
-          </li>
-        </ul>
-      </div>
     </div>
   );
 }
