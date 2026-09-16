@@ -153,3 +153,23 @@ export function buildFirstNameRoleMap(employees: Employee[]): Map<string, string
   }
   return map;
 }
+
+// Priority for displaying a line's assigned team: MLL first, then Line
+// Leader, then MLT, then everyone else - keeps the crew hierarchy visible
+// at a glance instead of relying only on the role highlight colors.
+function roleRank(name: string, roleMap: Map<string, string>): number {
+  const first = name.trim().split(/\s+/)[0]?.toLowerCase();
+  const role = first ? roleMap.get(first) : undefined;
+  if (!role) return 3;
+  if (/\bMLL\b/i.test(role)) return 0;
+  if (/line leader/i.test(role)) return 1;
+  if (/\bMLT\b/i.test(role)) return 2;
+  return 3;
+}
+
+export function sortByRole(names: string[], roleMap: Map<string, string>): string[] {
+  return names
+    .map((name, index) => ({ name, index, rank: roleRank(name, roleMap) }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.name);
+}

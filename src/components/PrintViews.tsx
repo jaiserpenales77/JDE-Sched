@@ -13,7 +13,7 @@ import {
   SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
-import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey, sortByRole } from "../printLayout";
 import ProgressBar from "./ProgressBar";
 
 // Print layouts that mirror the original workbook's printed pages as
@@ -299,10 +299,14 @@ export function LineBoxContent({
   roleMap: Map<string, string>;
   settings: PrintAssignSettings;
 }) {
-  const names = slot.assigned
+  const rawNames = slot.assigned
     .split(",")
     .map((n) => n.trim())
     .filter(Boolean);
+  // MLL > Line Leader > MLT > everyone else - same "highlight roles"
+  // toggle that colors these names also controls whether they're
+  // reordered to put the crew hierarchy first.
+  const names = settings.highlightRoles ? sortByRole(rawNames, roleMap) : rawNames;
   const key = statusKey(slot.status);
   return (
     <>

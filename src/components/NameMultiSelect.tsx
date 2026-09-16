@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { DragEvent } from "react";
+import { sortByRole } from "../printLayout";
 
 // The drag payload's MIME type - namespaced so dropping something else
 // (a browser tab, a file, plain text) onto a line box is safely ignored.
@@ -14,6 +15,9 @@ interface Props {
   // NameMultiSelect still works anywhere drag-between-lines doesn't apply.
   slotId?: string;
   onDropEmployee?: (name: string, fromSlotId: string) => void;
+  // When given, displays chips MLL > Line Leader > MLT > everyone else,
+  // matching the same order the print report uses.
+  roleMap?: Map<string, string>;
 }
 
 function parseNames(value: string): string[] {
@@ -23,12 +27,13 @@ function parseNames(value: string): string[] {
     .filter(Boolean);
 }
 
-export default function NameMultiSelect({ value, onChange, options, slotId, onDropEmployee }: Props) {
+export default function NameMultiSelect({ value, onChange, options, slotId, onDropEmployee, roleMap }: Props) {
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState("");
   const [dragOver, setDragOver] = useState(false);
 
   const selected = parseNames(value);
+  const displayed = roleMap ? sortByRole(selected, roleMap) : selected;
   const available = options.filter((name) => !selected.includes(name));
 
   function addName(name: string) {
@@ -81,7 +86,7 @@ export default function NameMultiSelect({ value, onChange, options, slotId, onDr
     >
       <div className="name-chips">
         {selected.length === 0 && <span className="name-chips-empty">No one assigned</span>}
-        {selected.map((name) => (
+        {displayed.map((name) => (
           <span
             className="name-chip"
             key={name}

@@ -1,6 +1,7 @@
 import type { CommentBox, DailyBoard, Employee, ListSection, LineSlot } from "../types";
 import { COMMENT_FONT_OPTIONS } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
+import { buildFirstNameRoleMap } from "../printLayout";
 
 interface Props {
   boards: DailyBoard[];
@@ -75,6 +76,7 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
   const employeeNames = [...new Set(employees.map((e) => cleanEmployeeName(e.name)).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
+  const roleMap = buildFirstNameRoleMap(employees);
 
   function updateBoard(id: string, patch: Partial<DailyBoard>) {
     setBoards((bs) => bs.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -280,6 +282,7 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
                       options={employeeNames}
                       slotId={slot.id}
                       onDropEmployee={(name, fromSlotId) => moveEmployee(name, fromSlotId, slot.id)}
+                      roleMap={roleMap}
                     />
                     <select
                       value=""
