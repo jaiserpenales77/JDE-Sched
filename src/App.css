@@ -1,7 +1,11 @@
 :root {
   --bg: #f4f6f8;
   --panel: #ffffff;
+  --panel-2: #eef2f6;
   --border: #d7dde3;
+  --hairline: #edf0f3;
+  --subtle: #fafafa;
+  --hover: #eef2f6;
   --text: #1f2937;
   --muted: #6b7280;
   --accent: #2563eb;
@@ -10,7 +14,43 @@
   --danger-dark: #b91c1c;
   --green: #16a34a;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-  color-scheme: light;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1220;
+    --panel: #141b2c;
+    --panel-2: #1b2438;
+    --border: #29344a;
+    --hairline: #253046;
+    --subtle: #101827;
+    --hover: #1e2942;
+    --text: #e5e9f0;
+    --muted: #93a1b8;
+    --accent: #3b82f6;
+    --accent-dark: #60a5fa;
+    --danger: #f87171;
+    --danger-dark: #fca5a5;
+    --green: #4ade80;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b1220;
+  --panel: #141b2c;
+  --panel-2: #1b2438;
+  --border: #29344a;
+  --hairline: #253046;
+  --subtle: #101827;
+  --hover: #1e2942;
+  --text: #e5e9f0;
+  --muted: #93a1b8;
+  --accent: #3b82f6;
+  --accent-dark: #60a5fa;
+  --danger: #f87171;
+  --danger-dark: #fca5a5;
+  --green: #4ade80;
 }
 
 * {
@@ -76,7 +116,7 @@ body {
 
 .tab-btn.active {
   background: var(--bg);
-  color: #0f172a;
+  color: var(--text);
 }
 
 .toolbar {
@@ -97,7 +137,7 @@ body {
 }
 
 .btn:hover {
-  background: #eef2f6;
+  background: var(--hover);
 }
 
 .btn.primary {
@@ -110,7 +150,7 @@ body {
 }
 
 .btn.danger {
-  background: #fff;
+  background: var(--panel);
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -158,7 +198,7 @@ body {
   font-size: 12.5px;
   color: var(--muted);
   line-height: 1.6;
-  background: #fafafa;
+  background: var(--subtle);
   border: 1px dashed var(--border);
   border-radius: 8px;
   padding: 10px 14px;
@@ -230,7 +270,7 @@ table.schedule {
 }
 
 table.schedule th {
-  background: #eef2f6;
+  background: var(--panel-2);
   text-align: left;
   padding: 6px 8px;
   border-bottom: 2px solid var(--border);
@@ -241,7 +281,7 @@ table.schedule th {
 
 table.schedule td {
   padding: 4px 6px;
-  border-bottom: 1px solid #edf0f3;
+  border-bottom: 1px solid var(--hairline);
   vertical-align: middle;
 }
 
@@ -263,7 +303,8 @@ table.schedule input:focus,
 table.schedule select:focus {
   border-color: var(--accent);
   outline: none;
-  background: #fff;
+  background: var(--panel);
+  color: var(--text);
 }
 
 table.schedule input.num {
@@ -272,6 +313,7 @@ table.schedule input.num {
 
 td.computed {
   background: #fff9db;
+  color: #1f2937;
   font-weight: 600;
   text-align: right;
   white-space: nowrap;
@@ -291,6 +333,17 @@ td.changeover {
 tr.hl-allergen { background: #f8cbad; }
 tr.hl-oil { background: #fff2cc; }
 tr.hl-bulk { background: #bdd7ee; }
+tr.hl-allergen td,
+tr.hl-oil td,
+tr.hl-bulk td,
+tr.hl-allergen input,
+tr.hl-oil input,
+tr.hl-bulk input,
+tr.hl-allergen select,
+tr.hl-oil select,
+tr.hl-bulk select {
+  color: #1f2937;
+}
 
 .row-actions {
   display: flex;
@@ -300,7 +353,7 @@ tr.hl-bulk { background: #bdd7ee; }
 
 .line-group-footer {
   padding: 8px 12px;
-  background: #fafafa;
+  background: var(--subtle);
 }
 
 .new-line-bar {
@@ -373,7 +426,7 @@ tr.hl-bulk { background: #bdd7ee; }
   border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: var(--panel);
 }
 
 .line-slot-card .slot-head {
@@ -386,6 +439,12 @@ tr.hl-bulk { background: #bdd7ee; }
 
 .slot-status-Scheduled { background: #dcfce7; }
 .slot-status-Not-Scheduled { background: #f1f5f9; }
+.slot-status-Scheduled,
+.slot-status-Not-Scheduled,
+.slot-status-Scheduled .slot-line-input,
+.slot-status-Not-Scheduled .slot-line-input {
+  color: #1f2937;
+}
 
 .line-slot-card input,
 .line-slot-card select,
@@ -422,7 +481,7 @@ tr.hl-bulk { background: #bdd7ee; }
 .section-card {
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: #fff;
+  background: var(--panel);
   padding: 10px 12px;
 }
 
@@ -464,7 +523,7 @@ table.roster {
   font-size: 12.5px;
 }
 table.roster th {
-  background: #eef2f6;
+  background: var(--panel-2);
   padding: 6px 8px;
   border-bottom: 2px solid var(--border);
   white-space: nowrap;
@@ -472,7 +531,7 @@ table.roster th {
 }
 table.roster td {
   padding: 4px 6px;
-  border-bottom: 1px solid #edf0f3;
+  border-bottom: 1px solid var(--hairline);
 }
 table.roster input,
 table.roster select {
@@ -508,7 +567,7 @@ table.roster select {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--panel);
 }
 .team-card h3 {
   margin: 0 0 8px;
@@ -523,7 +582,7 @@ table.roster select {
 .restricted-badge {
   font-size: 10px;
   background: #fee2e2;
-  color: var(--danger);
+  color: #b91c1c;
   padding: 1px 6px;
   border-radius: 999px;
   margin-left: 6px;
