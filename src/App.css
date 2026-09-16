@@ -622,6 +622,17 @@ table.roster select {
     margin: 10mm;
   }
 
+  /* Browsers/PDF exporters drop background colors on print by default
+     (a "save ink" setting the user would otherwise have to opt into via
+     "Background graphics" in the print dialog) - force them on, since
+     the whole point of this report is the color-coded fills. */
+  .print-root,
+  .print-root * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .no-print,
   .app-header,
   .app-main,
