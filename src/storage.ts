@@ -16,6 +16,7 @@ function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
     lineSlots: Array.isArray(board.lineSlots) ? board.lineSlots : [],
     roomSections: Array.isArray(board.roomSections) ? board.roomSections : [],
     listSections: Array.isArray(board.listSections) ? board.listSections : [],
+    comments: Array.isArray(board.comments) ? board.comments : [],
   };
 }
 

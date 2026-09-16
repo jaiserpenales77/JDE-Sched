@@ -168,6 +168,23 @@ export const seedBoards: DailyBoard[] = [
       section("Mech Leads", ["Jaiser Penales", "Elizabet Salas", "Laylonie Evans"]),
       section("Notes", ["Only 1 Mechanic today", "Report any safety, quality and major production downtime issues immediately"]),
     ],
+    comments: [
+      {
+        id: crypto.randomUUID(),
+        title: "Shift Note",
+        text: "Only 1 Mechanic today - call Juan if any line goes down.",
+        fontSize: 14,
+        fontFamily: "Calibri, Arial, sans-serif",
+        fontColor: "#7a5b00",
+        backgroundColor: "#fff2cc",
+        borderColor: "#bf9000",
+        borderWidth: 2,
+        bold: true,
+        italic: false,
+        textAlign: "left",
+        includeInPrint: true,
+      },
+    ],
   },
 ];
 

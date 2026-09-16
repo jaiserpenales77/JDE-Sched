@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
+import type { CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -9,7 +9,7 @@ import {
   isOilRow,
   isBulkHighlightRow,
 } from "../scheduleLogic";
-import { buildFirstNameRoleMap, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -221,6 +221,31 @@ export function RoomBoxContent({
   );
 }
 
+// A free-standing note box - fully self-styled (font, colors, border), so
+// unlike LineBoxContent/RoomBoxContent it ignores the shared print
+// settings entirely and just renders the comment's own appearance.
+export function CommentBoxContent({ comment }: { comment: CommentBox }) {
+  return (
+    <div
+      className="print-comment-box"
+      style={{
+        fontSize: comment.fontSize,
+        fontFamily: comment.fontFamily,
+        color: comment.fontColor,
+        backgroundColor: comment.backgroundColor,
+        borderColor: comment.borderColor,
+        borderWidth: comment.borderWidth,
+        borderStyle: "solid",
+        fontWeight: comment.bold ? 700 : 400,
+        fontStyle: comment.italic ? "italic" : "normal",
+        textAlign: comment.textAlign,
+      }}
+    >
+      {comment.text}
+    </div>
+  );
+}
+
 interface PrintAssignmentsProps {
   board: DailyBoard | undefined;
   employees: Employee[];
@@ -238,6 +263,7 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
 
   const roleMap = buildFirstNameRoleMap(employees);
   const roomSections = settings.includeRoomSections ? board.roomSections : [];
+  const printedComments = board.comments.filter((c) => c.includeInPrint);
 
   const cssVars = {
     "--print-title-color": settings.titleColor,
@@ -297,6 +323,22 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
               </div>
             );
           })}
+          {printedComments.map((comment, i) => {
+            const rect = resolveBoxLayout(
+              commentBoxKey(comment.title),
+              board.lineSlots.length + roomSections.length + i,
+              settings.boxLayouts,
+            );
+            return (
+              <div
+                className="print-assign-col-absolute print-comment-col-absolute"
+                key={comment.id}
+                style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.width}%`, height: `${rect.height}%` }}
+              >
+                <CommentBoxContent comment={comment} />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <>
@@ -319,6 +361,14 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
               ))}
             </div>
           ))}
+
+          {printedComments.length > 0 && (
+            <div className="print-assign-comments-row">
+              {printedComments.map((comment) => (
+                <CommentBoxContent comment={comment} key={comment.id} />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

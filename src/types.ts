@@ -40,6 +40,33 @@ export interface ListSection {
   items: string[];
 }
 
+export const COMMENT_FONT_OPTIONS = [
+  { label: "Calibri", value: "Calibri, Arial, sans-serif" },
+  { label: "Arial", value: "Arial, sans-serif" },
+  { label: "Times New Roman", value: "'Times New Roman', Times, serif" },
+  { label: "Georgia", value: "Georgia, serif" },
+  { label: "Courier New", value: "'Courier New', Courier, monospace" },
+  { label: "Verdana", value: "Verdana, sans-serif" },
+  { label: "Comic Sans MS", value: "'Comic Sans MS', 'Comic Sans', cursive" },
+  { label: "Impact", value: "Impact, sans-serif" },
+] as const;
+
+export interface CommentBox {
+  id: string;
+  title: string; // short label, also identifies the box's saved print position
+  text: string;
+  fontSize: number; // px
+  fontFamily: string;
+  fontColor: string;
+  backgroundColor: string;
+  borderColor: string;
+  borderWidth: number; // px
+  bold: boolean;
+  italic: boolean;
+  textAlign: "left" | "center" | "right";
+  includeInPrint: boolean;
+}
+
 export interface DailyBoard {
   id: string;
   date: string; // YYYY-MM-DD
@@ -54,6 +81,9 @@ export interface DailyBoard {
   // PTO, Sick/Unscheduled, Training Plan, Leads, etc. - a separate side
   // panel in the original sheet. Editable on screen, excluded from print.
   listSections: ListSection[];
+  // Free-standing styled comment/note boxes - fully custom appearance,
+  // optionally included on the print report.
+  comments: CommentBox[];
 }
 
 export const SKILL_KEYS = [

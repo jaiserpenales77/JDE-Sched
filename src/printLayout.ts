@@ -10,6 +10,9 @@ export function lineBoxKey(line: string): string {
 export function roomBoxKey(title: string): string {
   return `room:${title.trim().toLowerCase()}`;
 }
+export function commentBoxKey(title: string): string {
+  return `comment:${title.trim().toLowerCase()}`;
+}
 
 const COLS = 6;
 const ROW_HEIGHT = 16;

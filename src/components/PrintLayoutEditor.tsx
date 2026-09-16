@@ -1,8 +1,17 @@
 import { useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import type { BoxLayout, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings } from "../types";
-import { buildFirstNameRoleMap, clamp, lineBoxKey, resolveBoxLayout, roomBoxKey, snapMove, snapResize } from "../printLayout";
-import { LineBoxContent, RoomBoxContent } from "./PrintViews";
+import type { BoxLayout, CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings } from "../types";
+import {
+  buildFirstNameRoleMap,
+  clamp,
+  commentBoxKey,
+  lineBoxKey,
+  resolveBoxLayout,
+  roomBoxKey,
+  snapMove,
+  snapResize,
+} from "../printLayout";
+import { CommentBoxContent, LineBoxContent, RoomBoxContent } from "./PrintViews";
 
 interface Props {
   board: DailyBoard;
@@ -11,7 +20,10 @@ interface Props {
   setSettings: (updater: (s: PrintAssignSettings) => PrintAssignSettings) => void;
 }
 
-type BoxDef = { key: string; kind: "line"; slot: LineSlot } | { key: string; kind: "room"; section: ListSection };
+type BoxDef =
+  | { key: string; kind: "line"; slot: LineSlot }
+  | { key: string; kind: "room"; section: ListSection }
+  | { key: string; kind: "comment"; comment: CommentBox };
 
 const MIN_SIZE = 5;
 
@@ -36,6 +48,9 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
     ...(settings.includeRoomSections
       ? board.roomSections.map((section): BoxDef => ({ key: roomBoxKey(section.title), kind: "room", section }))
       : []),
+    ...board.comments
+      .filter((c) => c.includeInPrint)
+      .map((comment): BoxDef => ({ key: commentBoxKey(comment.title), kind: "comment", comment })),
   ];
 
   // Every box's current rect, keyed the same way boxLayouts is, so snap
@@ -149,8 +164,10 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
             >
               {box.kind === "line" ? (
                 <LineBoxContent slot={box.slot} roleMap={roleMap} settings={settings} />
-              ) : (
+              ) : box.kind === "room" ? (
                 <RoomBoxContent section={box.section} roleMap={roleMap} settings={settings} />
+              ) : (
+                <CommentBoxContent comment={box.comment} />
               )}
               <div className="layout-box-resize" onPointerDown={(e) => beginDrag(e, box.key, i, "resize")} />
             </div>

@@ -1,4 +1,5 @@
-import type { DailyBoard, Employee, ListSection, LineSlot } from "../types";
+import type { CommentBox, DailyBoard, Employee, ListSection, LineSlot } from "../types";
+import { COMMENT_FONT_OPTIONS } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
 
 interface Props {
@@ -29,6 +30,7 @@ function blankBoard(date: string): DailyBoard {
     lineSlots: [],
     roomSections: [],
     listSections: [],
+    comments: [],
   };
 }
 
@@ -40,6 +42,24 @@ function blankSlot(): LineSlot {
 
 function blankSection(): ListSection {
   return { id: crypto.randomUUID(), title: "New Section", items: [] };
+}
+
+function blankComment(index: number): CommentBox {
+  return {
+    id: crypto.randomUUID(),
+    title: `Comment ${index + 1}`,
+    text: "",
+    fontSize: 14,
+    fontFamily: COMMENT_FONT_OPTIONS[0].value,
+    fontColor: "#1a1a1a",
+    backgroundColor: "#ffffff",
+    borderColor: "#8a8a8a",
+    borderWidth: 1,
+    bold: false,
+    italic: false,
+    textAlign: "left",
+    includeInPrint: false,
+  };
 }
 
 export default function LineAssignments({ boards, setBoards, selectedId, setSelectedId, employees }: Props) {
@@ -68,6 +88,7 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
           lineSlots: board.lineSlots.map((s) => ({ ...s, id: crypto.randomUUID() })),
           roomSections: board.roomSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
           listSections: board.listSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
+          comments: board.comments.map((c) => ({ ...c, id: crypto.randomUUID() })),
         }
       : blankBoard(date);
     setBoards((bs) => [...bs, created]);
@@ -119,6 +140,19 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
   }
   function addItem(field: SectionField, section: ListSection) {
     updateSection(field, section.id, { items: [...section.items, ""] });
+  }
+
+  function updateComment(id: string, patch: Partial<CommentBox>) {
+    if (!board) return;
+    updateBoard(board.id, { comments: board.comments.map((c) => (c.id === id ? { ...c, ...patch } : c)) });
+  }
+  function removeComment(id: string) {
+    if (!board) return;
+    updateBoard(board.id, { comments: board.comments.filter((c) => c.id !== id) });
+  }
+  function addComment() {
+    if (!board) return;
+    updateBoard(board.id, { comments: [...board.comments, blankComment(board.comments.length)] });
   }
 
   return (
@@ -270,6 +304,155 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
             </div>
             <button className="btn small" style={{ marginTop: 10 }} onClick={() => addSection("listSections")}>
               + Add section
+            </button>
+          </div>
+
+          <div className="panel">
+            <h2>Comments</h2>
+            <p className="panel-hint">
+              Fully customizable text boxes — set the font, size, colors and border for each. Check "Include in print
+              report" to have a box print on the report.
+            </p>
+            <div className="comments-grid">
+              {board.comments.map((comment) => (
+                <div className="comment-card" key={comment.id}>
+                  <div className="comment-card-head">
+                    <input
+                      className="comment-title-input"
+                      value={comment.title}
+                      onChange={(e) => updateComment(comment.id, { title: e.target.value })}
+                    />
+                    <button className="btn small danger" onClick={() => removeComment(comment.id)}>
+                      ✕
+                    </button>
+                  </div>
+
+                  <textarea
+                    className="comment-text-input"
+                    rows={3}
+                    placeholder="Comment text…"
+                    value={comment.text}
+                    onChange={(e) => updateComment(comment.id, { text: e.target.value })}
+                  />
+
+                  <div className="comment-controls">
+                    <label className="comment-field">
+                      Font
+                      <select
+                        value={comment.fontFamily}
+                        onChange={(e) => updateComment(comment.id, { fontFamily: e.target.value })}
+                      >
+                        {COMMENT_FONT_OPTIONS.map((f) => (
+                          <option key={f.value} value={f.value}>
+                            {f.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="comment-field comment-field-narrow">
+                      Size
+                      <input
+                        type="number"
+                        min={8}
+                        max={72}
+                        value={comment.fontSize}
+                        onChange={(e) => updateComment(comment.id, { fontSize: Number(e.target.value) || 8 })}
+                      />
+                    </label>
+                    <label className="comment-field comment-field-narrow">
+                      Border
+                      <input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={comment.borderWidth}
+                        onChange={(e) => updateComment(comment.id, { borderWidth: Number(e.target.value) || 0 })}
+                      />
+                    </label>
+                    <label className="comment-field">
+                      Align
+                      <select
+                        value={comment.textAlign}
+                        onChange={(e) => updateComment(comment.id, { textAlign: e.target.value as CommentBox["textAlign"] })}
+                      >
+                        <option value="left">Left</option>
+                        <option value="center">Center</option>
+                        <option value="right">Right</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="comment-controls">
+                    <label className="color-field">
+                      <input
+                        type="color"
+                        value={comment.fontColor}
+                        onChange={(e) => updateComment(comment.id, { fontColor: e.target.value })}
+                      />
+                      <span>Text color</span>
+                    </label>
+                    <label className="color-field">
+                      <input
+                        type="color"
+                        value={comment.backgroundColor}
+                        onChange={(e) => updateComment(comment.id, { backgroundColor: e.target.value })}
+                      />
+                      <span>Fill</span>
+                    </label>
+                    <label className="color-field">
+                      <input
+                        type="color"
+                        value={comment.borderColor}
+                        onChange={(e) => updateComment(comment.id, { borderColor: e.target.value })}
+                      />
+                      <span>Border</span>
+                    </label>
+                    <button
+                      type="button"
+                      className={`btn small toggle ${comment.bold ? "active" : ""}`}
+                      onClick={() => updateComment(comment.id, { bold: !comment.bold })}
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn small toggle ${comment.italic ? "active" : ""}`}
+                      onClick={() => updateComment(comment.id, { italic: !comment.italic })}
+                    >
+                      I
+                    </button>
+                    <label className="print-design-checkbox">
+                      <input
+                        type="checkbox"
+                        checked={comment.includeInPrint}
+                        onChange={(e) => updateComment(comment.id, { includeInPrint: e.target.checked })}
+                      />
+                      Include in print report
+                    </label>
+                  </div>
+
+                  <div
+                    className="comment-preview"
+                    style={{
+                      fontSize: comment.fontSize,
+                      fontFamily: comment.fontFamily,
+                      color: comment.fontColor,
+                      backgroundColor: comment.backgroundColor,
+                      borderColor: comment.borderColor,
+                      borderWidth: comment.borderWidth,
+                      borderStyle: "solid",
+                      fontWeight: comment.bold ? 700 : 400,
+                      fontStyle: comment.italic ? "italic" : "normal",
+                      textAlign: comment.textAlign,
+                    }}
+                  >
+                    {comment.text || "Preview text…"}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="btn small" style={{ marginTop: 10 }} onClick={addComment}>
+              + Add comment
             </button>
           </div>
         </>
