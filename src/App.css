@@ -760,7 +760,7 @@ tr.print-divider td {
 /* A blank, borderless row between each production line's group of work
    orders - visual breathing room in addition to the navy divider line. */
 tr.print-line-spacer td {
-  height: 8px;
+  height: 22px;
   padding: 0;
   border: none;
 }
