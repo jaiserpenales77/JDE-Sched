@@ -783,27 +783,6 @@ table.roster select {
   background: #fff9db;
 }
 
-.print-progress-cell {
-  white-space: nowrap;
-}
-.print-progress-cell .progress-cell {
-  gap: 3px;
-}
-.print-progress-cell .progress-track {
-  min-width: 28px;
-  height: 7pt;
-  border-color: #000;
-  background: #fff;
-}
-.print-progress-cell .progress-text {
-  font-size: 7pt;
-  min-width: 24px;
-  color: #000;
-}
-.print-progress-cell .progress-empty {
-  color: #000;
-}
-
 tr.print-hl-allergen td {
   background: #f8cbad;
 }

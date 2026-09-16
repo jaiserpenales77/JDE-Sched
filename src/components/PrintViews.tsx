@@ -3,7 +3,6 @@ import type { CSSProperties } from "react";
 import type { CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
 import {
   groupByLine,
-  percentActual,
   bottlesRemaining,
   changeoverCode,
   isAllergenRow,
@@ -11,14 +10,15 @@ import {
   isBulkHighlightRow,
 } from "../scheduleLogic";
 import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
-import ProgressBar from "./ProgressBar";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
-// the "JDE Template (2)" sheet's print area (A1:P16 - Line Status and
-// Desiccant were outside that print area, so they're left out here too),
-// the same pastel conditional-formatting fills, and the same thick navy
-// divider between production lines that "Add Line Dividers" used to draw.
+// the "JDE Template (2)" sheet's print area (A1:P16 - Line Status was
+// outside that print area, so it's left out here too; Desiccant takes
+// the % Actual Complete column's place, more useful on a printed page
+// than a system-calculated figure), the same pastel conditional-
+// formatting fills, and the same thick navy divider between production
+// lines that "Add Line Dividers" used to draw.
 
 export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders: WorkOrder[]; scheduledLines?: string[] }) {
   const groups = groupByLine(workOrders);
@@ -48,7 +48,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
             <th>REMARKS</th>
             <th>WO Quantity</th>
             <th>% Complete</th>
-            <th className="print-formula-col">% Actual Complete</th>
+            <th>Desiccant</th>
             <th className="print-formula-col">Bottles Remaining</th>
             <th className="print-formula-col">CHANGEOVER</th>
           </tr>
@@ -100,9 +100,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
                     <td className="print-left">{row.remarks}</td>
                     <td className="print-num">{row.woQuantity}</td>
                     <td className="print-num">{row.percentComplete}</td>
-                    <td className="print-formula-col print-progress-cell">
-                      <ProgressBar value={percentActual(row)} />
-                    </td>
+                    <td>{row.desiccant}</td>
                     <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
                     <td className="print-formula-col">{chg}</td>
                   </tr>
