@@ -57,8 +57,16 @@ function App() {
       const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
       const pageHeightIn = orientation === "landscape" ? 8.5 : 11;
       const marginPx = marginMm * PX_PER_MM;
+      // Chrome's own print header/footer (date/title above, URL/page
+      // number below - on by default in the print dialog) eats into the
+      // page beyond our @page margin, and the page has no way to detect
+      // or disable it. Budget extra room for it, plus a small fudge
+      // factor for rounding, so the fit has a real safety margin instead
+      // of landing right on the edge and spilling a sliver onto page 2.
+      const HEADER_FOOTER_BUFFER_PX = 0.75 * PX_PER_IN;
+      const FIT_SAFETY_FACTOR = 0.98;
       const pageContentWidthPx = pageWidthIn * PX_PER_IN - marginPx * 2;
-      const pageContentHeightPx = pageHeightIn * PX_PER_IN - marginPx * 2;
+      const pageContentHeightPx = pageHeightIn * PX_PER_IN - marginPx * 2 - HEADER_FOOTER_BUFFER_PX;
 
       assignEl.style.transform = "";
       assignEl.style.width = `${pageContentWidthPx}px`;
@@ -67,7 +75,7 @@ function App() {
       printRoot.classList.remove("measuring");
       assignEl.style.width = "";
 
-      const scale = Math.min(1, pageContentHeightPx / naturalHeight);
+      const scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
       if (scale < 1) {
         assignEl.style.transformOrigin = "top left";
         assignEl.style.transform = `scale(${scale})`;
