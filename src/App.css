@@ -347,7 +347,8 @@ table.schedule input.num {
    (the Changeover column names the code on the PREVIOUS row, but the
    count that actually differs is on this one). */
 table.schedule input.count-changed {
-  border: 1.5px solid #ff0000 !important;
+  color: #ff0000 !important;
+  font-weight: 700;
 }
 
 td.computed {
@@ -815,7 +816,8 @@ table.roster select {
    (the Changeover column names the code on the PREVIOUS row, but the
    count that actually differs is on this one). */
 td.print-count-changed {
-  border: 1.5px solid #ff0000 !important;
+  color: #ff0000 !important;
+  font-weight: 700;
 }
 
 tr.print-hl-allergen td {
