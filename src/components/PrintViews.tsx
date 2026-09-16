@@ -136,6 +136,14 @@ export function PrintSchedule({ workOrders }: { workOrders: WorkOrder[] }) {
   );
 }
 
+const SLOTS_PER_BAND = 6;
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
 export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
   if (!board) {
     return (
@@ -144,6 +152,9 @@ export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
       </div>
     );
   }
+
+  const bands = chunk(board.lineSlots, SLOTS_PER_BAND);
+
   return (
     <div className="print-assignments">
       <div className="print-board-header">
@@ -159,29 +170,53 @@ export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
         </div>
       </div>
 
-      <div className="print-slots-grid">
-        {board.lineSlots.map((slot) => (
-          <div className={`print-slot ${slot.status === "Scheduled" ? "print-slot-scheduled" : ""}`} key={slot.id}>
-            <div className="print-slot-name">{slot.line}</div>
-            <div className="print-slot-status">{slot.status || "—"}</div>
-            {slot.subNote && <div className="print-slot-note">{slot.subNote}</div>}
-            {slot.assigned && <div className="print-slot-assigned">{slot.assigned}</div>}
-          </div>
-        ))}
-      </div>
+      {bands.map((band, bandIdx) => {
+        const namesPerSlot = band.map((slot) =>
+          slot.assigned
+            .split(",")
+            .map((n) => n.trim())
+            .filter(Boolean),
+        );
+        const maxNames = Math.max(0, ...namesPerSlot.map((n) => n.length));
+        const nameRows = Array.from({ length: maxNames });
 
-      <div className="print-sections-grid">
-        {board.listSections.map((section) => (
-          <div className="print-section" key={section.id}>
-            <div className="print-section-title">{section.title}</div>
-            <ul>
-              {section.items.map((item, i) => (
-                <li key={i}>{item}</li>
+        return (
+          <table className="print-assign-table" key={bandIdx}>
+            <tbody>
+              <tr className="print-assign-line-row">
+                {band.map((slot) => (
+                  <td key={slot.id} className={slot.status === "Scheduled" ? "print-assign-scheduled" : ""}>
+                    {slot.line}
+                  </td>
+                ))}
+              </tr>
+              <tr className="print-assign-status-row">
+                {band.map((slot) => (
+                  <td key={slot.id} className={slot.status === "Scheduled" ? "print-assign-scheduled" : ""}>
+                    {slot.status || "—"}
+                  </td>
+                ))}
+              </tr>
+              <tr className="print-assign-note-row">
+                {band.map((slot) => (
+                  <td key={slot.id} className={slot.status === "Scheduled" ? "print-assign-scheduled" : ""}>
+                    {slot.subNote}
+                  </td>
+                ))}
+              </tr>
+              {nameRows.map((_, rowIdx) => (
+                <tr key={rowIdx}>
+                  {namesPerSlot.map((names, slotIdx) => (
+                    <td key={band[slotIdx].id} className={band[slotIdx].status === "Scheduled" ? "print-assign-scheduled" : ""}>
+                      {names[rowIdx] ?? ""}
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </ul>
-          </div>
-        ))}
-      </div>
+            </tbody>
+          </table>
+        );
+      })}
     </div>
   );
 }

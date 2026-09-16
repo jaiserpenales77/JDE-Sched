@@ -746,8 +746,8 @@ tr.print-divider td {
 }
 
 .print-board-header {
-  text-align: center;
-  margin-bottom: 10px;
+  text-align: left;
+  margin-bottom: 8px;
   color: #000;
 }
 .print-board-header h1 {
@@ -756,10 +756,10 @@ tr.print-divider td {
 }
 .print-board-meta {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
   gap: 20px;
   font-size: 9pt;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 .print-board-banner {
   border: 2px solid #000;
@@ -769,51 +769,27 @@ tr.print-divider td {
   text-align: center;
 }
 
-.print-slots-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin: 10px 0;
-}
-.print-slot {
-  border: 1px solid #000;
-  padding: 4px;
-  font-size: 8pt;
+.print-assign-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin-top: 10px;
+  font-family: Calibri, Arial, sans-serif;
+  font-size: 8.5pt;
   color: #000;
-  break-inside: avoid;
 }
-.print-slot-scheduled {
-  background: #dcfce7;
+.print-assign-table td {
+  border: 1px solid #000;
+  padding: 3px 5px;
+  vertical-align: top;
+  overflow-wrap: break-word;
 }
-.print-slot-name {
+.print-assign-line-row td {
   font-weight: 700;
 }
-.print-slot-status {
+.print-assign-status-row td {
   font-style: italic;
 }
-.print-slot-note,
-.print-slot-assigned {
-  margin-top: 2px;
-}
-
-.print-sections-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.print-section {
-  border: 1px solid #000;
-  padding: 4px;
-  font-size: 8pt;
-  color: #000;
-  break-inside: avoid;
-}
-.print-section-title {
-  font-weight: 700;
-  border-bottom: 1px solid #000;
-  margin-bottom: 3px;
-}
-.print-section ul {
-  margin: 0;
-  padding-left: 14px;
+.print-assign-scheduled {
+  background: #dcfce7;
 }
