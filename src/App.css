@@ -1247,6 +1247,23 @@ tr.print-line-spacer td {
 
 .name-multiselect {
   margin-top: 4px;
+  border-radius: 6px;
+  transition: background-color 0.1s ease;
+}
+
+/* Highlights a line's whole box while an employee dragged off another
+   line is hovering over it, as a drop target. */
+.name-multiselect-drag-over {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+}
+
+.name-chip[draggable="true"] {
+  cursor: grab;
+}
+.name-chip[draggable="true"]:active {
+  cursor: grabbing;
 }
 
 .name-chips {

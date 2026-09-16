@@ -17,6 +17,13 @@ function cleanEmployeeName(name: string): string {
   return name.trim().replace(/\s+(MLL|MLT|LL)$/i, "").trim();
 }
 
+function parseNames(value: string): string[] {
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -122,21 +129,36 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
   // team off the line they transferred from.
   function transferTeamTo(slot: LineSlot, targetId: string) {
     if (!board || !targetId) return;
-    const team = slot.assigned
-      .split(",")
-      .map((n) => n.trim())
-      .filter(Boolean);
+    const team = parseNames(slot.assigned);
     const targetSlot = board.lineSlots.find((s) => s.id === targetId);
     if (team.length === 0 || !targetSlot) return;
-    const existing = targetSlot.assigned
-      .split(",")
-      .map((n) => n.trim())
-      .filter(Boolean);
+    const existing = parseNames(targetSlot.assigned);
     const merged = [...existing, ...team.filter((n) => !existing.includes(n))];
     updateBoard(board.id, {
       lineSlots: board.lineSlots.map((s) => {
         if (s.id === slot.id) return { ...s, assigned: "" };
         if (s.id === targetSlot.id) return { ...s, assigned: merged.join(", ") };
+        return s;
+      }),
+    });
+  }
+
+  // Moves a single person, dragged off one line's name chips and dropped
+  // onto another line's box - same single-board-update shape as
+  // transferTeamTo, so removing them from the source and adding them to
+  // the target land in one setBoards call instead of two.
+  function moveEmployee(name: string, fromSlotId: string, toSlotId: string) {
+    if (!board || fromSlotId === toSlotId) return;
+    updateBoard(board.id, {
+      lineSlots: board.lineSlots.map((s) => {
+        if (s.id === fromSlotId) {
+          return { ...s, assigned: parseNames(s.assigned).filter((n) => n !== name).join(", ") };
+        }
+        if (s.id === toSlotId) {
+          const existing = parseNames(s.assigned);
+          if (existing.includes(name)) return s;
+          return { ...s, assigned: [...existing, name].join(", ") };
+        }
         return s;
       }),
     });
@@ -256,6 +278,8 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
                       value={slot.assigned}
                       onChange={(next) => updateSlot(slot.id, { assigned: next })}
                       options={employeeNames}
+                      slotId={slot.id}
+                      onDropEmployee={(name, fromSlotId) => moveEmployee(name, fromSlotId, slot.id)}
                     />
                     <select
                       value=""
