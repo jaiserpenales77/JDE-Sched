@@ -166,12 +166,16 @@ export default function ProductionSchedule({ workOrders, setWorkOrders, schedule
                     const next = group.rows[idx + 1];
                     const chg = changeoverCode(row, next);
                     const hl = rowHighlightClass(row);
+                    // An "S1 Count Change" is flagged on the PREVIOUS row
+                    // (it describes the changeover INTO this row) - so the
+                    // count that actually changed is this row's own Count cell.
+                    const countChanged = idx > 0 && changeoverCode(group.rows[idx - 1], row) === "S1 Count Change";
                     return (
                       <tr key={row.id} className={hl}>
                         {COLUMNS.map((c) => (
                           <td key={c.key}>
                             <input
-                              className={c.numeric ? "num" : ""}
+                              className={`${c.numeric ? "num" : ""} ${c.key === "count" && countChanged ? "count-changed" : ""}`}
                               type={c.numeric ? "number" : "text"}
                               value={row[c.key] as string | number}
                               onChange={(e) =>

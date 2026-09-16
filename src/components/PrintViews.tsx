@@ -71,6 +71,10 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
               {group.rows.map((row, idx) => {
                 const next = group.rows[idx + 1];
                 const chg = changeoverCode(row, next);
+                // An "S1 Count Change" is flagged on the PREVIOUS row (it
+                // describes the changeover INTO this row) - so the count
+                // that actually changed is this row's own Count cell.
+                const countChanged = idx > 0 && changeoverCode(group.rows[idx - 1], row) === "S1 Count Change";
                 const isFirstOfGroup = idx === 0;
                 const isLastOfGroup = idx === group.rows.length - 1;
                 let hl = "";
@@ -95,7 +99,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
                     <td>{row.seq}</td>
                     <td>{row.item}</td>
                     <td className="print-left">{row.description}</td>
-                    <td>{row.count}</td>
+                    <td className={countChanged ? "print-count-changed" : ""}>{row.count}</td>
                     <td>{row.bulkItem}</td>
                     <td>{row.bottleSize}</td>
                     <td className="print-left">{row.capDescription}</td>

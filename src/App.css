@@ -343,6 +343,13 @@ table.schedule input.num {
   text-align: right;
 }
 
+/* Flags the Count cell that changed on an "S1 Count Change" changeover
+   (the Changeover column names the code on the PREVIOUS row, but the
+   count that actually differs is on this one). */
+table.schedule input.count-changed {
+  border: 1.5px solid #ff0000 !important;
+}
+
 td.computed {
   background: #fff9db;
   color: #1f2937;
@@ -802,6 +809,13 @@ table.roster select {
 }
 .print-progress-cell .progress-empty {
   color: #000;
+}
+
+/* Flags the Count cell that changed on an "S1 Count Change" changeover
+   (the Changeover column names the code on the PREVIOUS row, but the
+   count that actually differs is on this one). */
+td.print-count-changed {
+  border: 1.5px solid #ff0000 !important;
 }
 
 tr.print-hl-allergen td {
