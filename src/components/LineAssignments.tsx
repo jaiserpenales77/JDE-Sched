@@ -115,36 +115,19 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
     updateBoard(board.id, { lineSlots: [...board.lineSlots, blankSlot()] });
   }
 
-  // Moves an entire line's assigned team onto another line in one board
-  // update (not two separate updateSlot calls, which would each read the
-  // same pre-transfer lineSlots and the second would clobber the first),
-  // then clears the team off the line they transferred from.
-  function transferTeam(slot: LineSlot) {
-    if (!board) return;
+  // Moves an entire line's assigned team onto another line (chosen from
+  // the "Transfer team" dropdown) in one board update - not two separate
+  // updateSlot calls, which would each read the same pre-transfer
+  // lineSlots and the second would clobber the first - then clears the
+  // team off the line they transferred from.
+  function transferTeamTo(slot: LineSlot, targetId: string) {
+    if (!board || !targetId) return;
     const team = slot.assigned
       .split(",")
       .map((n) => n.trim())
       .filter(Boolean);
-    if (team.length === 0) {
-      alert("No team assigned to this line to transfer.");
-      return;
-    }
-    const otherLines = board.lineSlots.filter((s) => s.id !== slot.id).map((s) => s.line);
-    if (otherLines.length === 0) {
-      alert("There's no other line to transfer this team to.");
-      return;
-    }
-    const target = prompt(
-      `Transfer the team from "${slot.line}" to which line?\n\nAvailable lines: ${otherLines.join(", ")}`,
-    );
-    if (!target || !target.trim()) return;
-    const targetSlot = board.lineSlots.find(
-      (s) => s.id !== slot.id && s.line.trim().toLowerCase() === target.trim().toLowerCase(),
-    );
-    if (!targetSlot) {
-      alert(`No line named "${target}" found.`);
-      return;
-    }
+    const targetSlot = board.lineSlots.find((s) => s.id === targetId);
+    if (team.length === 0 || !targetSlot) return;
     const existing = targetSlot.assigned
       .split(",")
       .map((n) => n.trim())
@@ -274,9 +257,21 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
                       onChange={(next) => updateSlot(slot.id, { assigned: next })}
                       options={employeeNames}
                     />
-                    <button type="button" className="btn small" onClick={() => transferTeam(slot)}>
-                      🔀 Transfer team
-                    </button>
+                    <select
+                      value=""
+                      disabled={!slot.assigned.trim()}
+                      title={!slot.assigned.trim() ? "No team assigned to this line to transfer." : undefined}
+                      onChange={(e) => transferTeamTo(slot, e.target.value)}
+                    >
+                      <option value="">🔀 Transfer team to…</option>
+                      {board.lineSlots
+                        .filter((s) => s.id !== slot.id)
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.line}
+                          </option>
+                        ))}
+                    </select>
                   </div>
                 </div>
               ))}
