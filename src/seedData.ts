@@ -217,5 +217,6 @@ export function buildSeedData(): AppData {
     employees: seedEmployees,
     printSettings: { ...defaultPrintSettings },
     scheduledLines: [],
+    printScheduleColumnWidths: {},
   };
 }

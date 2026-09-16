@@ -1,5 +1,5 @@
-import { Fragment } from "react";
-import type { CSSProperties } from "react";
+import { Fragment, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
 import {
   groupByLine,
@@ -22,13 +22,156 @@ import ProgressBar from "./ProgressBar";
 // fills, and the same thick navy divider between production lines that
 // "Add Line Dividers" used to draw.
 
-export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders: WorkOrder[]; scheduledLines?: string[] }) {
+// Print-table column keys, in on-screen order - drives both the
+// resizable <colgroup> and which column a given resize handle borrows
+// width from/gives width to (its immediate neighbor to the right).
+const SCHEDULE_COLUMN_KEYS = [
+  "line",
+  "wo",
+  "seq",
+  "item",
+  "description",
+  "count",
+  "bulkItem",
+  "bottleSize",
+  "capDescription",
+  "allergen",
+  "remarks",
+  "woQuantity",
+  "percentComplete",
+  "desiccant",
+  "percentActual",
+  "bottlesRemaining",
+  "changeover",
+] as const;
+type ScheduleColumnKey = (typeof SCHEDULE_COLUMN_KEYS)[number];
+
+// Percentages of the table's width - don't need to add up to exactly
+// 100 (the browser distributes fixed-layout columns proportionally
+// either way), just to reflect each column's typical content width.
+const DEFAULT_SCHEDULE_COLUMN_WIDTHS: Record<ScheduleColumnKey, number> = {
+  line: 5,
+  wo: 5,
+  seq: 3,
+  item: 5,
+  description: 14,
+  count: 3,
+  bulkItem: 5,
+  bottleSize: 4,
+  capDescription: 10,
+  allergen: 3,
+  remarks: 14,
+  woQuantity: 4,
+  percentComplete: 4,
+  desiccant: 4,
+  percentActual: 5,
+  bottlesRemaining: 4,
+  changeover: 6,
+};
+
+const MIN_COLUMN_PCT = 2;
+
+// A draggable divider on a header cell's right edge - hoisted to module
+// scope (rather than defined inside PrintSchedule's render) so it keeps
+// a stable component identity across renders.
+function ColResizeHandle({
+  show,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+}: {
+  show: boolean;
+  onPointerDown: (e: ReactPointerEvent) => void;
+  onPointerMove: (e: ReactPointerEvent) => void;
+  onPointerUp: () => void;
+}) {
+  if (!show) return null;
+  return (
+    <span
+      className="col-resize-handle"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    />
+  );
+}
+
+interface PrintScheduleProps {
+  workOrders: WorkOrder[];
+  scheduledLines?: string[];
+  columnWidths?: Record<string, number>;
+  // Omit to render a plain, non-interactive table (used for the actual
+  // print output) - pass it to get draggable column resize handles (used
+  // by the live preview).
+  setColumnWidths?: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
+}
+
+export function PrintSchedule({ workOrders, scheduledLines = [], columnWidths = {}, setColumnWidths }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const tableRef = useRef<HTMLTableElement>(null);
+  const [drag, setDrag] = useState<{
+    key: ScheduleColumnKey;
+    nextKey: ScheduleColumnKey;
+    startX: number;
+    startA: number;
+    startB: number;
+    tableWidthPx: number;
+  } | null>(null);
+
+  function widthOf(key: ScheduleColumnKey): number {
+    return columnWidths[key] ?? DEFAULT_SCHEDULE_COLUMN_WIDTHS[key];
+  }
+
+  function beginResize(e: ReactPointerEvent, key: ScheduleColumnKey) {
+    if (!setColumnWidths || !tableRef.current) return;
+    const idx = SCHEDULE_COLUMN_KEYS.indexOf(key);
+    const nextKey = SCHEDULE_COLUMN_KEYS[idx + 1];
+    if (!nextKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    setDrag({
+      key,
+      nextKey,
+      startX: e.clientX,
+      startA: widthOf(key),
+      startB: widthOf(nextKey),
+      tableWidthPx: tableRef.current.getBoundingClientRect().width,
+    });
+  }
+
+  function onResizeMove(e: ReactPointerEvent) {
+    if (!drag || !setColumnWidths) return;
+    const deltaPct = ((e.clientX - drag.startX) / drag.tableWidthPx) * 100;
+    const maxDelta = drag.startB - MIN_COLUMN_PCT;
+    const minDelta = -(drag.startA - MIN_COLUMN_PCT);
+    const clamped = Math.max(minDelta, Math.min(maxDelta, deltaPct));
+    setColumnWidths((w) => ({ ...w, [drag.key]: drag.startA + clamped, [drag.nextKey]: drag.startB - clamped }));
+  }
+
+  function endResize() {
+    setDrag(null);
+  }
+
+  function resizeHandleProps(columnKey: ScheduleColumnKey) {
+    return {
+      show: !!setColumnWidths && SCHEDULE_COLUMN_KEYS.indexOf(columnKey) < SCHEDULE_COLUMN_KEYS.length - 1,
+      onPointerDown: (e: ReactPointerEvent) => beginResize(e, columnKey),
+      onPointerMove: onResizeMove,
+      onPointerUp: endResize,
+    };
+  }
 
   return (
     <div className="print-schedule">
-      <table className="print-table">
+      <table className="print-table" ref={tableRef}>
+        <colgroup>
+          {SCHEDULE_COLUMN_KEYS.map((key) => (
+            <col key={key} style={{ width: `${widthOf(key)}%` }} />
+          ))}
+        </colgroup>
         <thead>
           <tr>
             <th colSpan={17} className="print-title-row">
@@ -37,22 +180,70 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
             </th>
           </tr>
           <tr className="print-col-headers">
-            <th>LINE</th>
-            <th>WO</th>
-            <th>SEQ</th>
-            <th>ITEM</th>
-            <th>PRODUCT DESCRIPTION</th>
-            <th>Count</th>
-            <th>Bulk Item</th>
-            <th>Bottle Size</th>
-            <th>CAP DESCRIPTION</th>
-            <th>Allergen</th>
-            <th>REMARKS</th>
-            <th>WO Quantity</th>
-            <th>% Complete</th>
-            <th>Desiccant</th>
-            <th className="print-formula-col">% Actual Complete</th>
-            <th className="print-formula-col">Bottles Remaining</th>
+            <th>
+              LINE
+              <ColResizeHandle {...resizeHandleProps("line")} />
+            </th>
+            <th>
+              WO
+              <ColResizeHandle {...resizeHandleProps("wo")} />
+            </th>
+            <th>
+              SEQ
+              <ColResizeHandle {...resizeHandleProps("seq")} />
+            </th>
+            <th>
+              ITEM
+              <ColResizeHandle {...resizeHandleProps("item")} />
+            </th>
+            <th>
+              PRODUCT DESCRIPTION
+              <ColResizeHandle {...resizeHandleProps("description")} />
+            </th>
+            <th>
+              Count
+              <ColResizeHandle {...resizeHandleProps("count")} />
+            </th>
+            <th>
+              Bulk Item
+              <ColResizeHandle {...resizeHandleProps("bulkItem")} />
+            </th>
+            <th>
+              Bottle Size
+              <ColResizeHandle {...resizeHandleProps("bottleSize")} />
+            </th>
+            <th>
+              CAP DESCRIPTION
+              <ColResizeHandle {...resizeHandleProps("capDescription")} />
+            </th>
+            <th>
+              Allergen
+              <ColResizeHandle {...resizeHandleProps("allergen")} />
+            </th>
+            <th>
+              REMARKS
+              <ColResizeHandle {...resizeHandleProps("remarks")} />
+            </th>
+            <th>
+              WO Quantity
+              <ColResizeHandle {...resizeHandleProps("woQuantity")} />
+            </th>
+            <th>
+              % Complete
+              <ColResizeHandle {...resizeHandleProps("percentComplete")} />
+            </th>
+            <th>
+              Desiccant
+              <ColResizeHandle {...resizeHandleProps("desiccant")} />
+            </th>
+            <th className="print-formula-col">
+              % Actual Complete
+              <ColResizeHandle {...resizeHandleProps("percentActual")} />
+            </th>
+            <th className="print-formula-col">
+              Bottles Remaining
+              <ColResizeHandle {...resizeHandleProps("bottlesRemaining")} />
+            </th>
             <th className="print-formula-col">CHANGEOVER</th>
           </tr>
         </thead>

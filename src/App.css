@@ -248,6 +248,16 @@ body {
   white-space: nowrap;
 }
 
+/* Live print-report preview - a white "page" so the print report's own
+   colors/fonts read correctly regardless of the app's light/dark theme. */
+.print-preview-wrap {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 14px;
+  overflow-x: auto;
+}
+
 .line-group {
   margin-bottom: 22px;
   border: 1px solid var(--border);
@@ -738,6 +748,7 @@ table.roster select {
 
 .print-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-family: Calibri, Arial, sans-serif;
   font-size: 9pt;
@@ -762,6 +773,7 @@ table.roster select {
 }
 
 .print-col-headers th {
+  position: relative;
   background: #d9d9d9;
   border: 1px solid #000;
   padding: 2px 3px;
@@ -770,17 +782,45 @@ table.roster select {
   text-align: left;
 }
 
+/* Draggable divider between two header cells - resizes the printed
+   report's columns (see PrintSchedule's resize handlers) and, since the
+   preview and the real print output share the same stored widths,
+   resizing here also resizes the actual printed report. */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 2;
+  touch-action: none;
+}
+.col-resize-handle:hover,
+.col-resize-handle:active {
+  background: rgba(37, 99, 235, 0.35);
+}
+@media print {
+  .col-resize-handle {
+    display: none;
+  }
+}
+
 .print-table tbody td {
   border: 1px solid #000;
   padding: 1px 3px;
   font-size: 7pt;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #000;
 }
 
 .print-left {
   text-align: left;
   white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .print-num {

@@ -41,6 +41,10 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     employees: Array.isArray(raw.employees) ? raw.employees : [],
     printSettings: normalizePrintSettings(raw.printSettings),
     scheduledLines: Array.isArray(raw.scheduledLines) ? raw.scheduledLines : [],
+    printScheduleColumnWidths:
+      raw.printScheduleColumnWidths && typeof raw.printScheduleColumnWidths === "object"
+        ? raw.printScheduleColumnWidths
+        : {},
   };
 }
 
@@ -73,5 +77,12 @@ export function resetToSeed(): AppData {
 }
 
 export function emptyData(): AppData {
-  return { workOrders: [], boards: [], employees: [], printSettings: { ...defaultPrintSettings }, scheduledLines: [] };
+  return {
+    workOrders: [],
+    boards: [],
+    employees: [],
+    printSettings: { ...defaultPrintSettings },
+    scheduledLines: [],
+    printScheduleColumnWidths: {},
+  };
 }

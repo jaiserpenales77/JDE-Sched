@@ -155,4 +155,7 @@ export interface AppData {
   // Production lines checked in the "Scheduled Lines" panel - highlighted
   // with a green border around the line's whole block on the print report.
   scheduledLines: string[];
+  // Column widths (percentages) for the Production Schedule print report -
+  // dragged in its live preview, shared with the actual printed table.
+  printScheduleColumnWidths: Record<string, number>;
 }

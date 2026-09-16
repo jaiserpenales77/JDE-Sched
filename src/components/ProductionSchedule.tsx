@@ -10,12 +10,15 @@ import {
   newBlankWorkOrder,
 } from "../scheduleLogic";
 import ProgressBar from "./ProgressBar";
+import { PrintSchedule } from "./PrintViews";
 
 interface Props {
   workOrders: WorkOrder[];
   setWorkOrders: (updater: (wos: WorkOrder[]) => WorkOrder[]) => void;
   scheduledLines: string[];
   setScheduledLines: (updater: (lines: string[]) => string[]) => void;
+  columnWidths: Record<string, number>;
+  setColumnWidths: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
 }
 
 const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: boolean }[] = [
@@ -38,7 +41,14 @@ function fmtChg(code: string) {
   return code === "" ? "—" : code;
 }
 
-export default function ProductionSchedule({ workOrders, setWorkOrders, scheduledLines, setScheduledLines }: Props) {
+export default function ProductionSchedule({
+  workOrders,
+  setWorkOrders,
+  scheduledLines,
+  setScheduledLines,
+  columnWidths,
+  setColumnWidths,
+}: Props) {
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
 
@@ -245,6 +255,22 @@ export default function ProductionSchedule({ workOrders, setWorkOrders, schedule
           <button className="btn danger" onClick={clearAll}>
             🗑 Clear All Work Order Data
           </button>
+        </div>
+      </div>
+
+      <div className="panel">
+        <h2>🖨 Print Report Preview</h2>
+        <p className="panel-hint">
+          Live preview of the printed Production Schedule report. Drag a column's right edge to resize it - it
+          resizes the same way on the actual printed report.
+        </p>
+        <div className="print-preview-wrap">
+          <PrintSchedule
+            workOrders={workOrders}
+            scheduledLines={scheduledLines}
+            columnWidths={columnWidths}
+            setColumnWidths={setColumnWidths}
+          />
         </div>
       </div>
     </div>
