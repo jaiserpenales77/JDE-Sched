@@ -8,6 +8,8 @@ import {
   rowHighlightClass,
   lineStatusClass,
   newBlankWorkOrder,
+  SCHEDULE_COLUMN_KEYS,
+  SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
 import ProgressBar from "./ProgressBar";
 import { PrintSchedule } from "./PrintViews";
@@ -19,6 +21,8 @@ interface Props {
   setScheduledLines: (updater: (lines: string[]) => string[]) => void;
   columnWidths: Record<string, number>;
   setColumnWidths: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
+  hiddenColumns: string[];
+  setHiddenColumns: (updater: (cols: string[]) => string[]) => void;
 }
 
 const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: boolean }[] = [
@@ -48,9 +52,15 @@ export default function ProductionSchedule({
   setScheduledLines,
   columnWidths,
   setColumnWidths,
+  hiddenColumns,
+  setHiddenColumns,
 }: Props) {
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
+
+  function toggleHiddenColumn(key: string, hidden: boolean) {
+    setHiddenColumns((cols) => (hidden ? [...cols, key] : cols.filter((c) => c !== key)));
+  }
 
   function toggleScheduledLine(line: string, checked: boolean) {
     setScheduledLines((lines) => (checked ? [...lines, line] : lines.filter((l) => l !== line)));
@@ -261,15 +271,28 @@ export default function ProductionSchedule({
       <div className="panel">
         <h2>🖨 Print Report Preview</h2>
         <p className="panel-hint">
-          Live preview of the printed Production Schedule report. Drag a column's right edge to resize it - it
-          resizes the same way on the actual printed report.
+          Live preview of the printed Production Schedule report. Drag a column's right edge to resize it, or check a
+          column below to hide it - both apply to the actual printed report too.
         </p>
+        <div className="hide-columns-grid">
+          {SCHEDULE_COLUMN_KEYS.map((key) => (
+            <label className="hide-column-checkbox" key={key}>
+              <input
+                type="checkbox"
+                checked={hiddenColumns.includes(key)}
+                onChange={(e) => toggleHiddenColumn(key, e.target.checked)}
+              />
+              {SCHEDULE_COLUMN_LABELS[key]}
+            </label>
+          ))}
+        </div>
         <div className="print-preview-wrap">
           <PrintSchedule
             workOrders={workOrders}
             scheduledLines={scheduledLines}
             columnWidths={columnWidths}
             setColumnWidths={setColumnWidths}
+            hiddenColumns={hiddenColumns}
           />
         </div>
       </div>

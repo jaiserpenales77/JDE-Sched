@@ -9,7 +9,10 @@ import {
   isAllergenRow,
   isOilRow,
   isBulkHighlightRow,
+  SCHEDULE_COLUMN_KEYS,
+  SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
+import type { ScheduleColumnKey } from "../scheduleLogic";
 import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
 import ProgressBar from "./ProgressBar";
 
@@ -22,29 +25,7 @@ import ProgressBar from "./ProgressBar";
 // fills, and the same thick navy divider between production lines that
 // "Add Line Dividers" used to draw.
 
-// Print-table column keys, in on-screen order - drives both the
-// resizable <colgroup> and which column a given resize handle borrows
-// width from/gives width to (its immediate neighbor to the right).
-const SCHEDULE_COLUMN_KEYS = [
-  "line",
-  "wo",
-  "seq",
-  "item",
-  "description",
-  "count",
-  "bulkItem",
-  "bottleSize",
-  "capDescription",
-  "allergen",
-  "remarks",
-  "woQuantity",
-  "percentComplete",
-  "desiccant",
-  "percentActual",
-  "bottlesRemaining",
-  "changeover",
-] as const;
-type ScheduleColumnKey = (typeof SCHEDULE_COLUMN_KEYS)[number];
+const FORMULA_COLUMN_KEYS = new Set<ScheduleColumnKey>(["percentActual", "bottlesRemaining", "changeover"]);
 
 // Percentages of the table's width - don't need to add up to exactly
 // 100 (the browser distributes fixed-layout columns proportionally
@@ -101,13 +82,20 @@ interface PrintScheduleProps {
   workOrders: WorkOrder[];
   scheduledLines?: string[];
   columnWidths?: Record<string, number>;
+  hiddenColumns?: string[];
   // Omit to render a plain, non-interactive table (used for the actual
   // print output) - pass it to get draggable column resize handles (used
   // by the live preview).
   setColumnWidths?: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
 }
 
-export function PrintSchedule({ workOrders, scheduledLines = [], columnWidths = {}, setColumnWidths }: PrintScheduleProps) {
+export function PrintSchedule({
+  workOrders,
+  scheduledLines = [],
+  columnWidths = {},
+  hiddenColumns = [],
+  setColumnWidths,
+}: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
   const tableRef = useRef<HTMLTableElement>(null);
@@ -120,14 +108,18 @@ export function PrintSchedule({ workOrders, scheduledLines = [], columnWidths = 
     tableWidthPx: number;
   } | null>(null);
 
+  const hiddenSet = new Set(hiddenColumns);
+  const visibleKeys = SCHEDULE_COLUMN_KEYS.filter((key) => !hiddenSet.has(key));
+  const isHidden = (key: ScheduleColumnKey) => hiddenSet.has(key);
+
   function widthOf(key: ScheduleColumnKey): number {
     return columnWidths[key] ?? DEFAULT_SCHEDULE_COLUMN_WIDTHS[key];
   }
 
   function beginResize(e: ReactPointerEvent, key: ScheduleColumnKey) {
     if (!setColumnWidths || !tableRef.current) return;
-    const idx = SCHEDULE_COLUMN_KEYS.indexOf(key);
-    const nextKey = SCHEDULE_COLUMN_KEYS[idx + 1];
+    const idx = visibleKeys.indexOf(key);
+    const nextKey = visibleKeys[idx + 1];
     if (!nextKey) return;
     e.preventDefault();
     e.stopPropagation();
@@ -157,7 +149,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [], columnWidths = 
 
   function resizeHandleProps(columnKey: ScheduleColumnKey) {
     return {
-      show: !!setColumnWidths && SCHEDULE_COLUMN_KEYS.indexOf(columnKey) < SCHEDULE_COLUMN_KEYS.length - 1,
+      show: !!setColumnWidths && visibleKeys.indexOf(columnKey) < visibleKeys.length - 1,
       onPointerDown: (e: ReactPointerEvent) => beginResize(e, columnKey),
       onPointerMove: onResizeMove,
       onPointerUp: endResize,
@@ -168,89 +160,30 @@ export function PrintSchedule({ workOrders, scheduledLines = [], columnWidths = 
     <div className="print-schedule">
       <table className="print-table" ref={tableRef}>
         <colgroup>
-          {SCHEDULE_COLUMN_KEYS.map((key) => (
+          {visibleKeys.map((key) => (
             <col key={key} style={{ width: `${widthOf(key)}%` }} />
           ))}
         </colgroup>
         <thead>
           <tr>
-            <th colSpan={17} className="print-title-row">
+            <th colSpan={visibleKeys.length} className="print-title-row">
               PRODUCTION LINE SCHEDULE
               <span className="print-title-date">{today}</span>
             </th>
           </tr>
           <tr className="print-col-headers">
-            <th>
-              LINE
-              <ColResizeHandle {...resizeHandleProps("line")} />
-            </th>
-            <th>
-              WO
-              <ColResizeHandle {...resizeHandleProps("wo")} />
-            </th>
-            <th>
-              SEQ
-              <ColResizeHandle {...resizeHandleProps("seq")} />
-            </th>
-            <th>
-              ITEM
-              <ColResizeHandle {...resizeHandleProps("item")} />
-            </th>
-            <th>
-              PRODUCT DESCRIPTION
-              <ColResizeHandle {...resizeHandleProps("description")} />
-            </th>
-            <th>
-              Count
-              <ColResizeHandle {...resizeHandleProps("count")} />
-            </th>
-            <th>
-              Bulk Item
-              <ColResizeHandle {...resizeHandleProps("bulkItem")} />
-            </th>
-            <th>
-              Bottle Size
-              <ColResizeHandle {...resizeHandleProps("bottleSize")} />
-            </th>
-            <th>
-              CAP DESCRIPTION
-              <ColResizeHandle {...resizeHandleProps("capDescription")} />
-            </th>
-            <th>
-              Allergen
-              <ColResizeHandle {...resizeHandleProps("allergen")} />
-            </th>
-            <th>
-              REMARKS
-              <ColResizeHandle {...resizeHandleProps("remarks")} />
-            </th>
-            <th>
-              WO Quantity
-              <ColResizeHandle {...resizeHandleProps("woQuantity")} />
-            </th>
-            <th>
-              % Complete
-              <ColResizeHandle {...resizeHandleProps("percentComplete")} />
-            </th>
-            <th>
-              Desiccant
-              <ColResizeHandle {...resizeHandleProps("desiccant")} />
-            </th>
-            <th className="print-formula-col">
-              % Actual Complete
-              <ColResizeHandle {...resizeHandleProps("percentActual")} />
-            </th>
-            <th className="print-formula-col">
-              Bottles Remaining
-              <ColResizeHandle {...resizeHandleProps("bottlesRemaining")} />
-            </th>
-            <th className="print-formula-col">CHANGEOVER</th>
+            {visibleKeys.map((key) => (
+              <th key={key} className={FORMULA_COLUMN_KEYS.has(key) ? "print-formula-col" : undefined}>
+                {SCHEDULE_COLUMN_LABELS[key]}
+                <ColResizeHandle {...resizeHandleProps(key)} />
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {groups.length === 0 && (
             <tr>
-              <td colSpan={17} style={{ textAlign: "center", padding: 20 }}>
+              <td colSpan={visibleKeys.length} style={{ textAlign: "center", padding: 20 }}>
                 No work orders scheduled.
               </td>
             </tr>
@@ -285,31 +218,37 @@ export function PrintSchedule({ workOrders, scheduledLines = [], columnWidths = 
                   : "";
                 return (
                   <tr key={row.id} className={`${hl} ${isLastOfGroup ? "print-divider" : ""} ${scheduledCls}`}>
-                    <td className={lineCls}>{row.line}</td>
-                    <td>{row.wo}</td>
-                    <td>{row.seq}</td>
-                    <td>{row.item}</td>
-                    <td className="print-left">{row.description}</td>
-                    <td className={countChanged ? "print-count-changed" : ""}>{row.count}</td>
-                    <td>{row.bulkItem}</td>
-                    <td>{row.bottleSize}</td>
-                    <td className="print-left">{row.capDescription}</td>
-                    <td>{row.allergen}</td>
-                    <td className="print-left">{row.remarks}</td>
-                    <td className="print-num">{row.woQuantity}</td>
-                    <td className="print-num">{row.percentComplete}</td>
-                    <td>{row.desiccant}</td>
-                    <td className="print-formula-col print-progress-cell">
-                      <ProgressBar value={percentActual(row)} />
-                    </td>
-                    <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
-                    <td className="print-formula-col">{chg}</td>
+                    {!isHidden("line") && <td className={lineCls}>{row.line}</td>}
+                    {!isHidden("wo") && <td>{row.wo}</td>}
+                    {!isHidden("seq") && <td>{row.seq}</td>}
+                    {!isHidden("item") && <td>{row.item}</td>}
+                    {!isHidden("description") && <td className="print-left">{row.description}</td>}
+                    {!isHidden("count") && (
+                      <td className={countChanged ? "print-count-changed" : ""}>{row.count}</td>
+                    )}
+                    {!isHidden("bulkItem") && <td>{row.bulkItem}</td>}
+                    {!isHidden("bottleSize") && <td>{row.bottleSize}</td>}
+                    {!isHidden("capDescription") && <td className="print-left">{row.capDescription}</td>}
+                    {!isHidden("allergen") && <td>{row.allergen}</td>}
+                    {!isHidden("remarks") && <td className="print-left">{row.remarks}</td>}
+                    {!isHidden("woQuantity") && <td className="print-num">{row.woQuantity}</td>}
+                    {!isHidden("percentComplete") && <td className="print-num">{row.percentComplete}</td>}
+                    {!isHidden("desiccant") && <td>{row.desiccant}</td>}
+                    {!isHidden("percentActual") && (
+                      <td className="print-formula-col print-progress-cell">
+                        <ProgressBar value={percentActual(row)} />
+                      </td>
+                    )}
+                    {!isHidden("bottlesRemaining") && (
+                      <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
+                    )}
+                    {!isHidden("changeover") && <td className="print-formula-col">{chg}</td>}
                   </tr>
                 );
               })}
               {groupIdx < groups.length - 1 && (
                 <tr className="print-line-spacer" aria-hidden="true">
-                  <td colSpan={17} />
+                  <td colSpan={visibleKeys.length} />
                 </tr>
               )}
             </Fragment>

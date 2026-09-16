@@ -45,6 +45,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
       raw.printScheduleColumnWidths && typeof raw.printScheduleColumnWidths === "object"
         ? raw.printScheduleColumnWidths
         : {},
+    printScheduleHiddenColumns: Array.isArray(raw.printScheduleHiddenColumns) ? raw.printScheduleHiddenColumns : [],
   };
 }
 
@@ -84,5 +85,6 @@ export function emptyData(): AppData {
     printSettings: { ...defaultPrintSettings },
     scheduledLines: [],
     printScheduleColumnWidths: {},
+    printScheduleHiddenColumns: [],
   };
 }

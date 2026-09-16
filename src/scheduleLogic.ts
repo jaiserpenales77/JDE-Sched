@@ -1,5 +1,50 @@
 import type { ChangeoverCode, WorkOrder } from "./types";
 
+// Print-table column keys, in on-screen order - drives the resizable
+// <colgroup>, which column a resize handle borrows width from/gives
+// width to (its immediate neighbor to the right), and the "hide column"
+// checkboxes in the print preview.
+export const SCHEDULE_COLUMN_KEYS = [
+  "line",
+  "wo",
+  "seq",
+  "item",
+  "description",
+  "count",
+  "bulkItem",
+  "bottleSize",
+  "capDescription",
+  "allergen",
+  "remarks",
+  "woQuantity",
+  "percentComplete",
+  "desiccant",
+  "percentActual",
+  "bottlesRemaining",
+  "changeover",
+] as const;
+export type ScheduleColumnKey = (typeof SCHEDULE_COLUMN_KEYS)[number];
+
+export const SCHEDULE_COLUMN_LABELS: Record<ScheduleColumnKey, string> = {
+  line: "LINE",
+  wo: "WO",
+  seq: "SEQ",
+  item: "ITEM",
+  description: "PRODUCT DESCRIPTION",
+  count: "Count",
+  bulkItem: "Bulk Item",
+  bottleSize: "Bottle Size",
+  capDescription: "CAP DESCRIPTION",
+  allergen: "Allergen",
+  remarks: "REMARKS",
+  woQuantity: "WO Quantity",
+  percentComplete: "% Complete",
+  desiccant: "Desiccant",
+  percentActual: "% Actual Complete",
+  bottlesRemaining: "Bottles Remaining",
+  changeover: "CHANGEOVER",
+};
+
 // Groups work orders by production line, preserving each line's first
 // appearance order and each row's insertion order within its line -
 // replaces the manual "Add Line Dividers" macro from the spreadsheet.

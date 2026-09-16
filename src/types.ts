@@ -158,4 +158,7 @@ export interface AppData {
   // Column widths (percentages) for the Production Schedule print report -
   // dragged in its live preview, shared with the actual printed table.
   printScheduleColumnWidths: Record<string, number>;
+  // Column keys checked off in the print preview's "Hide columns" list -
+  // omitted entirely from the printed Production Schedule report.
+  printScheduleHiddenColumns: string[];
 }

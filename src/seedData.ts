@@ -218,5 +218,6 @@ export function buildSeedData(): AppData {
     printSettings: { ...defaultPrintSettings },
     scheduledLines: [],
     printScheduleColumnWidths: {},
+    printScheduleHiddenColumns: [],
   };
 }
