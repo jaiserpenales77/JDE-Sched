@@ -1,5 +1,6 @@
 import type { AppData, WorkOrder } from "./types";
 import { groupByLine, percentActual, bottlesRemaining, changeoverCode } from "./scheduleLogic";
+import { normalizeAppData } from "./storage";
 
 function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -24,11 +25,7 @@ export function readAppDataFromJsonFile(file: File): Promise<AppData> {
       try {
         const parsed = JSON.parse(reader.result as string);
         if (!parsed || typeof parsed !== "object") throw new Error("Not a valid JDE Sched backup file.");
-        resolve({
-          workOrders: Array.isArray(parsed.workOrders) ? parsed.workOrders : [],
-          boards: Array.isArray(parsed.boards) ? parsed.boards : [],
-          employees: Array.isArray(parsed.employees) ? parsed.employees : [],
-        });
+        resolve(normalizeAppData(parsed as Partial<AppData>));
       } catch (err) {
         reject(err);
       }
