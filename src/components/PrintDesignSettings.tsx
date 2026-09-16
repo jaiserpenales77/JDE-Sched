@@ -61,6 +61,15 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
               />
               Highlight Line Leaders / MLL / MLT by name
             </label>
+
+            <label className="print-design-checkbox">
+              <input
+                type="checkbox"
+                checked={settings.freeFormLayout}
+                onChange={(e) => set("freeFormLayout", e.target.checked)}
+              />
+              Use custom box positions (drag &amp; resize below)
+            </label>
           </div>
 
           <div className="print-design-row">

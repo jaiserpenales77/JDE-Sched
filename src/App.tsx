@@ -12,6 +12,7 @@ import {
   readWorkOrdersFromWorkbookFile,
 } from "./excel";
 import PrintDesignSettings from "./components/PrintDesignSettings";
+import PrintLayoutEditor from "./components/PrintLayoutEditor";
 import type { WorkOrder, DailyBoard, Employee, PrintAssignSettings } from "./types";
 
 type Tab = "schedule" | "assignments" | "roster";
@@ -179,6 +180,9 @@ function App() {
               setSelectedId={setSelectedBoardId}
             />
             <PrintDesignSettings settings={data.printSettings} setSettings={setPrintSettings} />
+            {data.printSettings.freeFormLayout && selectedBoard && (
+              <PrintLayoutEditor board={selectedBoard} settings={data.printSettings} setSettings={setPrintSettings} />
+            )}
           </>
         )}
         {tab === "roster" && <SkillsRoles employees={data.employees} setEmployees={setEmployees} />}

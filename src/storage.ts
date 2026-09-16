@@ -20,7 +20,9 @@ function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
 }
 
 function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefined): PrintAssignSettings {
-  return { ...defaultPrintSettings, ...settings };
+  const merged = { ...defaultPrintSettings, ...settings };
+  if (!merged.boxLayouts || typeof merged.boxLayouts !== "object") merged.boxLayouts = {};
+  return merged;
 }
 
 export function normalizeAppData(raw: Partial<AppData>): AppData {

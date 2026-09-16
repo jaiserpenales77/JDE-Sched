@@ -87,6 +87,15 @@ export interface Employee {
   skills: Record<SkillKey, string>;
 }
 
+// A box's position and size on the print page, all as percentages of the
+// page area (0-100) so the same layout scales across paper sizes.
+export interface BoxLayout {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface PrintAssignSettings {
   orientation: "landscape" | "portrait";
   showBanner: boolean;
@@ -101,6 +110,10 @@ export interface PrintAssignSettings {
   pmColor: string;
   leaderColor: string;
   crewColor: string;
+  // When true, line/room boxes are drawn at their saved boxLayouts
+  // position instead of the automatic flowing grid.
+  freeFormLayout: boolean;
+  boxLayouts: Record<string, BoxLayout>;
 }
 
 export interface AppData {

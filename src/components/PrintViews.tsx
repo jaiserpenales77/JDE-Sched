@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { DailyBoard, Employee, LineSlot, PrintAssignSettings, WorkOrder } from "../types";
+import type { DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -9,6 +9,7 @@ import {
   isOilRow,
   isBulkHighlightRow,
 } from "../scheduleLogic";
+import { lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -179,6 +180,59 @@ function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: bool
   return "";
 }
 
+function LineBoxContent({
+  slot,
+  roleMap,
+  settings,
+}: {
+  slot: LineSlot;
+  roleMap: Map<string, string>;
+  settings: PrintAssignSettings;
+}) {
+  const names = slot.assigned
+    .split(",")
+    .map((n) => n.trim())
+    .filter(Boolean);
+  const key = statusKey(slot.status);
+  return (
+    <>
+      <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
+      <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
+      <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
+      <div className="print-assign-names">
+        {names.map((name, i) => (
+          <div className={`print-assign-name-row ${nameRoleClass(name, roleMap, settings.highlightRoles)}`} key={i}>
+            {name}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function RoomBoxContent({
+  section,
+  roleMap,
+  settings,
+}: {
+  section: ListSection;
+  roleMap: Map<string, string>;
+  settings: PrintAssignSettings;
+}) {
+  return (
+    <>
+      <div className="print-assign-room-header">{section.title}</div>
+      <div className="print-assign-names">
+        {section.items.map((item, i) => (
+          <div className={`print-assign-name-row ${nameRoleClass(item, roleMap, settings.highlightRoles)}`} key={i}>
+            {item}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 interface PrintAssignmentsProps {
   board: DailyBoard | undefined;
   employees: Employee[];
@@ -195,8 +249,7 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
   }
 
   const roleMap = buildFirstNameRoleMap(employees);
-  const bands = chunk(board.lineSlots, SLOTS_PER_BAND);
-  const roomBands = settings.includeRoomSections ? chunk(board.roomSections, SLOTS_PER_BAND) : [];
+  const roomSections = settings.includeRoomSections ? board.roomSections : [];
 
   const cssVars = {
     "--print-title-color": settings.titleColor,
@@ -226,48 +279,59 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
         </div>
       )}
 
-      {bands.map((band, bandIdx) => (
-        <div className="print-assign-band-row" key={bandIdx}>
-          {band.map((slot) => {
-            const names = slot.assigned
-              .split(",")
-              .map((n) => n.trim())
-              .filter(Boolean);
-            const key = statusKey(slot.status);
+      {settings.freeFormLayout ? (
+        <div
+          className="print-layout-canvas"
+          style={{ aspectRatio: settings.orientation === "landscape" ? "11 / 8.5" : "8.5 / 11" }}
+        >
+          {board.lineSlots.map((slot, i) => {
+            const rect = resolveBoxLayout(lineBoxKey(slot.line), i, settings.boxLayouts);
             return (
-              <div className="print-assign-col" key={slot.id}>
-                <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
-                <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
-                <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
-                <div className="print-assign-names">
-                  {names.map((name, i) => (
-                    <div className={`print-assign-name-row ${nameRoleClass(name, roleMap, settings.highlightRoles)}`} key={i}>
-                      {name}
-                    </div>
-                  ))}
-                </div>
+              <div
+                className="print-assign-col print-assign-col-absolute"
+                key={slot.id}
+                style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.width}%`, height: `${rect.height}%` }}
+              >
+                <LineBoxContent slot={slot} roleMap={roleMap} settings={settings} />
+              </div>
+            );
+          })}
+          {roomSections.map((section, i) => {
+            const rect = resolveBoxLayout(roomBoxKey(section.title), board.lineSlots.length + i, settings.boxLayouts);
+            return (
+              <div
+                className="print-assign-col print-assign-col-absolute"
+                key={section.id}
+                style={{ left: `${rect.x}%`, top: `${rect.y}%`, width: `${rect.width}%`, height: `${rect.height}%` }}
+              >
+                <RoomBoxContent section={section} roleMap={roleMap} settings={settings} />
               </div>
             );
           })}
         </div>
-      ))}
-
-      {roomBands.map((band, bandIdx) => (
-        <div className="print-assign-band-row print-assign-room-row" key={bandIdx}>
-          {band.map((section) => (
-            <div className="print-assign-col" key={section.id}>
-              <div className="print-assign-room-header">{section.title}</div>
-              <div className="print-assign-names">
-                {section.items.map((item, i) => (
-                  <div className={`print-assign-name-row ${nameRoleClass(item, roleMap, settings.highlightRoles)}`} key={i}>
-                    {item}
-                  </div>
-                ))}
-              </div>
+      ) : (
+        <>
+          {chunk(board.lineSlots, SLOTS_PER_BAND).map((band, bandIdx) => (
+            <div className="print-assign-band-row" key={bandIdx}>
+              {band.map((slot) => (
+                <div className="print-assign-col" key={slot.id}>
+                  <LineBoxContent slot={slot} roleMap={roleMap} settings={settings} />
+                </div>
+              ))}
             </div>
           ))}
-        </div>
-      ))}
+
+          {chunk(roomSections, SLOTS_PER_BAND).map((band, bandIdx) => (
+            <div className="print-assign-band-row print-assign-room-row" key={bandIdx}>
+              {band.map((section) => (
+                <div className="print-assign-col" key={section.id}>
+                  <RoomBoxContent section={section} roleMap={roleMap} settings={settings} />
+                </div>
+              ))}
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }

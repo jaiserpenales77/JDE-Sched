@@ -188,6 +188,8 @@ export const defaultPrintSettings: PrintAssignSettings = {
   pmColor: "#2e75b6",
   leaderColor: "#005426",
   crewColor: "#002060",
+  freeFormLayout: false,
+  boxLayouts: {},
 };
 
 export function buildSeedData(): AppData {
