@@ -11,6 +11,7 @@ import {
   isBulkHighlightRow,
 } from "../scheduleLogic";
 import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import ProgressBar from "./ProgressBar";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -18,10 +19,6 @@ import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roo
 // Desiccant were outside that print area, so they're left out here too),
 // the same pastel conditional-formatting fills, and the same thick navy
 // divider between production lines that "Add Line Dividers" used to draw.
-
-function pct(n: number | ""): string {
-  return n === "" ? "" : `${(Number(n) * 100).toFixed(1)}%`;
-}
 
 export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders: WorkOrder[]; scheduledLines?: string[] }) {
   const groups = groupByLine(workOrders);
@@ -103,7 +100,9 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
                     <td className="print-left">{row.remarks}</td>
                     <td className="print-num">{row.woQuantity}</td>
                     <td className="print-num">{row.percentComplete}</td>
-                    <td className="print-num print-formula-col">{pct(percentActual(row))}</td>
+                    <td className="print-formula-col print-progress-cell">
+                      <ProgressBar value={percentActual(row)} />
+                    </td>
                     <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
                     <td className="print-formula-col">{chg}</td>
                   </tr>

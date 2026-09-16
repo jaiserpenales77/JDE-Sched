@@ -351,6 +351,38 @@ td.computed {
   white-space: nowrap;
 }
 
+/* % Actual Complete progress bar - shared between the editable table and
+   the printed report (see components/ProgressBar.tsx). */
+.progress-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.progress-track {
+  flex: 1;
+  min-width: 40px;
+  height: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2e7d32, #66bb6a);
+}
+.progress-text {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #1f2937;
+  min-width: 36px;
+  text-align: right;
+}
+.progress-empty {
+  color: var(--muted);
+}
+
 td.changeover {
   text-align: center;
   font-weight: 600;
@@ -749,6 +781,27 @@ table.roster select {
 
 .print-formula-col {
   background: #fff9db;
+}
+
+.print-progress-cell {
+  white-space: nowrap;
+}
+.print-progress-cell .progress-cell {
+  gap: 3px;
+}
+.print-progress-cell .progress-track {
+  min-width: 28px;
+  height: 7pt;
+  border-color: #000;
+  background: #fff;
+}
+.print-progress-cell .progress-text {
+  font-size: 7pt;
+  min-width: 24px;
+  color: #000;
+}
+.print-progress-cell .progress-empty {
+  color: #000;
 }
 
 tr.print-hl-allergen td {

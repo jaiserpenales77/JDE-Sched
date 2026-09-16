@@ -9,6 +9,7 @@ import {
   lineStatusClass,
   newBlankWorkOrder,
 } from "../scheduleLogic";
+import ProgressBar from "./ProgressBar";
 
 interface Props {
   workOrders: WorkOrder[];
@@ -195,7 +196,7 @@ export default function ProductionSchedule({ workOrders, setWorkOrders, schedule
                           </select>
                         </td>
                         <td className="computed">
-                          {percentActual(row) === "" ? "" : `${(Number(percentActual(row)) * 100).toFixed(1)}%`}
+                          <ProgressBar value={percentActual(row)} />
                         </td>
                         <td className="computed">{bottlesRemaining(row)}</td>
                         <td className={`changeover chg-${chg.replace(/ /g, "-")}`}>{fmtChg(chg)}</td>
