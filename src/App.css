@@ -626,6 +626,18 @@ table.roster select {
   display: none;
 }
 
+/* Briefly forced visible (off-screen) so JS can measure the Line
+   Assignments report's natural height before printing, to compute the
+   "shrink to fit one page" scale - see the print effect in App.tsx. */
+.print-root.measuring {
+  display: block;
+  position: fixed;
+  left: -99999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 @media print {
   @page {
     size: landscape;

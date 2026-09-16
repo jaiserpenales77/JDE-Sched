@@ -34,13 +34,56 @@ function App() {
     document.body.classList.add(`printing-${printTarget}`);
 
     const orientation = printTarget === "assignments" ? data.printSettings.orientation : "landscape";
+    const marginMm = 10;
     let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
     if (!pageStyle) {
       pageStyle = document.createElement("style");
       pageStyle.id = "dynamic-page-style";
       document.head.appendChild(pageStyle);
     }
-    pageStyle.textContent = `@media print { @page { size: ${orientation}; margin: 10mm; } }`;
+    pageStyle.textContent = `@media print { @page { size: ${orientation}; margin: ${marginMm}mm; } }`;
+
+    const printRoot = document.querySelector(".print-root") as HTMLElement | null;
+    const assignEl = document.querySelector(".print-assignments") as HTMLElement | null;
+
+    // The free-form layout's canvas is already sized to the page's exact
+    // aspect ratio, so it always fits one page. The normal flowing grid
+    // has no such ceiling - with enough lines/room sections/comments it
+    // can run past one page - so shrink it down (never up) to fit, the
+    // same way Excel's "fit sheet on one page" print option works.
+    if (printTarget === "assignments" && printRoot && assignEl && !data.printSettings.freeFormLayout) {
+      const PX_PER_IN = 96;
+      const PX_PER_MM = PX_PER_IN / 25.4;
+      const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
+      const pageHeightIn = orientation === "landscape" ? 8.5 : 11;
+      const marginPx = marginMm * PX_PER_MM;
+      const pageContentWidthPx = pageWidthIn * PX_PER_IN - marginPx * 2;
+      const pageContentHeightPx = pageHeightIn * PX_PER_IN - marginPx * 2;
+
+      assignEl.style.transform = "";
+      assignEl.style.width = `${pageContentWidthPx}px`;
+      printRoot.classList.add("measuring");
+      const naturalHeight = assignEl.scrollHeight;
+      printRoot.classList.remove("measuring");
+      assignEl.style.width = "";
+
+      const scale = Math.min(1, pageContentHeightPx / naturalHeight);
+      if (scale < 1) {
+        assignEl.style.transformOrigin = "top left";
+        assignEl.style.transform = `scale(${scale})`;
+        printRoot.style.height = `${naturalHeight * scale}px`;
+        printRoot.style.overflow = "hidden";
+      } else {
+        printRoot.style.height = "";
+        printRoot.style.overflow = "";
+      }
+    } else {
+      if (assignEl) assignEl.style.transform = "";
+      if (printRoot) {
+        printRoot.style.height = "";
+        printRoot.style.overflow = "";
+      }
+    }
 
     const id = requestAnimationFrame(() => window.print());
     const reset = () => setPrintTarget(null);
@@ -49,8 +92,17 @@ function App() {
       cancelAnimationFrame(id);
       document.body.classList.remove(`printing-${printTarget}`);
       window.removeEventListener("afterprint", reset);
+      if (assignEl) {
+        assignEl.style.transform = "";
+        assignEl.style.width = "";
+      }
+      if (printRoot) {
+        printRoot.style.height = "";
+        printRoot.style.overflow = "";
+        printRoot.classList.remove("measuring");
+      }
     };
-  }, [printTarget, data.printSettings.orientation]);
+  }, [printTarget, data.printSettings.orientation, data.printSettings.freeFormLayout]);
 
   function setWorkOrders(updater: (wos: WorkOrder[]) => WorkOrder[]) {
     setData((d) => ({ ...d, workOrders: updater(d.workOrders) }));
