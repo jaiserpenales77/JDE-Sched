@@ -87,8 +87,25 @@ export interface Employee {
   skills: Record<SkillKey, string>;
 }
 
+export interface PrintAssignSettings {
+  orientation: "landscape" | "portrait";
+  showBanner: boolean;
+  bannerText: string;
+  includeRoomSections: boolean;
+  highlightRoles: boolean;
+  titleColor: string;
+  bannerColor: string;
+  bannerTextColor: string;
+  scheduledColor: string;
+  notScheduledColor: string;
+  pmColor: string;
+  leaderColor: string;
+  crewColor: string;
+}
+
 export interface AppData {
   workOrders: WorkOrder[];
   boards: DailyBoard[];
   employees: Employee[];
+  printSettings: PrintAssignSettings;
 }

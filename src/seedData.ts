@@ -1,4 +1,4 @@
-import type { AppData, DailyBoard, Employee, WorkOrder } from "./types";
+import type { AppData, DailyBoard, Employee, PrintAssignSettings, WorkOrder } from "./types";
 
 // Seed data carried over from JDE_Sched_FINAL_v1.8.xlsm so the app opens
 // with the same production schedule / roster the spreadsheet had, instead
@@ -171,10 +171,30 @@ export const seedBoards: DailyBoard[] = [
   },
 ];
 
+// Matches the original workbook's actual cell fills - see the "Match Line
+// Assignments print to the original sheet's exact colors" change for where
+// these came from. Fully user-editable from the Line Assignments tab.
+export const defaultPrintSettings: PrintAssignSettings = {
+  orientation: "landscape",
+  showBanner: true,
+  bannerText: "REPORT ANY SAFETY, QUALITY AND MAJOR PRODUCTION DOWNTIME ISSUES IMMEDIATELY",
+  includeRoomSections: true,
+  highlightRoles: true,
+  titleColor: "#1f3864",
+  bannerColor: "#d9e2f3",
+  bannerTextColor: "#bf9000",
+  scheduledColor: "#1f3864",
+  notScheduledColor: "#8c8c8c",
+  pmColor: "#2e75b6",
+  leaderColor: "#005426",
+  crewColor: "#002060",
+};
+
 export function buildSeedData(): AppData {
   return {
     workOrders: seedWorkOrders,
     boards: seedBoards,
     employees: seedEmployees,
+    printSettings: { ...defaultPrintSettings },
   };
 }

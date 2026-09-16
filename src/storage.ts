@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { AppData, DailyBoard } from "./types";
-import { buildSeedData } from "./seedData";
+import type { AppData, DailyBoard, PrintAssignSettings } from "./types";
+import { buildSeedData, defaultPrintSettings } from "./seedData";
 
 const STORAGE_KEY = "jde-sched-data-v1";
 
@@ -19,11 +19,16 @@ function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
   };
 }
 
+function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefined): PrintAssignSettings {
+  return { ...defaultPrintSettings, ...settings };
+}
+
 export function normalizeAppData(raw: Partial<AppData>): AppData {
   return {
     workOrders: Array.isArray(raw.workOrders) ? raw.workOrders : [],
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
     employees: Array.isArray(raw.employees) ? raw.employees : [],
+    printSettings: normalizePrintSettings(raw.printSettings),
   };
 }
 
@@ -56,5 +61,5 @@ export function resetToSeed(): AppData {
 }
 
 export function emptyData(): AppData {
-  return { workOrders: [], boards: [], employees: [] };
+  return { workOrders: [], boards: [], employees: [], printSettings: { ...defaultPrintSettings } };
 }

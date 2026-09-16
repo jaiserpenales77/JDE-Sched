@@ -772,7 +772,7 @@ tr.print-divider td {
    #2E75B6 "PM" status-label blue. */
 
 .print-assign-title {
-  background: #1f3864;
+  background: var(--print-title-color, #1f3864);
   color: #fff;
   font-weight: 700;
   font-size: 20pt;
@@ -781,16 +781,19 @@ tr.print-divider td {
 }
 
 .print-assign-banner {
-  background: #d9e2f3;
+  background: var(--print-banner-color, #d9e2f3);
   display: flex;
   align-items: center;
   padding: 10px 12px;
   gap: 12px;
 }
+.print-assign-banner-minimal {
+  justify-content: space-between;
+}
 .print-assign-banner-date {
   font-weight: 700;
   font-size: 10pt;
-  color: #1f3864;
+  color: var(--print-title-color, #1f3864);
   white-space: nowrap;
 }
 .print-assign-banner-safety {
@@ -798,12 +801,12 @@ tr.print-divider td {
   text-align: center;
   font-weight: 700;
   font-size: 13pt;
-  color: #bf9000;
+  color: var(--print-banner-text-color, #bf9000);
 }
 .print-assign-banner-leader {
   font-weight: 700;
   font-size: 10pt;
-  color: #1f3864;
+  color: var(--print-title-color, #1f3864);
   white-space: nowrap;
 }
 
@@ -840,38 +843,38 @@ tr.print-divider td {
 }
 
 .print-assign-scheduled.print-assign-name {
-  background: #1f3864;
+  background: var(--print-scheduled-color, #1f3864);
   color: #fff;
 }
 .print-assign-scheduled.print-assign-status {
-  background: #a9b7ce;
+  background: color-mix(in srgb, var(--print-scheduled-color, #1f3864) 55%, white);
   color: #fff;
 }
 .print-assign-scheduled.print-assign-note {
-  background: #3b67ae;
+  background: color-mix(in srgb, var(--print-scheduled-color, #1f3864) 80%, white);
   color: #fff;
 }
 
 .print-assign-not-scheduled.print-assign-name,
 .print-assign-not-scheduled.print-assign-status {
-  background: #8c8c8c;
+  background: var(--print-not-scheduled-color, #8c8c8c);
   color: #fff;
 }
 .print-assign-not-scheduled.print-assign-note {
-  background: #bfbfbf;
+  background: color-mix(in srgb, var(--print-not-scheduled-color, #8c8c8c) 55%, white);
   color: #404040;
 }
 
 .print-assign-pm.print-assign-name {
-  background: #8c8c8c;
+  background: var(--print-not-scheduled-color, #8c8c8c);
   color: #fff;
 }
 .print-assign-pm.print-assign-status {
-  background: #2e75b6;
+  background: var(--print-pm-color, #2e75b6);
   color: #fff;
 }
 .print-assign-pm.print-assign-note {
-  background: #bfbfbf;
+  background: color-mix(in srgb, var(--print-not-scheduled-color, #8c8c8c) 55%, white);
   color: #404040;
 }
 
@@ -888,12 +891,12 @@ tr.print-divider td {
   background: #f2f2f2;
 }
 .print-assign-name-row.print-assign-role-leader {
-  background: #005426;
+  background: var(--print-leader-color, #005426);
   color: #fff;
   font-weight: 700;
 }
 .print-assign-name-row.print-assign-role-mlx {
-  background: #002060;
+  background: var(--print-crew-color, #002060);
   color: #fff;
   font-weight: 700;
 }
@@ -908,4 +911,86 @@ tr.print-divider td {
   font-size: 10.5pt;
   text-align: left;
   padding: 6px 8px;
+}
+
+/* ---------- Print Design settings panel ---------- */
+
+.print-design-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+  color: var(--text);
+}
+.print-design-toggle span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.print-design-body {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.print-design-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.print-design-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.print-design-field select,
+.print-design-field input[type="text"] {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel);
+}
+
+.print-design-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.print-design-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.color-field input[type="color"] {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
 }

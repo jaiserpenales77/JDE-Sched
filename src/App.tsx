@@ -11,7 +11,8 @@ import {
   readAppDataFromJsonFile,
   readWorkOrdersFromWorkbookFile,
 } from "./excel";
-import type { WorkOrder, DailyBoard, Employee } from "./types";
+import PrintDesignSettings from "./components/PrintDesignSettings";
+import type { WorkOrder, DailyBoard, Employee, PrintAssignSettings } from "./types";
 
 type Tab = "schedule" | "assignments" | "roster";
 type PrintTarget = "schedule" | "assignments" | null;
@@ -30,6 +31,16 @@ function App() {
   useEffect(() => {
     if (!printTarget) return;
     document.body.classList.add(`printing-${printTarget}`);
+
+    const orientation = printTarget === "assignments" ? data.printSettings.orientation : "landscape";
+    let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
+    if (!pageStyle) {
+      pageStyle = document.createElement("style");
+      pageStyle.id = "dynamic-page-style";
+      document.head.appendChild(pageStyle);
+    }
+    pageStyle.textContent = `@media print { @page { size: ${orientation}; margin: 10mm; } }`;
+
     const id = requestAnimationFrame(() => window.print());
     const reset = () => setPrintTarget(null);
     window.addEventListener("afterprint", reset);
@@ -38,7 +49,7 @@ function App() {
       document.body.classList.remove(`printing-${printTarget}`);
       window.removeEventListener("afterprint", reset);
     };
-  }, [printTarget]);
+  }, [printTarget, data.printSettings.orientation]);
 
   function setWorkOrders(updater: (wos: WorkOrder[]) => WorkOrder[]) {
     setData((d) => ({ ...d, workOrders: updater(d.workOrders) }));
@@ -48,6 +59,9 @@ function App() {
   }
   function setEmployees(updater: (emps: Employee[]) => Employee[]) {
     setData((d) => ({ ...d, employees: updater(d.employees) }));
+  }
+  function setPrintSettings(updater: (s: PrintAssignSettings) => PrintAssignSettings) {
+    setData((d) => ({ ...d, printSettings: updater(d.printSettings) }));
   }
 
   async function handleJsonImport(file: File) {
@@ -157,12 +171,15 @@ function App() {
       <main className="app-main">
         {tab === "schedule" && <ProductionSchedule workOrders={data.workOrders} setWorkOrders={setWorkOrders} />}
         {tab === "assignments" && (
-          <LineAssignments
-            boards={data.boards}
-            setBoards={setBoards}
-            selectedId={selectedBoard?.id ?? ""}
-            setSelectedId={setSelectedBoardId}
-          />
+          <>
+            <LineAssignments
+              boards={data.boards}
+              setBoards={setBoards}
+              selectedId={selectedBoard?.id ?? ""}
+              setSelectedId={setSelectedBoardId}
+            />
+            <PrintDesignSettings settings={data.printSettings} setSettings={setPrintSettings} />
+          </>
         )}
         {tab === "roster" && <SkillsRoles employees={data.employees} setEmployees={setEmployees} />}
       </main>
@@ -174,7 +191,7 @@ function App() {
 
       <div className="print-root">
         <PrintSchedule workOrders={data.workOrders} />
-        <PrintAssignments board={selectedBoard} employees={data.employees} />
+        <PrintAssignments board={selectedBoard} employees={data.employees} settings={data.printSettings} />
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
-import type { DailyBoard, Employee, LineSlot, WorkOrder } from "../types";
+import type { CSSProperties } from "react";
+import type { DailyBoard, Employee, LineSlot, PrintAssignSettings, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -168,7 +169,8 @@ function buildFirstNameRoleMap(employees: Employee[]): Map<string, string> {
 
 // The original sheet hand-highlighted Line Leaders (dark green) and
 // MLL/MLT crew (navy) by name within the assigned-names lists.
-function nameRoleClass(name: string, roleMap: Map<string, string>): string {
+function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: boolean): string {
+  if (!enabled) return "";
   const first = name.trim().split(/\s+/)[0]?.toLowerCase();
   const role = first ? roleMap.get(first) : undefined;
   if (!role) return "";
@@ -180,9 +182,10 @@ function nameRoleClass(name: string, roleMap: Map<string, string>): string {
 interface PrintAssignmentsProps {
   board: DailyBoard | undefined;
   employees: Employee[];
+  settings: PrintAssignSettings;
 }
 
-export function PrintAssignments({ board, employees }: PrintAssignmentsProps) {
+export function PrintAssignments({ board, employees, settings }: PrintAssignmentsProps) {
   if (!board) {
     return (
       <div className="print-assignments">
@@ -193,18 +196,35 @@ export function PrintAssignments({ board, employees }: PrintAssignmentsProps) {
 
   const roleMap = buildFirstNameRoleMap(employees);
   const bands = chunk(board.lineSlots, SLOTS_PER_BAND);
-  const roomBands = chunk(board.roomSections, SLOTS_PER_BAND);
+  const roomBands = settings.includeRoomSections ? chunk(board.roomSections, SLOTS_PER_BAND) : [];
+
+  const cssVars = {
+    "--print-title-color": settings.titleColor,
+    "--print-banner-color": settings.bannerColor,
+    "--print-banner-text-color": settings.bannerTextColor,
+    "--print-scheduled-color": settings.scheduledColor,
+    "--print-not-scheduled-color": settings.notScheduledColor,
+    "--print-pm-color": settings.pmColor,
+    "--print-leader-color": settings.leaderColor,
+    "--print-crew-color": settings.crewColor,
+  } as CSSProperties;
 
   return (
-    <div className="print-assignments">
+    <div className="print-assignments" style={cssVars}>
       <div className="print-assign-title">{board.shiftLabel} | Line Assignments</div>
-      <div className="print-assign-banner">
-        <span className="print-assign-banner-date">{board.date}</span>
-        <span className="print-assign-banner-safety">
-          REPORT ANY SAFETY, QUALITY AND MAJOR PRODUCTION DOWNTIME ISSUES IMMEDIATELY
-        </span>
-        <span className="print-assign-banner-leader">Dept. Leader: {board.deptLeader || "—"}</span>
-      </div>
+      {settings.showBanner && (
+        <div className="print-assign-banner">
+          <span className="print-assign-banner-date">{board.date}</span>
+          <span className="print-assign-banner-safety">{settings.bannerText}</span>
+          <span className="print-assign-banner-leader">Dept. Leader: {board.deptLeader || "—"}</span>
+        </div>
+      )}
+      {!settings.showBanner && (
+        <div className="print-assign-banner print-assign-banner-minimal">
+          <span className="print-assign-banner-date">{board.date}</span>
+          <span className="print-assign-banner-leader">Dept. Leader: {board.deptLeader || "—"}</span>
+        </div>
+      )}
 
       {bands.map((band, bandIdx) => (
         <div className="print-assign-band-row" key={bandIdx}>
@@ -221,7 +241,7 @@ export function PrintAssignments({ board, employees }: PrintAssignmentsProps) {
                 <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
                 <div className="print-assign-names">
                   {names.map((name, i) => (
-                    <div className={`print-assign-name-row ${nameRoleClass(name, roleMap)}`} key={i}>
+                    <div className={`print-assign-name-row ${nameRoleClass(name, roleMap, settings.highlightRoles)}`} key={i}>
                       {name}
                     </div>
                   ))}
@@ -239,7 +259,7 @@ export function PrintAssignments({ board, employees }: PrintAssignmentsProps) {
               <div className="print-assign-room-header">{section.title}</div>
               <div className="print-assign-names">
                 {section.items.map((item, i) => (
-                  <div className={`print-assign-name-row ${nameRoleClass(item, roleMap)}`} key={i}>
+                  <div className={`print-assign-name-row ${nameRoleClass(item, roleMap, settings.highlightRoles)}`} key={i}>
                     {item}
                   </div>
                 ))}
