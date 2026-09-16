@@ -1,9 +1,10 @@
-import { useState } from "react";
 import type { DailyBoard, ListSection, LineSlot } from "../types";
 
 interface Props {
   boards: DailyBoard[];
   setBoards: (updater: (boards: DailyBoard[]) => DailyBoard[]) => void;
+  selectedId: string;
+  setSelectedId: (id: string) => void;
 }
 
 function todayIso() {
@@ -29,9 +30,8 @@ function blankSection(): ListSection {
   return { id: crypto.randomUUID(), title: "New Section", items: [] };
 }
 
-export default function LineAssignments({ boards, setBoards }: Props) {
+export default function LineAssignments({ boards, setBoards, selectedId, setSelectedId }: Props) {
   const sorted = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
-  const [selectedId, setSelectedId] = useState<string>(sorted[0]?.id ?? "");
   const board = boards.find((b) => b.id === selectedId) ?? sorted[0];
 
   function updateBoard(id: string, patch: Partial<DailyBoard>) {

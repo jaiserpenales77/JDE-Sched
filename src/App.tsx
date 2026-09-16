@@ -1,9 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { useAppData, resetToSeed, emptyData } from "./storage";
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
+import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
 import {
   exportAppDataToJson,
   exportWorkOrdersToExcel,
@@ -13,12 +14,31 @@ import {
 import type { WorkOrder, DailyBoard, Employee } from "./types";
 
 type Tab = "schedule" | "assignments" | "roster";
+type PrintTarget = "schedule" | "assignments" | null;
 
 function App() {
   const [data, setData] = useAppData();
   const [tab, setTab] = useState<Tab>("schedule");
+  const [selectedBoardId, setSelectedBoardId] = useState<string>("");
+  const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+
+  const sortedBoards = [...data.boards].sort((a, b) => (a.date < b.date ? 1 : -1));
+  const selectedBoard = data.boards.find((b) => b.id === selectedBoardId) ?? sortedBoards[0];
+
+  useEffect(() => {
+    if (!printTarget) return;
+    document.body.classList.add(`printing-${printTarget}`);
+    const id = requestAnimationFrame(() => window.print());
+    const reset = () => setPrintTarget(null);
+    window.addEventListener("afterprint", reset);
+    return () => {
+      cancelAnimationFrame(id);
+      document.body.classList.remove(`printing-${printTarget}`);
+      window.removeEventListener("afterprint", reset);
+    };
+  }, [printTarget]);
 
   function setWorkOrders(updater: (wos: WorkOrder[]) => WorkOrder[]) {
     setData((d) => ({ ...d, workOrders: updater(d.workOrders) }));
@@ -82,6 +102,9 @@ function App() {
         <div className="toolbar toolbar-dark">
           {tab === "schedule" && (
             <>
+              <button className="btn" onClick={() => setPrintTarget("schedule")}>
+                🖨 Print Report
+              </button>
               <button
                 className="btn"
                 onClick={() =>
@@ -103,6 +126,11 @@ function App() {
                 onChange={(e) => e.target.files?.[0] && handleExcelImport(e.target.files[0])}
               />
             </>
+          )}
+          {tab === "assignments" && (
+            <button className="btn" onClick={() => setPrintTarget("assignments")} disabled={!selectedBoard}>
+              🖨 Print Report
+            </button>
           )}
           <button className="btn" onClick={() => exportAppDataToJson(data)}>
             ⬇ Backup (JSON)
@@ -128,7 +156,14 @@ function App() {
 
       <main className="app-main">
         {tab === "schedule" && <ProductionSchedule workOrders={data.workOrders} setWorkOrders={setWorkOrders} />}
-        {tab === "assignments" && <LineAssignments boards={data.boards} setBoards={setBoards} />}
+        {tab === "assignments" && (
+          <LineAssignments
+            boards={data.boards}
+            setBoards={setBoards}
+            selectedId={selectedBoard?.id ?? ""}
+            setSelectedId={setSelectedBoardId}
+          />
+        )}
         {tab === "roster" && <SkillsRoles employees={data.employees} setEmployees={setEmployees} />}
       </main>
 
@@ -136,6 +171,11 @@ function App() {
         Data is saved automatically in this browser. Use "Backup (JSON)" regularly to keep a copy you can restore
         from any device.
       </footer>
+
+      <div className="print-root">
+        <PrintSchedule workOrders={data.workOrders} />
+        <PrintAssignments board={selectedBoard} />
+      </div>
     </div>
   );
 }
