@@ -1073,3 +1073,63 @@ tr.print-divider td {
   background: rgba(255, 255, 255, 0.55);
   border-top-left-radius: 4px;
 }
+
+/* ---------- Name multi-select (assigned employees) ---------- */
+
+.name-multiselect {
+  margin-top: 4px;
+}
+
+.name-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 22px;
+  margin-bottom: 4px;
+}
+
+.name-chips-empty {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-style: italic;
+  padding: 2px 0;
+}
+
+.name-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 4px 2px 8px;
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.name-chip button {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 999px;
+}
+.name-chip button:hover {
+  background: var(--hover);
+  color: var(--danger);
+}
+
+.name-add-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+}
+.name-add-row select,
+.name-add-row input {
+  margin-top: 0 !important;
+  flex: 1;
+}

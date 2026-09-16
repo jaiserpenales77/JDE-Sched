@@ -1,10 +1,19 @@
-import type { DailyBoard, ListSection, LineSlot } from "../types";
+import type { DailyBoard, Employee, ListSection, LineSlot } from "../types";
+import NameMultiSelect from "./NameMultiSelect";
 
 interface Props {
   boards: DailyBoard[];
   setBoards: (updater: (boards: DailyBoard[]) => DailyBoard[]) => void;
   selectedId: string;
   setSelectedId: (id: string) => void;
+  employees: Employee[];
+}
+
+// Roster names carry trailing role tags (e.g. "Jaiser Penales MLL") that
+// the day board itself never shows - strip them so picking someone from
+// the dropdown produces the same plain "First Last" text as before.
+function cleanEmployeeName(name: string): string {
+  return name.trim().replace(/\s+(MLL|MLT|LL)$/i, "").trim();
 }
 
 function todayIso() {
@@ -33,9 +42,12 @@ function blankSection(): ListSection {
   return { id: crypto.randomUUID(), title: "New Section", items: [] };
 }
 
-export default function LineAssignments({ boards, setBoards, selectedId, setSelectedId }: Props) {
+export default function LineAssignments({ boards, setBoards, selectedId, setSelectedId, employees }: Props) {
   const sorted = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
   const board = boards.find((b) => b.id === selectedId) ?? sorted[0];
+  const employeeNames = [...new Set(employees.map((e) => cleanEmployeeName(e.name)).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b),
+  );
 
   function updateBoard(id: string, patch: Partial<DailyBoard>) {
     setBoards((bs) => bs.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -179,11 +191,10 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
                       value={slot.subNote}
                       onChange={(e) => updateSlot(slot.id, { subNote: e.target.value })}
                     />
-                    <textarea
-                      placeholder="Assigned employees"
-                      rows={2}
+                    <NameMultiSelect
                       value={slot.assigned}
-                      onChange={(e) => updateSlot(slot.id, { assigned: e.target.value })}
+                      onChange={(next) => updateSlot(slot.id, { assigned: next })}
+                      options={employeeNames}
                     />
                   </div>
                 </div>

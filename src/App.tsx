@@ -178,6 +178,7 @@ function App() {
               setBoards={setBoards}
               selectedId={selectedBoard?.id ?? ""}
               setSelectedId={setSelectedBoardId}
+              employees={data.employees}
             />
             <PrintDesignSettings settings={data.printSettings} setSettings={setPrintSettings} />
             {data.printSettings.freeFormLayout && selectedBoard && (
