@@ -174,7 +174,7 @@ function App() {
 
       <div className="print-root">
         <PrintSchedule workOrders={data.workOrders} />
-        <PrintAssignments board={selectedBoard} />
+        <PrintAssignments board={selectedBoard} employees={data.employees} />
       </div>
     </div>
   );

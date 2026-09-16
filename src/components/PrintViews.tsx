@@ -1,4 +1,4 @@
-import type { DailyBoard, LineSlot, WorkOrder } from "../types";
+import type { DailyBoard, Employee, LineSlot, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -153,7 +153,36 @@ function statusKey(status: LineSlot["status"]): "scheduled" | "not-scheduled" | 
   return "not-scheduled";
 }
 
-export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
+// First-name lookup: the day board and the skills roster were kept as two
+// separate sheets in the original workbook and don't always agree on a
+// person's last name/nickname (e.g. roster "Vicky LL" vs board "Vicky
+// Rama") - first name is the reliable common key between them.
+function buildFirstNameRoleMap(employees: Employee[]): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const e of employees) {
+    const first = e.name.trim().split(/\s+/)[0]?.toLowerCase();
+    if (first) map.set(first, e.role);
+  }
+  return map;
+}
+
+// The original sheet hand-highlighted Line Leaders (dark green) and
+// MLL/MLT crew (navy) by name within the assigned-names lists.
+function nameRoleClass(name: string, roleMap: Map<string, string>): string {
+  const first = name.trim().split(/\s+/)[0]?.toLowerCase();
+  const role = first ? roleMap.get(first) : undefined;
+  if (!role) return "";
+  if (/line leader/i.test(role)) return "print-assign-role-leader";
+  if (/\bMLL\b|\bMLT\b/i.test(role)) return "print-assign-role-mlx";
+  return "";
+}
+
+interface PrintAssignmentsProps {
+  board: DailyBoard | undefined;
+  employees: Employee[];
+}
+
+export function PrintAssignments({ board, employees }: PrintAssignmentsProps) {
   if (!board) {
     return (
       <div className="print-assignments">
@@ -162,7 +191,9 @@ export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
     );
   }
 
+  const roleMap = buildFirstNameRoleMap(employees);
   const bands = chunk(board.lineSlots, SLOTS_PER_BAND);
+  const roomBands = chunk(board.roomSections, SLOTS_PER_BAND);
 
   return (
     <div className="print-assignments">
@@ -190,7 +221,7 @@ export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
                 <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
                 <div className="print-assign-names">
                   {names.map((name, i) => (
-                    <div className="print-assign-name-row" key={i}>
+                    <div className={`print-assign-name-row ${nameRoleClass(name, roleMap)}`} key={i}>
                       {name}
                     </div>
                   ))}
@@ -198,6 +229,23 @@ export function PrintAssignments({ board }: { board: DailyBoard | undefined }) {
               </div>
             );
           })}
+        </div>
+      ))}
+
+      {roomBands.map((band, bandIdx) => (
+        <div className="print-assign-band-row print-assign-room-row" key={bandIdx}>
+          {band.map((section) => (
+            <div className="print-assign-col" key={section.id}>
+              <div className="print-assign-room-header">{section.title}</div>
+              <div className="print-assign-names">
+                {section.items.map((item, i) => (
+                  <div className={`print-assign-name-row ${nameRoleClass(item, roleMap)}`} key={i}>
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       ))}
     </div>

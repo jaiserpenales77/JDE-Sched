@@ -46,6 +46,13 @@ export interface DailyBoard {
   shiftLabel: string;
   deptLeader: string;
   lineSlots: LineSlot[];
+  // Room/duty assignments (Label Room, Wash Room, Maintenance Mechs, ...) -
+  // structurally part of the same line-assignment grid in the original
+  // sheet (same 6-column band layout, just below the numbered lines), so
+  // these print alongside lineSlots.
+  roomSections: ListSection[];
+  // PTO, Sick/Unscheduled, Training Plan, Leads, etc. - a separate side
+  // panel in the original sheet. Editable on screen, excluded from print.
   listSections: ListSection[];
 }
 

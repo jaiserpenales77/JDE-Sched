@@ -18,9 +18,12 @@ function blankBoard(date: string): DailyBoard {
     shiftLabel: "3rd Shift",
     deptLeader: "",
     lineSlots: [],
+    roomSections: [],
     listSections: [],
   };
 }
+
+type SectionField = "roomSections" | "listSections";
 
 function blankSlot(): LineSlot {
   return { id: crypto.randomUUID(), line: "New Line", status: "", subNote: "", assigned: "" };
@@ -51,6 +54,7 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
           id: crypto.randomUUID(),
           date,
           lineSlots: board.lineSlots.map((s) => ({ ...s, id: crypto.randomUUID() })),
+          roomSections: board.roomSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
           listSections: board.listSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
         }
       : blankBoard(date);
@@ -78,31 +82,31 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
     updateBoard(board.id, { lineSlots: [...board.lineSlots, blankSlot()] });
   }
 
-  function updateSection(id: string, patch: Partial<ListSection>) {
+  function updateSection(field: SectionField, id: string, patch: Partial<ListSection>) {
     if (!board) return;
-    updateBoard(board.id, { listSections: board.listSections.map((s) => (s.id === id ? { ...s, ...patch } : s)) });
+    updateBoard(board.id, { [field]: board[field].map((s) => (s.id === id ? { ...s, ...patch } : s)) });
   }
-  function removeSection(id: string) {
+  function removeSection(field: SectionField, id: string) {
     if (!board) return;
-    updateBoard(board.id, { listSections: board.listSections.filter((s) => s.id !== id) });
+    updateBoard(board.id, { [field]: board[field].filter((s) => s.id !== id) });
   }
-  function addSection() {
+  function addSection(field: SectionField) {
     if (!board) return;
-    updateBoard(board.id, { listSections: [...board.listSections, blankSection()] });
+    updateBoard(board.id, { [field]: [...board[field], blankSection()] });
   }
 
-  function setItem(section: ListSection, i: number, value: string) {
+  function setItem(field: SectionField, section: ListSection, i: number, value: string) {
     if (!board) return;
     const items = [...section.items];
     items[i] = value;
-    updateSection(section.id, { items });
+    updateSection(field, section.id, { items });
   }
-  function removeItem(section: ListSection, i: number) {
+  function removeItem(field: SectionField, section: ListSection, i: number) {
     if (!board) return;
-    updateSection(section.id, { items: section.items.filter((_, idx) => idx !== i) });
+    updateSection(field, section.id, { items: section.items.filter((_, idx) => idx !== i) });
   }
-  function addItem(section: ListSection) {
-    updateSection(section.id, { items: [...section.items, ""] });
+  function addItem(field: SectionField, section: ListSection) {
+    updateSection(field, section.id, { items: [...section.items, ""] });
   }
 
   return (
@@ -191,31 +195,69 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
           </div>
 
           <div className="panel">
-            <h2>Rosters &amp; Notes</h2>
+            <h2>Room &amp; Duty Assignments</h2>
+            <p className="panel-hint">Prints alongside the line grid above (Label Room, Wash Room, Maintenance Mechs, etc.).</p>
             <div className="sections-grid">
-              {board.listSections.map((section) => (
+              {board.roomSections.map((section) => (
                 <div className="section-card" key={section.id}>
                   <div className="section-title">
-                    <input value={section.title} onChange={(e) => updateSection(section.id, { title: e.target.value })} />
-                    <button className="btn small danger" onClick={() => removeSection(section.id)}>
+                    <input
+                      value={section.title}
+                      onChange={(e) => updateSection("roomSections", section.id, { title: e.target.value })}
+                    />
+                    <button className="btn small danger" onClick={() => removeSection("roomSections", section.id)}>
                       ✕
                     </button>
                   </div>
                   {section.items.map((item, i) => (
                     <div className="section-item-row" key={i}>
-                      <input value={item} onChange={(e) => setItem(section, i, e.target.value)} />
-                      <button className="btn small danger" onClick={() => removeItem(section, i)}>
+                      <input value={item} onChange={(e) => setItem("roomSections", section, i, e.target.value)} />
+                      <button className="btn small danger" onClick={() => removeItem("roomSections", section, i)}>
                         ✕
                       </button>
                     </div>
                   ))}
-                  <button className="btn small" onClick={() => addItem(section)}>
+                  <button className="btn small" onClick={() => addItem("roomSections", section)}>
                     + Add item
                   </button>
                 </div>
               ))}
             </div>
-            <button className="btn small" style={{ marginTop: 10 }} onClick={addSection}>
+            <button className="btn small" style={{ marginTop: 10 }} onClick={() => addSection("roomSections")}>
+              + Add section
+            </button>
+          </div>
+
+          <div className="panel">
+            <h2>Rosters &amp; Notes</h2>
+            <p className="panel-hint">On-screen only — not included in the print report.</p>
+            <div className="sections-grid">
+              {board.listSections.map((section) => (
+                <div className="section-card" key={section.id}>
+                  <div className="section-title">
+                    <input
+                      value={section.title}
+                      onChange={(e) => updateSection("listSections", section.id, { title: e.target.value })}
+                    />
+                    <button className="btn small danger" onClick={() => removeSection("listSections", section.id)}>
+                      ✕
+                    </button>
+                  </div>
+                  {section.items.map((item, i) => (
+                    <div className="section-item-row" key={i}>
+                      <input value={item} onChange={(e) => setItem("listSections", section, i, e.target.value)} />
+                      <button className="btn small danger" onClick={() => removeItem("listSections", section, i)}>
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button className="btn small" onClick={() => addItem("listSections", section)}>
+                    + Add item
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button className="btn small" style={{ marginTop: 10 }} onClick={() => addSection("listSections")}>
               + Add section
             </button>
           </div>
