@@ -115,6 +115,50 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
     updateBoard(board.id, { lineSlots: [...board.lineSlots, blankSlot()] });
   }
 
+  // Moves an entire line's assigned team onto another line in one board
+  // update (not two separate updateSlot calls, which would each read the
+  // same pre-transfer lineSlots and the second would clobber the first),
+  // then clears the team off the line they transferred from.
+  function transferTeam(slot: LineSlot) {
+    if (!board) return;
+    const team = slot.assigned
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+    if (team.length === 0) {
+      alert("No team assigned to this line to transfer.");
+      return;
+    }
+    const otherLines = board.lineSlots.filter((s) => s.id !== slot.id).map((s) => s.line);
+    if (otherLines.length === 0) {
+      alert("There's no other line to transfer this team to.");
+      return;
+    }
+    const target = prompt(
+      `Transfer the team from "${slot.line}" to which line?\n\nAvailable lines: ${otherLines.join(", ")}`,
+    );
+    if (!target || !target.trim()) return;
+    const targetSlot = board.lineSlots.find(
+      (s) => s.id !== slot.id && s.line.trim().toLowerCase() === target.trim().toLowerCase(),
+    );
+    if (!targetSlot) {
+      alert(`No line named "${target}" found.`);
+      return;
+    }
+    const existing = targetSlot.assigned
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+    const merged = [...existing, ...team.filter((n) => !existing.includes(n))];
+    updateBoard(board.id, {
+      lineSlots: board.lineSlots.map((s) => {
+        if (s.id === slot.id) return { ...s, assigned: "" };
+        if (s.id === targetSlot.id) return { ...s, assigned: merged.join(", ") };
+        return s;
+      }),
+    });
+  }
+
   function updateSection(field: SectionField, id: string, patch: Partial<ListSection>) {
     if (!board) return;
     updateBoard(board.id, { [field]: board[field].map((s) => (s.id === id ? { ...s, ...patch } : s)) });
@@ -230,6 +274,9 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
                       onChange={(next) => updateSlot(slot.id, { assigned: next })}
                       options={employeeNames}
                     />
+                    <button type="button" className="btn small" onClick={() => transferTeam(slot)}>
+                      🔀 Transfer team
+                    </button>
                   </div>
                 </div>
               ))}

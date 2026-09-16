@@ -562,6 +562,10 @@ tr.hl-bulk select {
   padding: 8px 10px;
 }
 
+.line-slot-card .slot-body > .btn {
+  margin-top: 8px;
+}
+
 .slot-line-input {
   font-weight: 700;
   border: none !important;
