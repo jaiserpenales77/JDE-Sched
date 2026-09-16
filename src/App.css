@@ -776,16 +776,16 @@ tr.print-divider td {
 /* A production line checked in the "Scheduled Lines" panel - draws a
    green box around the whole line's block of rows. */
 tr.print-line-scheduled td:first-child {
-  border-left: 3px solid #2e7d32;
+  border-left: 6px solid #00c805;
 }
 tr.print-line-scheduled td:last-child {
-  border-right: 3px solid #2e7d32;
+  border-right: 6px solid #00c805;
 }
 tr.print-line-scheduled-first td {
-  border-top: 3px solid #2e7d32;
+  border-top: 6px solid #00c805;
 }
 tr.print-line-scheduled-last td {
-  border-bottom: 3px solid #2e7d32;
+  border-bottom: 6px solid #00c805;
 }
 
 /* A blank, borderless row between each production line's group of work
