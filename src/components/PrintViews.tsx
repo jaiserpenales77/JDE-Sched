@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
 import {
   groupByLine,
+  percentActual,
   bottlesRemaining,
   changeoverCode,
   isAllergenRow,
@@ -10,15 +11,16 @@ import {
   isBulkHighlightRow,
 } from "../scheduleLogic";
 import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey } from "../printLayout";
+import ProgressBar from "./ProgressBar";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
 // the "JDE Template (2)" sheet's print area (A1:P16 - Line Status was
-// outside that print area, so it's left out here too; Desiccant takes
-// the % Actual Complete column's place, more useful on a printed page
-// than a system-calculated figure), the same pastel conditional-
-// formatting fills, and the same thick navy divider between production
-// lines that "Add Line Dividers" used to draw.
+// outside that print area, so it's left out here too), plus a Desiccant
+// column (also part of the original sheet, but outside its print area)
+// alongside % Actual Complete, the same pastel conditional-formatting
+// fills, and the same thick navy divider between production lines that
+// "Add Line Dividers" used to draw.
 
 export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders: WorkOrder[]; scheduledLines?: string[] }) {
   const groups = groupByLine(workOrders);
@@ -29,7 +31,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
       <table className="print-table">
         <thead>
           <tr>
-            <th colSpan={16} className="print-title-row">
+            <th colSpan={17} className="print-title-row">
               PRODUCTION LINE SCHEDULE
               <span className="print-title-date">{today}</span>
             </th>
@@ -49,6 +51,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
             <th>WO Quantity</th>
             <th>% Complete</th>
             <th>Desiccant</th>
+            <th className="print-formula-col">% Actual Complete</th>
             <th className="print-formula-col">Bottles Remaining</th>
             <th className="print-formula-col">CHANGEOVER</th>
           </tr>
@@ -56,7 +59,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
         <tbody>
           {groups.length === 0 && (
             <tr>
-              <td colSpan={16} style={{ textAlign: "center", padding: 20 }}>
+              <td colSpan={17} style={{ textAlign: "center", padding: 20 }}>
                 No work orders scheduled.
               </td>
             </tr>
@@ -101,6 +104,9 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
                     <td className="print-num">{row.woQuantity}</td>
                     <td className="print-num">{row.percentComplete}</td>
                     <td>{row.desiccant}</td>
+                    <td className="print-formula-col print-progress-cell">
+                      <ProgressBar value={percentActual(row)} />
+                    </td>
                     <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
                     <td className="print-formula-col">{chg}</td>
                   </tr>
@@ -108,7 +114,7 @@ export function PrintSchedule({ workOrders, scheduledLines = [] }: { workOrders:
               })}
               {groupIdx < groups.length - 1 && (
                 <tr className="print-line-spacer" aria-hidden="true">
-                  <td colSpan={16} />
+                  <td colSpan={17} />
                 </tr>
               )}
             </Fragment>
