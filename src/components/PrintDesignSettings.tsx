@@ -96,7 +96,8 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
             <ColorField label="Not Scheduled" value={settings.notScheduledColor} onChange={(v) => set("notScheduledColor", v)} />
             <ColorField label="PM" value={settings.pmColor} onChange={(v) => set("pmColor", v)} />
             <ColorField label="Line Leader highlight" value={settings.leaderColor} onChange={(v) => set("leaderColor", v)} />
-            <ColorField label="MLL / MLT highlight" value={settings.crewColor} onChange={(v) => set("crewColor", v)} />
+            <ColorField label="MLL highlight" value={settings.mllColor} onChange={(v) => set("mllColor", v)} />
+            <ColorField label="MLT highlight" value={settings.mltColor} onChange={(v) => set("mltColor", v)} />
           </div>
 
           <button className="btn small" onClick={() => setSettings(() => ({ ...defaultPrintSettings }))}>

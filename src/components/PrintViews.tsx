@@ -163,7 +163,8 @@ function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: bool
   const role = first ? roleMap.get(first) : undefined;
   if (!role) return "";
   if (/line leader/i.test(role)) return "print-assign-role-leader";
-  if (/\bMLL\b|\bMLT\b/i.test(role)) return "print-assign-role-mlx";
+  if (/\bMLL\b/i.test(role)) return "print-assign-role-mll";
+  if (/\bMLT\b/i.test(role)) return "print-assign-role-mlt";
   return "";
 }
 
@@ -246,7 +247,8 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
     "--print-not-scheduled-color": settings.notScheduledColor,
     "--print-pm-color": settings.pmColor,
     "--print-leader-color": settings.leaderColor,
-    "--print-crew-color": settings.crewColor,
+    "--print-mll-color": settings.mllColor,
+    "--print-mlt-color": settings.mltColor,
   } as CSSProperties;
 
   return (

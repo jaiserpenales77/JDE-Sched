@@ -109,7 +109,8 @@ export interface PrintAssignSettings {
   notScheduledColor: string;
   pmColor: string;
   leaderColor: string;
-  crewColor: string;
+  mllColor: string;
+  mltColor: string;
   // When true, line/room boxes are drawn at their saved boxLayouts
   // position instead of the automatic flowing grid.
   freeFormLayout: boolean;

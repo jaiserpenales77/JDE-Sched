@@ -22,6 +22,14 @@ function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
 function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefined): PrintAssignSettings {
   const merged = { ...defaultPrintSettings, ...settings };
   if (!merged.boxLayouts || typeof merged.boxLayouts !== "object") merged.boxLayouts = {};
+  // Migrate the old single "MLL / MLT highlight" color (crewColor) - if a
+  // user already customized it, carry that over to both new fields instead
+  // of silently reverting them to the default.
+  const legacyCrewColor = (settings as { crewColor?: string } | undefined)?.crewColor;
+  if (legacyCrewColor) {
+    if (!settings?.mllColor) merged.mllColor = legacyCrewColor;
+    if (!settings?.mltColor) merged.mltColor = legacyCrewColor;
+  }
   return merged;
 }
 

@@ -187,7 +187,8 @@ export const defaultPrintSettings: PrintAssignSettings = {
   notScheduledColor: "#8c8c8c",
   pmColor: "#2e75b6",
   leaderColor: "#005426",
-  crewColor: "#002060",
+  mllColor: "#002060",
+  mltColor: "#002060",
   freeFormLayout: false,
   boxLayouts: {},
 };

@@ -110,7 +110,8 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
     "--print-not-scheduled-color": settings.notScheduledColor,
     "--print-pm-color": settings.pmColor,
     "--print-leader-color": settings.leaderColor,
-    "--print-crew-color": settings.crewColor,
+    "--print-mll-color": settings.mllColor,
+    "--print-mlt-color": settings.mltColor,
   } as CSSProperties;
 
   return (

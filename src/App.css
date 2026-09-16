@@ -909,8 +909,13 @@ tr.print-divider td {
   color: #fff;
   font-weight: 700;
 }
-.print-assign-name-row.print-assign-role-mlx {
-  background: var(--print-crew-color, #002060);
+.print-assign-name-row.print-assign-role-mll {
+  background: var(--print-mll-color, #002060);
+  color: #fff;
+  font-weight: 700;
+}
+.print-assign-name-row.print-assign-role-mlt {
+  background: var(--print-mlt-color, #002060);
   color: #fff;
   font-weight: 700;
 }
