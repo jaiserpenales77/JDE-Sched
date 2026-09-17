@@ -63,6 +63,16 @@ body {
   color: var(--text);
 }
 
+/* The dropdown popup for a <select> is drawn natively by the browser, not
+   by our CSS - it doesn't automatically pick up the app's dark theme, so
+   without an explicit color/background here its options inherit our light
+   (near-white) text color onto the browser's own white popup background
+   and become unreadable. */
+select option {
+  background-color: var(--panel);
+  color: var(--text);
+}
+
 .app {
   min-height: 100vh;
   display: flex;
