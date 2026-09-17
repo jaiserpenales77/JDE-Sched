@@ -95,9 +95,40 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
   XLSX.writeFile(workbook, `jde-production-schedule-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
+// Different exports of "the same" production schedule use different column
+// names for the same field (e.g. an ERP export's "Order Number" instead of
+// the JDE template's "WO") - each field lists every header text seen in the
+// wild, tried in order, so either format (or a mix) is recognized.
+const COLUMN_ALIASES = {
+  line: ["LINE"],
+  wo: ["WO", "ORDER NUMBER"],
+  seq: ["SEQ", "SEQUENCE NUMBER"],
+  item: ["ITEM", "2ND ITEM NUMBER"],
+  desc: ["PRODUCT DESCRIPTION", "2ND ITEM NUMBER DESCRIPTION"],
+  count: ["COUNT", "BOTTLE COUNT"],
+  bulk: ["BULK ITEM"],
+  bottle: ["BOTTLE SIZE"],
+  cap: ["CAP DESCRIPTION"],
+  allergen: ["ALLERGEN", "ALLERGEN CODE"],
+  remarks: ["REMARKS"],
+  qty: ["WO QUANTITY", "BATCH QUANTITY"],
+  pct: ["% COMPLETE", "WO % COMPLETED"],
+  status: ["LINE STATUS"],
+  desiccant: ["DESICCANT"],
+} as const satisfies Record<string, readonly string[]>;
+
+function findColumn(header: string[], aliases: readonly string[]): number {
+  for (const alias of aliases) {
+    const i = header.indexOf(alias);
+    if (i !== -1) return i;
+  }
+  return -1;
+}
+
 // Best-effort import of a production schedule from an .xlsx/.xlsm file: finds
-// the header row containing "LINE" and "WO", then reads rows below it until
-// a blank LINE+WO pair or a "LEGEND" marker ends the table.
+// the header row containing a LINE column and a WO-like column (see
+// COLUMN_ALIASES), then reads rows below it until a blank LINE+WO pair or a
+// "LEGEND" marker ends the table.
 export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -109,32 +140,32 @@ export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]>
         for (const sheetName of workbook.SheetNames) {
           const sheet = workbook.Sheets[sheetName];
           const grid: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true });
-          const headerRowIdx = grid.findIndex(
-            (row) =>
-              Array.isArray(row) &&
-              row.some((c) => String(c).trim().toUpperCase() === "LINE") &&
-              row.some((c) => String(c).trim().toUpperCase() === "WO"),
-          );
+          const headerRowIdx = grid.findIndex((row) => {
+            if (!Array.isArray(row)) return false;
+            const upper = row.map((c) => String(c ?? "").trim().toUpperCase());
+            const hasLine = upper.includes("LINE");
+            const hasWo = COLUMN_ALIASES.wo.some((alias) => upper.includes(alias));
+            return hasLine && hasWo;
+          });
           if (headerRowIdx === -1) continue;
 
           const header = grid[headerRowIdx].map((c) => String(c ?? "").trim().toUpperCase());
-          const col = (name: string) => header.indexOf(name);
           const idx = {
-            line: col("LINE"),
-            wo: col("WO"),
-            seq: col("SEQ"),
-            item: col("ITEM"),
-            desc: col("PRODUCT DESCRIPTION"),
-            count: col("COUNT"),
-            bulk: col("BULK ITEM"),
-            bottle: col("BOTTLE SIZE"),
-            cap: col("CAP DESCRIPTION"),
-            allergen: col("ALLERGEN"),
-            remarks: col("REMARKS"),
-            qty: col("WO QUANTITY"),
-            pct: col("% COMPLETE"),
-            status: col("LINE STATUS"),
-            desiccant: col("DESICCANT"),
+            line: findColumn(header, COLUMN_ALIASES.line),
+            wo: findColumn(header, COLUMN_ALIASES.wo),
+            seq: findColumn(header, COLUMN_ALIASES.seq),
+            item: findColumn(header, COLUMN_ALIASES.item),
+            desc: findColumn(header, COLUMN_ALIASES.desc),
+            count: findColumn(header, COLUMN_ALIASES.count),
+            bulk: findColumn(header, COLUMN_ALIASES.bulk),
+            bottle: findColumn(header, COLUMN_ALIASES.bottle),
+            cap: findColumn(header, COLUMN_ALIASES.cap),
+            allergen: findColumn(header, COLUMN_ALIASES.allergen),
+            remarks: findColumn(header, COLUMN_ALIASES.remarks),
+            qty: findColumn(header, COLUMN_ALIASES.qty),
+            pct: findColumn(header, COLUMN_ALIASES.pct),
+            status: findColumn(header, COLUMN_ALIASES.status),
+            desiccant: findColumn(header, COLUMN_ALIASES.desiccant),
           };
 
           const result: WorkOrder[] = [];
