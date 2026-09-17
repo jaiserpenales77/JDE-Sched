@@ -119,6 +119,73 @@ body {
   color: var(--text);
 }
 
+/* Which shift this device is showing - a per-device setting (not synced),
+   sitting next to the tabs since it's a top-level "which data am I
+   looking at" choice, not a page-specific control. */
+.shift-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+.shift-picker select {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* First-run "which shift is this device" screen - blocks the rest of the
+   app until answered, since every synced read/write depends on it. */
+.shift-chooser {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 20px;
+}
+.shift-chooser-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 440px;
+  width: 100%;
+  text-align: center;
+}
+.shift-chooser-card .app-title {
+  color: var(--text);
+  margin-bottom: 20px;
+}
+.shift-chooser-card h1 {
+  font-size: 18px;
+  margin: 0 0 20px;
+}
+.shift-chooser-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.shift-chooser-options .btn {
+  padding: 12px;
+  font-size: 15px;
+}
+.shift-chooser-hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
 .toolbar {
   display: flex;
   gap: 8px;

@@ -1,4 +1,5 @@
-import type { AppData, DailyBoard, Employee, PrintAssignSettings, WorkOrder } from "./types";
+import type { AppData, DailyBoard, Employee, PrintAssignSettings, SharedData, ShiftKey, WorkOrder } from "./types";
+import { SHIFT_LABELS } from "./types";
 
 // Seed data carried over from JDE_Sched_FINAL_v1.8.xlsm so the app opens
 // with the same production schedule / roster the spreadsheet had, instead
@@ -220,4 +221,24 @@ export function buildSeedData(): AppData {
     printScheduleColumnWidths: {},
     printScheduleHiddenColumns: [],
   };
+}
+
+export function buildSeedSharedData(): SharedData {
+  const { boards: _boards, ...shared } = buildSeedData();
+  return shared;
+}
+
+// The sample board is written as a 3rd-shift example, but "Reset to sample
+// data" should give whichever shift is asking a useful starting board, not
+// just 3rd shift - relabeled to match, with fresh ids.
+export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
+  return seedBoards.map((board) => ({
+    ...board,
+    id: crypto.randomUUID(),
+    shiftLabel: SHIFT_LABELS[shift],
+    lineSlots: board.lineSlots.map((s) => ({ ...s, id: crypto.randomUUID() })),
+    roomSections: board.roomSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
+    listSections: board.listSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
+    comments: board.comments.map((c) => ({ ...c, id: crypto.randomUUID() })),
+  }));
 }

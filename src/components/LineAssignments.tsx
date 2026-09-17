@@ -9,6 +9,9 @@ interface Props {
   selectedId: string;
   setSelectedId: (id: string) => void;
   employees: Employee[];
+  // Label a newly-created board starts with (e.g. "1st Shift") - matches
+  // whichever shift this device is currently showing.
+  defaultShiftLabel: string;
 }
 
 // Roster names carry trailing role tags (e.g. "Jaiser Penales MLL") that
@@ -29,11 +32,11 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function blankBoard(date: string): DailyBoard {
+function blankBoard(date: string, shiftLabel: string): DailyBoard {
   return {
     id: crypto.randomUUID(),
     date,
-    shiftLabel: "3rd Shift",
+    shiftLabel,
     deptLeader: "",
     lineSlots: [],
     roomSections: [],
@@ -70,7 +73,14 @@ function blankComment(index: number): CommentBox {
   };
 }
 
-export default function LineAssignments({ boards, setBoards, selectedId, setSelectedId, employees }: Props) {
+export default function LineAssignments({
+  boards,
+  setBoards,
+  selectedId,
+  setSelectedId,
+  employees,
+  defaultShiftLabel,
+}: Props) {
   const sorted = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
   const board = boards.find((b) => b.id === selectedId) ?? sorted[0];
   const employeeNames = [...new Set(employees.map((e) => cleanEmployeeName(e.name)).filter(Boolean))].sort((a, b) =>
@@ -99,7 +109,7 @@ export default function LineAssignments({ boards, setBoards, selectedId, setSele
           listSections: board.listSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
           comments: board.comments.map((c) => ({ ...c, id: crypto.randomUUID() })),
         }
-      : blankBoard(date);
+      : blankBoard(date, defaultShiftLabel);
     setBoards((bs) => [...bs, created]);
     setSelectedId(created.id);
   }

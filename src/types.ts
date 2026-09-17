@@ -147,9 +147,23 @@ export interface PrintAssignSettings {
   boxLayouts: Record<string, BoxLayout>;
 }
 
-export interface AppData {
+// Which shift a device is currently showing - chosen once at the top of
+// the page (next to the tabs) and remembered per device. Line Assignments
+// boards are kept in a completely separate synced record per shift, so a
+// device on one shift never even fetches another shift's board data.
+export const SHIFT_KEYS = ["1st", "2nd", "3rd"] as const;
+export type ShiftKey = (typeof SHIFT_KEYS)[number];
+export const SHIFT_LABELS: Record<ShiftKey, string> = {
+  "1st": "1st Shift",
+  "2nd": "2nd Shift",
+  "3rd": "3rd Shift",
+};
+
+// Data every shift shares: the production schedule and roster describe
+// the same factory floor regardless of who's on duty, so all devices sync
+// the same copy of this - only Line Assignments boards are shift-specific.
+export interface SharedData {
   workOrders: WorkOrder[];
-  boards: DailyBoard[];
   employees: Employee[];
   printSettings: PrintAssignSettings;
   // Production lines checked in the "Scheduled Lines" panel - highlighted
@@ -161,4 +175,12 @@ export interface AppData {
   // Column keys checked off in the print preview's "Hide columns" list -
   // omitted entirely from the printed Production Schedule report.
   printScheduleHiddenColumns: string[];
+}
+
+// The full combined shape - shared data plus whichever shift's boards
+// this device currently has loaded. Only used for JSON backup/restore,
+// where "everything this device can currently see" is the useful unit,
+// even though shared data and a shift's boards sync as separate records.
+export interface AppData extends SharedData {
+  boards: DailyBoard[];
 }
