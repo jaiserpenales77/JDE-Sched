@@ -1,4 +1,4 @@
-import type { AppData, DailyBoard, Employee, PrintAssignSettings, SharedData, ShiftKey, WorkOrder } from "./types";
+import type { AppData, DailyBoard, Employee, PrintAssignSettings, ShiftKey, WorkOrder } from "./types";
 import { SHIFT_LABELS } from "./types";
 
 // Seed data carried over from JDE_Sched_FINAL_v1.8.xlsm so the app opens
@@ -211,26 +211,10 @@ export const defaultPrintSettings: PrintAssignSettings = {
   boxLayouts: {},
 };
 
-export function buildSeedData(): AppData {
-  return {
-    workOrders: seedWorkOrders,
-    boards: seedBoards,
-    employees: seedEmployees,
-    printSettings: { ...defaultPrintSettings },
-    scheduledLines: [],
-    printScheduleColumnWidths: {},
-    printScheduleHiddenColumns: [],
-  };
-}
-
-export function buildSeedSharedData(): SharedData {
-  const { boards: _boards, ...shared } = buildSeedData();
-  return shared;
-}
-
-// The sample board is written as a 3rd-shift example, but "Reset to sample
-// data" should give whichever shift is asking a useful starting board, not
-// just 3rd shift - relabeled to match, with fresh ids.
+// The sample board is written as a 3rd-shift example, but seeding a shift
+// should give whichever one is asking a useful starting board, not just
+// 3rd shift - relabeled to match, with fresh ids so different shifts'
+// seeded boards never accidentally share an id.
 export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
   return seedBoards.map((board) => ({
     ...board,
@@ -241,4 +225,21 @@ export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
     listSections: board.listSections.map((s) => ({ ...s, id: crypto.randomUUID(), items: [...s.items] })),
     comments: board.comments.map((c) => ({ ...c, id: crypto.randomUUID() })),
   }));
+}
+
+// Every shift starts from the same sample Production Schedule / roster
+// content (there's no naturally shift-specific version of it in the
+// original spreadsheet), but each shift gets its own independent copy
+// with fresh ids, so editing one shift's seeded data never touches
+// another's.
+export function buildSeedData(shift: ShiftKey): AppData {
+  return {
+    workOrders: seedWorkOrders.map((w) => ({ ...w, id: crypto.randomUUID() })),
+    employees: seedEmployees.map((e) => ({ ...e, id: crypto.randomUUID(), skills: { ...e.skills } })),
+    printSettings: { ...defaultPrintSettings, boxLayouts: {} },
+    scheduledLines: [],
+    printScheduleColumnWidths: {},
+    printScheduleHiddenColumns: [],
+    boards: seedBoardsForShift(shift),
+  };
 }

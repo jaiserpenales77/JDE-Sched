@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
-import { useSharedData, useShiftBoards, useCurrentShift, resetSharedToSeed, emptySharedData, seedBoardsForShift } from "./storage";
+import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from "./storage";
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
@@ -13,7 +13,7 @@ import {
 } from "./excel";
 import PrintDesignSettings from "./components/PrintDesignSettings";
 import PrintLayoutEditor from "./components/PrintLayoutEditor";
-import type { WorkOrder, Employee, PrintAssignSettings, ShiftKey } from "./types";
+import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, ShiftKey } from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 
 type Tab = "schedule" | "assignments" | "roster";
@@ -21,8 +21,9 @@ type PrintTarget = "schedule" | "assignments" | null;
 
 function App() {
   const [shift, chooseShift] = useCurrentShift();
-  const [shared, setShared] = useSharedData();
-  const [boards, setBoards] = useShiftBoards(shift);
+  const [data, setData] = useShiftData(shift);
+  const { workOrders, employees, printSettings, scheduledLines, printScheduleColumnWidths, printScheduleHiddenColumns, boards } =
+    data;
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
@@ -36,7 +37,7 @@ function App() {
     if (!printTarget) return;
     document.body.classList.add(`printing-${printTarget}`);
 
-    const orientation = printTarget === "assignments" ? shared.printSettings.orientation : "landscape";
+    const orientation = printTarget === "assignments" ? printSettings.orientation : "landscape";
     const marginMm = 10;
     let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
     if (!pageStyle) {
@@ -54,7 +55,7 @@ function App() {
     // has no such ceiling - with enough lines/room sections/comments it
     // can run past one page - so shrink it down (never up) to fit, the
     // same way Excel's "fit sheet on one page" print option works.
-    if (printTarget === "assignments" && printRoot && assignEl && !shared.printSettings.freeFormLayout) {
+    if (printTarget === "assignments" && printRoot && assignEl && !printSettings.freeFormLayout) {
       const PX_PER_IN = 96;
       const PX_PER_MM = PX_PER_IN / 25.4;
       const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
@@ -113,39 +114,36 @@ function App() {
         printRoot.classList.remove("measuring");
       }
     };
-  }, [printTarget, shared.printSettings.orientation, shared.printSettings.freeFormLayout]);
+  }, [printTarget, printSettings.orientation, printSettings.freeFormLayout]);
 
+  function setBoards(updater: DailyBoard[] | ((boards: DailyBoard[]) => DailyBoard[])) {
+    setData((d) => ({ ...d, boards: typeof updater === "function" ? updater(d.boards) : updater }));
+  }
   function setWorkOrders(updater: (wos: WorkOrder[]) => WorkOrder[]) {
-    setShared((s) => ({ ...s, workOrders: updater(s.workOrders) }));
+    setData((d) => ({ ...d, workOrders: updater(d.workOrders) }));
   }
   function setEmployees(updater: (emps: Employee[]) => Employee[]) {
-    setShared((s) => ({ ...s, employees: updater(s.employees) }));
+    setData((d) => ({ ...d, employees: updater(d.employees) }));
   }
   function setPrintSettings(updater: (s: PrintAssignSettings) => PrintAssignSettings) {
-    setShared((s) => ({ ...s, printSettings: updater(s.printSettings) }));
+    setData((d) => ({ ...d, printSettings: updater(d.printSettings) }));
   }
   function setScheduledLines(updater: (lines: string[]) => string[]) {
-    setShared((s) => ({ ...s, scheduledLines: updater(s.scheduledLines) }));
+    setData((d) => ({ ...d, scheduledLines: updater(d.scheduledLines) }));
   }
   function setScheduleColumnWidths(updater: (widths: Record<string, number>) => Record<string, number>) {
-    setShared((s) => ({ ...s, printScheduleColumnWidths: updater(s.printScheduleColumnWidths) }));
+    setData((d) => ({ ...d, printScheduleColumnWidths: updater(d.printScheduleColumnWidths) }));
   }
   function setScheduleHiddenColumns(updater: (cols: string[]) => string[]) {
-    setShared((s) => ({ ...s, printScheduleHiddenColumns: updater(s.printScheduleHiddenColumns) }));
+    setData((d) => ({ ...d, printScheduleHiddenColumns: updater(d.printScheduleHiddenColumns) }));
   }
 
   async function handleJsonImport(file: File) {
     try {
       const imported = await readAppDataFromJsonFile(file);
-      if (
-        !confirm(
-          "This will replace the shared Production Schedule/roster and this shift's boards with the imported backup. Continue?",
-        )
-      )
+      if (!confirm(`This will replace this shift's (${shift ? SHIFT_LABELS[shift] : ""}) data with the imported backup. Continue?`))
         return;
-      const { boards: importedBoards, ...importedShared } = imported;
-      setShared(importedShared);
-      setBoards(importedBoards);
+      setData(imported);
     } catch (err) {
       alert(`Could not read that file: ${(err as Error).message}`);
     }
@@ -155,7 +153,7 @@ function App() {
     try {
       const workOrders = await readWorkOrdersFromWorkbookFile(file);
       if (!confirm(`Found ${workOrders.length} work order row(s). Replace the current Production Schedule?`)) return;
-      setShared((s) => ({ ...s, workOrders }));
+      setData((d) => ({ ...d, workOrders }));
       setTab("schedule");
     } catch (err) {
       alert(`Could not read that spreadsheet: ${(err as Error).message}`);
@@ -165,18 +163,16 @@ function App() {
   function handleResetToSample() {
     if (
       !confirm(
-        "Replace the shared Production Schedule/roster and this shift's boards with the original sample data from the spreadsheet?",
+        `Replace this shift's (${shift ? SHIFT_LABELS[shift] : ""}) Production Schedule, roster and boards with the original sample data from the spreadsheet?`,
       )
     )
       return;
-    setShared(resetSharedToSeed());
-    if (shift) setBoards(seedBoardsForShift(shift));
+    if (shift) setData(seedDataForShift(shift));
   }
 
   function handleWipe() {
-    if (!confirm("This will erase the shared data (schedule, roster) and this shift's boards. Continue?")) return;
-    setShared(emptySharedData());
-    setBoards([]);
+    if (!confirm(`This will erase all of this shift's (${shift ? SHIFT_LABELS[shift] : ""}) data. Continue?`)) return;
+    setData(emptyAppData());
   }
 
   if (!shift) {
@@ -196,8 +192,8 @@ function App() {
             ))}
           </div>
           <p className="shift-chooser-hint">
-            You can change this anytime from the header. Each shift's Line Assignments boards are kept completely
-            separate from the others - the Production Schedule and Skills &amp; Roles roster are shared by everyone.
+            You can change this anytime from the header. Each shift has its own completely separate Production
+            Schedule, Line Assignments boards and Skills &amp; Roles roster - nothing here is shared between shifts.
           </p>
         </div>
       </div>
@@ -241,7 +237,7 @@ function App() {
               <button
                 className="btn"
                 onClick={() =>
-                  exportWorkOrdersToExcel(shared.workOrders).catch((err) =>
+                  exportWorkOrdersToExcel(workOrders).catch((err) =>
                     alert(`Could not export: ${(err as Error).message}`),
                   )
                 }
@@ -265,7 +261,7 @@ function App() {
               🖨 Print Report
             </button>
           )}
-          <button className="btn" onClick={() => exportAppDataToJson({ ...shared, boards })}>
+          <button className="btn" onClick={() => exportAppDataToJson(data)}>
             ⬇ Backup (JSON)
           </button>
           <button className="btn" onClick={() => jsonInputRef.current?.click()}>
@@ -290,13 +286,13 @@ function App() {
       <main className="app-main">
         {tab === "schedule" && (
           <ProductionSchedule
-            workOrders={shared.workOrders}
+            workOrders={workOrders}
             setWorkOrders={setWorkOrders}
-            scheduledLines={shared.scheduledLines}
+            scheduledLines={scheduledLines}
             setScheduledLines={setScheduledLines}
-            columnWidths={shared.printScheduleColumnWidths}
+            columnWidths={printScheduleColumnWidths}
             setColumnWidths={setScheduleColumnWidths}
-            hiddenColumns={shared.printScheduleHiddenColumns}
+            hiddenColumns={printScheduleHiddenColumns}
             setHiddenColumns={setScheduleHiddenColumns}
           />
         )}
@@ -307,37 +303,37 @@ function App() {
               setBoards={setBoards}
               selectedId={selectedBoard?.id ?? ""}
               setSelectedId={setSelectedBoardId}
-              employees={shared.employees}
+              employees={employees}
               defaultShiftLabel={SHIFT_LABELS[shift]}
             />
-            <PrintDesignSettings settings={shared.printSettings} setSettings={setPrintSettings} />
-            {shared.printSettings.freeFormLayout && selectedBoard && (
+            <PrintDesignSettings settings={printSettings} setSettings={setPrintSettings} />
+            {printSettings.freeFormLayout && selectedBoard && (
               <PrintLayoutEditor
                 board={selectedBoard}
-                employees={shared.employees}
-                settings={shared.printSettings}
+                employees={employees}
+                settings={printSettings}
                 setSettings={setPrintSettings}
               />
             )}
           </>
         )}
-        {tab === "roster" && <SkillsRoles employees={shared.employees} setEmployees={setEmployees} />}
+        {tab === "roster" && <SkillsRoles employees={employees} setEmployees={setEmployees} />}
       </main>
 
       <footer className="toolbar-footer">
-        Synced live to the cloud - the Production Schedule and Skills &amp; Roles roster are shared by every shift;
-        this device's Line Assignments boards are kept separate to just the {SHIFT_LABELS[shift]}. Use "Backup
-        (JSON)" regularly to keep a copy you can restore from any device.
+        Synced live to the cloud - this device's {SHIFT_LABELS[shift]} Production Schedule, Line Assignments boards
+        and Skills &amp; Roles roster are kept completely separate from the other shifts. Use "Backup (JSON)"
+        regularly to keep a copy you can restore from any device.
       </footer>
 
       <div className="print-root">
         <PrintSchedule
-          workOrders={shared.workOrders}
-          scheduledLines={shared.scheduledLines}
-          columnWidths={shared.printScheduleColumnWidths}
-          hiddenColumns={shared.printScheduleHiddenColumns}
+          workOrders={workOrders}
+          scheduledLines={scheduledLines}
+          columnWidths={printScheduleColumnWidths}
+          hiddenColumns={printScheduleHiddenColumns}
         />
-        <PrintAssignments board={selectedBoard} employees={shared.employees} settings={shared.printSettings} />
+        <PrintAssignments board={selectedBoard} employees={employees} settings={printSettings} />
       </div>
     </div>
   );
