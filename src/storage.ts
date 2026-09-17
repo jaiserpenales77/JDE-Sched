@@ -1,8 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
 import type { AppData, DailyBoard, PrintAssignSettings } from "./types";
 import { buildSeedData, defaultPrintSettings } from "./seedData";
 
 const STORAGE_KEY = "jde-sched-data-v1";
+
+// One shared document every device reads/writes - this is what makes 1st,
+// 2nd and 3rd shift all see the same schedule instead of each browser
+// having its own private copy. localStorage below stays in place as an
+// instant local cache and an offline fallback if Firestore is unreachable.
+const SHARED_DOC = doc(db, "jde-sched", "shared");
 
 // Backfills fields added to the data model after some users already had
 // data saved in localStorage (e.g. roomSections), so old saved boards
@@ -61,6 +69,14 @@ function loadInitial(): AppData {
 
 export function useAppData() {
   const [data, setData] = useState<AppData>(loadInitial);
+  // The JSON of whatever we last sent to (or received from) Firestore, so
+  // the snapshot listener can tell "a change from another device" apart
+  // from "the server confirming the write we just made" and not loop.
+  const lastSyncedJson = useRef<string>("");
+  // Stays false until the first Firestore snapshot arrives, so a device
+  // that's still loading (with only its local/seed copy) can't win a race
+  // and stomp the real shared data with its own stale copy.
+  const [syncReady, setSyncReady] = useState(false);
 
   useEffect(() => {
     try {
@@ -69,6 +85,45 @@ export function useAppData() {
       console.error("Failed to save data to localStorage.", err);
     }
   }, [data]);
+
+  // Pick up changes made on other devices/shifts.
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      SHARED_DOC,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const remote = normalizeAppData(snapshot.data() as Partial<AppData>);
+          const remoteJson = JSON.stringify(remote);
+          if (remoteJson !== lastSyncedJson.current) {
+            lastSyncedJson.current = remoteJson;
+            setData(remote);
+          }
+        }
+        setSyncReady(true);
+      },
+      (err) => {
+        console.error("Firestore sync unavailable - working from this device's local copy only.", err);
+        setSyncReady(true);
+      },
+    );
+    return () => unsubscribe();
+  }, []);
+
+  // Push local edits up to Firestore, debounced so rapid changes (typing
+  // in a field, dragging a box) collapse into one write instead of one
+  // per keystroke.
+  useEffect(() => {
+    if (!syncReady) return;
+    const json = JSON.stringify(data);
+    if (json === lastSyncedJson.current) return;
+    const timer = window.setTimeout(() => {
+      lastSyncedJson.current = json;
+      setDoc(SHARED_DOC, data).catch((err) => {
+        console.error("Failed to sync to Firestore - this device's changes are only saved locally for now.", err);
+      });
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [data, syncReady]);
 
   return [data, setData] as const;
 }
