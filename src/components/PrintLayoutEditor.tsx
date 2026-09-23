@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type { BoxLayout, CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings } from "../types";
 import {
-  buildFirstNameRoleMap,
+  buildRoleMap,
   clamp,
   commentBoxKey,
   lineBoxKey,
@@ -41,7 +41,7 @@ export default function PrintLayoutEditor({ board, employees, settings, setSetti
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
   const [guides, setGuides] = useState<{ x?: number; y?: number }>({});
-  const roleMap = buildFirstNameRoleMap(employees);
+  const roleMap = buildRoleMap(employees);
 
   const boxes: BoxDef[] = [
     ...board.lineSlots.map((slot): BoxDef => ({ key: lineBoxKey(slot.line), kind: "line", slot })),

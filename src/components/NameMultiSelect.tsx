@@ -1,10 +1,12 @@
 import { useState } from "react";
 import type { DragEvent } from "react";
 import { sortByRole } from "../printLayout";
+import { cleanEmployeeName, DRAG_MIME, parseNames, readDragPayload } from "../assignmentLogic";
 
-// The drag payload's MIME type - namespaced so dropping something else
-// (a browser tab, a file, plain text) onto a line box is safely ignored.
-const DRAG_MIME = "application/x-jde-employee";
+export interface NameStatus {
+  status: "free" | "elsewhere" | "out";
+  note?: string; // e.g. "Line 3" or "PTO / Absences"
+}
 
 interface Props {
   value: string; // comma-separated names, same storage format as before
@@ -18,16 +20,26 @@ interface Props {
   // When given, displays chips MLL > Line Leader > MLT > everyone else,
   // matching the same order the print report uses.
   roleMap?: Map<string, string>;
+  // Where each option already is today - groups the "+ Add employee"
+  // list so people already on another line or out today are set apart.
+  describe?: (name: string) => NameStatus;
+  // A problem with someone already in this box (double-booked, out today).
+  chipWarning?: (name: string) => string | undefined;
+  // Search text - chips that match get highlighted.
+  isMatch?: (name: string) => boolean;
 }
 
-function parseNames(value: string): string[] {
-  return value
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-export default function NameMultiSelect({ value, onChange, options, slotId, onDropEmployee, roleMap }: Props) {
+export default function NameMultiSelect({
+  value,
+  onChange,
+  options,
+  slotId,
+  onDropEmployee,
+  roleMap,
+  describe,
+  chipWarning,
+  isMatch,
+}: Props) {
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -35,6 +47,12 @@ export default function NameMultiSelect({ value, onChange, options, slotId, onDr
   const selected = parseNames(value);
   const displayed = roleMap ? sortByRole(selected, roleMap) : selected;
   const available = options.filter((name) => !selected.includes(name));
+
+  const groups: Record<NameStatus["status"], { name: string; note?: string }[]> = { free: [], elsewhere: [], out: [] };
+  for (const name of available) {
+    const info = describe?.(name) ?? { status: "free" };
+    groups[info.status].push({ name, note: info.note });
+  }
 
   function addName(name: string) {
     const trimmed = name.trim();
@@ -45,7 +63,7 @@ export default function NameMultiSelect({ value, onChange, options, slotId, onDr
     onChange(selected.filter((n) => n !== name).join(", "));
   }
   function commitCustom() {
-    addName(customText);
+    addName(cleanEmployeeName(customText));
     setCustomText("");
     setCustomOpen(false);
   }
@@ -66,15 +84,10 @@ export default function NameMultiSelect({ value, onChange, options, slotId, onDr
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     setDragOver(false);
     if (!onDropEmployee) return;
-    const raw = e.dataTransfer.getData(DRAG_MIME);
-    if (!raw) return;
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
     e.preventDefault();
-    try {
-      const { name, fromSlotId } = JSON.parse(raw) as { name: string; fromSlotId: string };
-      if (name && fromSlotId) onDropEmployee(name, fromSlotId);
-    } catch {
-      // Malformed drag payload - ignore rather than crash the drop.
-    }
+    onDropEmployee(payload.name, payload.fromSlotId);
   }
 
   return (
@@ -85,21 +98,28 @@ export default function NameMultiSelect({ value, onChange, options, slotId, onDr
       onDrop={handleDrop}
     >
       <div className="name-chips">
-        {selected.length === 0 && <span className="name-chips-empty">No one assigned</span>}
-        {displayed.map((name) => (
-          <span
-            className="name-chip"
-            key={name}
-            draggable={!!slotId}
-            onDragStart={(e) => handleChipDragStart(e, name)}
-            title={slotId ? "Drag to another line to move this person" : undefined}
-          >
-            {name}
-            <button type="button" onClick={() => removeName(name)} title={`Remove ${name}`}>
-              ✕
-            </button>
-          </span>
-        ))}
+        {selected.length === 0 && <span className="name-chips-empty">No one assigned — drag someone here</span>}
+        {displayed.map((name) => {
+          const warning = chipWarning?.(name);
+          const classes = ["name-chip"];
+          if (warning) classes.push("name-chip-warn");
+          if (isMatch?.(name)) classes.push("name-chip-match");
+          return (
+            <span
+              className={classes.join(" ")}
+              key={name}
+              draggable={!!slotId}
+              onDragStart={(e) => handleChipDragStart(e, name)}
+              title={[warning, slotId ? "Drag to another line to move this person" : ""].filter(Boolean).join(" — ")}
+            >
+              {warning && <span aria-hidden="true">⚠</span>}
+              {name}
+              <button type="button" onClick={() => removeName(name)} title={`Remove ${name}`}>
+                ✕
+              </button>
+            </span>
+          );
+        })}
       </div>
       <div className="name-add-row">
         <select
@@ -109,11 +129,43 @@ export default function NameMultiSelect({ value, onChange, options, slotId, onDr
           }}
         >
           <option value="">+ Add employee…</option>
-          {available.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
+          {describe ? (
+            <>
+              {groups.free.length > 0 && (
+                <optgroup label={`Not assigned yet (${groups.free.length})`}>
+                  {groups.free.map(({ name }) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {groups.elsewhere.length > 0 && (
+                <optgroup label="Already placed elsewhere">
+                  {groups.elsewhere.map(({ name, note }) => (
+                    <option key={name} value={name}>
+                      {name} — on {note}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {groups.out.length > 0 && (
+                <optgroup label="Out today">
+                  {groups.out.map(({ name, note }) => (
+                    <option key={name} value={name}>
+                      {name} — {note}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </>
+          ) : (
+            available.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))
+          )}
         </select>
         {!customOpen && (
           <button type="button" className="btn small" onClick={() => setCustomOpen(true)}>

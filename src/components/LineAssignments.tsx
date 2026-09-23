@@ -1,7 +1,92 @@
+import { useState } from "react";
+import type { DragEvent } from "react";
 import type { CommentBox, DailyBoard, Employee, ListSection, LineSlot } from "../types";
 import { COMMENT_FONT_OPTIONS } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
-import { buildFirstNameRoleMap } from "../printLayout";
+import type { NameStatus } from "./NameMultiSelect";
+import UnassignedPanel from "./UnassignedPanel";
+import { buildRoleMap, nameKey } from "../printLayout";
+import {
+  autoFillFromPrimaryLines,
+  boardOut,
+  boardPlacements,
+  cleanEmployeeName,
+  DRAG_MIME,
+  isRunning,
+  parseNames,
+  readDragPayload,
+  slotCoverage,
+} from "../assignmentLogic";
+
+const COMPACT_KEY = "jde-sched-compact-lines";
+
+function loadCompact(): boolean {
+  try {
+    return localStorage.getItem(COMPACT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+// "+ Add employee…" for a Room & Duty section - same grouping as the line
+// boxes' picker, so someone already on a line or out today stands out.
+function PersonPicker({
+  names,
+  describe,
+  onPick,
+}: {
+  names: string[];
+  describe: (name: string) => NameStatus;
+  onPick: (name: string) => void;
+}) {
+  const free: string[] = [];
+  const elsewhere: { name: string; note?: string }[] = [];
+  const out: { name: string; note?: string }[] = [];
+  for (const name of names) {
+    const info = describe(name);
+    if (info.status === "free") free.push(name);
+    else if (info.status === "elsewhere") elsewhere.push({ name, note: info.note });
+    else out.push({ name, note: info.note });
+  }
+  return (
+    <select
+      className="section-person-picker"
+      value=""
+      onChange={(e) => {
+        if (e.target.value) onPick(e.target.value);
+      }}
+    >
+      <option value="">+ Add employee…</option>
+      {free.length > 0 && (
+        <optgroup label={`Not assigned yet (${free.length})`}>
+          {free.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {elsewhere.length > 0 && (
+        <optgroup label="Already placed elsewhere">
+          {elsewhere.map(({ name, note }) => (
+            <option key={name} value={name}>
+              {name} — on {note}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {out.length > 0 && (
+        <optgroup label="Out today">
+          {out.map(({ name, note }) => (
+            <option key={name} value={name}>
+              {name} — {note}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
+  );
+}
 
 interface Props {
   boards: DailyBoard[];
@@ -12,20 +97,6 @@ interface Props {
   // Label a newly-created board starts with (e.g. "1st Shift") - matches
   // whichever shift this device is currently showing.
   defaultShiftLabel: string;
-}
-
-// Roster names carry trailing role tags (e.g. "Jaiser Penales MLL") that
-// the day board itself never shows - strip them so picking someone from
-// the dropdown produces the same plain "First Last" text as before.
-function cleanEmployeeName(name: string): string {
-  return name.trim().replace(/\s+(MLL|MLT|LL)$/i, "").trim();
-}
-
-function parseNames(value: string): string[] {
-  return value
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
 }
 
 function todayIso() {
@@ -86,7 +157,91 @@ export default function LineAssignments({
   const employeeNames = [...new Set(employees.map((e) => cleanEmployeeName(e.name)).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
-  const roleMap = buildFirstNameRoleMap(employees);
+  const roleMap = buildRoleMap(employees);
+
+  const [query, setQuery] = useState("");
+  const [compact, setCompactState] = useState(loadCompact);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  function setCompact(next: boolean) {
+    setCompactState(next);
+    setExpanded(new Set());
+    try {
+      localStorage.setItem(COMPACT_KEY, next ? "1" : "0");
+    } catch {
+      // Private window / blocked storage - the toggle still works this session.
+    }
+  }
+
+  const placements = boardPlacements(board);
+  const out = boardOut(board);
+
+  // Best display name for each person key - roster spelling first, then
+  // however they were typed onto the board.
+  const displayName = new Map<string, string>();
+  for (const name of employeeNames) displayName.set(nameKey(name), name);
+  for (const slot of board?.lineSlots ?? []) {
+    for (const name of parseNames(slot.assigned)) {
+      const key = nameKey(name);
+      if (key && !displayName.has(key)) displayName.set(key, name);
+    }
+  }
+
+  const doubleBooked = [...placements.entries()]
+    .filter(([, places]) => places.length > 1)
+    .map(([key, places]) => ({ name: displayName.get(key) ?? key, places: places.map((p) => p.label) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  function describe(name: string): NameStatus {
+    const key = nameKey(name);
+    const reason = out.get(key);
+    if (reason) return { status: "out", note: reason };
+    const places = placements.get(key);
+    if (places?.length) return { status: "elsewhere", note: places.map((p) => p.label).join(", ") };
+    return { status: "free" };
+  }
+
+  // Problem with someone already sitting in the box identified by placeId.
+  function warningFor(name: string, placeId: string): string | undefined {
+    const key = nameKey(name);
+    const reason = out.get(key);
+    if (reason) return `Listed as out today (${reason})`;
+    const others = (placements.get(key) ?? []).filter((p) => p.id !== placeId);
+    if (others.length) return `Also on ${others.map((p) => p.label).join(", ")}`;
+    return undefined;
+  }
+
+  const q = query.trim().toLowerCase();
+  function isMatch(name: string): boolean {
+    return q.length >= 2 && (name.toLowerCase().includes(q) || nameKey(name).includes(q));
+  }
+  const searchResults =
+    q.length >= 2
+      ? [...displayName.entries()]
+          .filter(([, name]) => isMatch(name))
+          .slice(0, 8)
+          .map(([key, name]) => {
+            const reason = out.get(key);
+            const places = placements.get(key);
+            const where = reason
+              ? `out today (${reason})`
+              : places?.length
+                ? places.map((p) => p.label).join(", ")
+                : "not assigned";
+            return { name, where, unplaced: !reason && !places?.length };
+          })
+      : [];
+
+  const collapsedSlots =
+    board?.lineSlots.filter(
+      (s) => compact && !isRunning(s) && !expanded.has(s.id) && !parseNames(s.assigned).some(isMatch),
+    ) ?? [];
+
+  const scheduled = board?.lineSlots.filter((s) => s.status === "Scheduled") ?? [];
+  const needsAttention = scheduled.filter((s) => slotCoverage(s, roleMap).warnings.length > 0).length;
+  const rosterKeys = [...new Set(employeeNames.map(nameKey).filter(Boolean))];
+  const rosterAvailable = rosterKeys.filter((k) => !out.has(k));
+  const rosterPlaced = rosterAvailable.filter((k) => placements.has(k)).length;
 
   function updateBoard(id: string, patch: Partial<DailyBoard>) {
     setBoards((bs) => bs.map((b) => (b.id === id ? { ...b, ...patch } : b)));
@@ -176,6 +331,64 @@ export default function LineAssignments({
     });
   }
 
+  // A chip dragged off a line and dropped on the Unassigned list.
+  function unassign(name: string, fromSlotId: string) {
+    if (!board) return;
+    updateBoard(board.id, {
+      lineSlots: board.lineSlots.map((s) =>
+        s.id === fromSlotId ? { ...s, assigned: parseNames(s.assigned).filter((n) => n !== name).join(", ") } : s,
+      ),
+    });
+  }
+
+  // Adds a person to a Room & Duty section - and, when they were dragged
+  // off a line, takes them off that line in the same board update.
+  function placeInRoom(name: string, sectionId: string, fromSlotId?: string) {
+    if (!board) return;
+    const key = nameKey(name);
+    updateBoard(board.id, {
+      lineSlots: board.lineSlots.map((s) =>
+        s.id === fromSlotId ? { ...s, assigned: parseNames(s.assigned).filter((n) => n !== name).join(", ") } : s,
+      ),
+      roomSections: board.roomSections.map((s) =>
+        s.id === sectionId && !s.items.some((item) => nameKey(item) === key) ? { ...s, items: [...s.items, name] } : s,
+      ),
+    });
+  }
+
+  function handleRoomDragOver(e: DragEvent<HTMLDivElement>) {
+    if (!e.dataTransfer.types.includes(DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    e.currentTarget.classList.add("name-multiselect-drag-over");
+  }
+  function handleRoomDrop(e: DragEvent<HTMLDivElement>, sectionId: string) {
+    e.currentTarget.classList.remove("name-multiselect-drag-over");
+    const payload = readDragPayload(e.dataTransfer);
+    if (!payload) return;
+    e.preventDefault();
+    placeInRoom(payload.name, sectionId, payload.fromSlotId);
+  }
+
+  function autoFill() {
+    if (!board) return;
+    if (
+      !confirm(
+        "Put everyone who isn't on the board yet onto the line (or duty) matching their Primary Line from the Skills & Roles tab?\n\nNobody already placed gets moved, people listed as out today are skipped, and lines marked Not Scheduled or PM are skipped.",
+      )
+    )
+      return;
+    const result = autoFillFromPrimaryLines(board, employees, placements, out);
+    updateBoard(board.id, { lineSlots: result.lineSlots, roomSections: result.roomSections });
+    const lines = [`Placed ${result.placed} ${result.placed === 1 ? "person" : "people"}.`];
+    if (result.skipped.length) {
+      lines.push("", `Still in the Unassigned list (${result.skipped.length}):`);
+      lines.push(...result.skipped.slice(0, 15).map((s) => `• ${s.name} — ${s.reason}`));
+      if (result.skipped.length > 15) lines.push(`…and ${result.skipped.length - 15} more`);
+    }
+    alert(lines.join("\n"));
+  }
+
   function updateSection(field: SectionField, id: string, patch: Partial<ListSection>) {
     if (!board) return;
     updateBoard(board.id, { [field]: board[field].map((s) => (s.id === id ? { ...s, ...patch } : s)) });
@@ -259,97 +472,262 @@ export default function LineAssignments({
             </label>
           </div>
 
-          <div className="panel">
-            <h2>Line Status</h2>
-            <div className="line-slots-grid">
-              {board.lineSlots.map((slot) => (
-                <div className="line-slot-card" key={slot.id}>
-                  <div className={`slot-head slot-status-${slot.status.replace(/ /g, "-") || "none"}`}>
-                    <input
-                      className="slot-line-input"
-                      value={slot.line}
-                      onChange={(e) => updateSlot(slot.id, { line: e.target.value })}
-                    />
-                    <button className="btn small danger" onClick={() => removeSlot(slot.id)}>
-                      ✕
-                    </button>
-                  </div>
-                  <div className="slot-body">
-                    <select value={slot.status} onChange={(e) => updateSlot(slot.id, { status: e.target.value as LineSlot["status"] })}>
-                      <option value="">— status —</option>
-                      <option value="Scheduled">Scheduled</option>
-                      <option value="Not Scheduled">Not Scheduled</option>
-                      <option value="PM">PM</option>
-                    </select>
-                    <input
-                      placeholder="Note (e.g. ZBS-6)"
-                      value={slot.subNote}
-                      onChange={(e) => updateSlot(slot.id, { subNote: e.target.value })}
-                    />
-                    <NameMultiSelect
-                      value={slot.assigned}
-                      onChange={(next) => updateSlot(slot.id, { assigned: next })}
-                      options={employeeNames}
-                      slotId={slot.id}
-                      onDropEmployee={(name, fromSlotId) => moveEmployee(name, fromSlotId, slot.id)}
-                      roleMap={roleMap}
-                    />
-                    <select
-                      value=""
-                      disabled={!slot.assigned.trim()}
-                      title={!slot.assigned.trim() ? "No team assigned to this line to transfer." : undefined}
-                      onChange={(e) => transferTeamTo(slot, e.target.value)}
-                    >
-                      <option value="">🔀 Transfer team to…</option>
-                      {board.lineSlots
-                        .filter((s) => s.id !== slot.id)
-                        .map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.line}
-                          </option>
-                        ))}
-                    </select>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button className="btn small" style={{ marginTop: 10 }} onClick={addSlot}>
-              + Add line
-            </button>
-          </div>
-
-          <div className="panel">
-            <h2>Room &amp; Duty Assignments</h2>
-            <p className="panel-hint">Prints alongside the line grid above (Label Room, Wash Room, Maintenance Mechs, etc.).</p>
-            <div className="sections-grid">
-              {board.roomSections.map((section) => (
-                <div className="section-card" key={section.id}>
-                  <div className="section-title">
-                    <input
-                      value={section.title}
-                      onChange={(e) => updateSection("roomSections", section.id, { title: e.target.value })}
-                    />
-                    <button className="btn small danger" onClick={() => removeSection("roomSections", section.id)}>
-                      ✕
-                    </button>
-                  </div>
-                  {section.items.map((item, i) => (
-                    <div className="section-item-row" key={i}>
-                      <input value={item} onChange={(e) => setItem("roomSections", section, i, e.target.value)} />
-                      <button className="btn small danger" onClick={() => removeItem("roomSections", section, i)}>
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button className="btn small" onClick={() => addItem("roomSections", section)}>
-                    + Add item
+          <div className="assign-layout">
+            <div className="assign-main">
+              <div className="panel">
+                <h2>Line Status</h2>
+                <div className="line-status-toolbar">
+                  <input
+                    type="search"
+                    className="assign-search"
+                    placeholder="🔍 Find a person…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  <label className="print-design-checkbox">
+                    <input type="checkbox" checked={compact} onChange={(e) => setCompact(e.target.checked)} />
+                    Collapse Not Scheduled / PM lines
+                  </label>
+                  <button
+                    className="btn small"
+                    onClick={autoFill}
+                    title="Place everyone not on the board yet onto their Primary Line from Skills & Roles"
+                  >
+                    ⚡ Auto-fill from Primary Lines
                   </button>
                 </div>
-              ))}
+
+                {searchResults.length > 0 && (
+                  <ul className="search-results">
+                    {searchResults.map((r) => (
+                      <li key={r.name} className={r.unplaced ? "search-unplaced" : ""}>
+                        <strong>{r.name}</strong> → {r.where}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {q.length >= 2 && searchResults.length === 0 && (
+                  <div className="search-results search-none">No one matching "{query.trim()}" on the roster or board.</div>
+                )}
+
+                <div className="coverage-summary">
+                  <span>
+                    <strong>{scheduled.length}</strong> scheduled {scheduled.length === 1 ? "line" : "lines"}
+                  </span>
+                  {rosterAvailable.length > 0 && (
+                    <span>
+                      <strong>
+                        {rosterPlaced}/{rosterAvailable.length}
+                      </strong>{" "}
+                      available crew placed
+                    </span>
+                  )}
+                  {out.size > 0 && (
+                    <span>
+                      <strong>{out.size}</strong> out today
+                    </span>
+                  )}
+                  {needsAttention > 0 ? (
+                    <span className="coverage-warn">
+                      ⚠ <strong>{needsAttention}</strong> {needsAttention === 1 ? "line needs" : "lines need"} attention
+                    </span>
+                  ) : (
+                    scheduled.length > 0 && <span className="coverage-ok">✓ All scheduled lines covered</span>
+                  )}
+                </div>
+
+                {collapsedSlots.length > 0 && (
+                  <div className="collapsed-lines">
+                    <span className="collapsed-lines-label">Not running:</span>
+                    {collapsedSlots.map((slot) => (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        className={`collapsed-line slot-status-${slot.status.replace(/ /g, "-") || "none"}`}
+                        onClick={() => setExpanded((prev) => new Set(prev).add(slot.id))}
+                        title="Show this line"
+                      >
+                        <strong>{slot.line}</strong> {slot.status} · 👥 {parseNames(slot.assigned).length} ▾
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <div className="line-slots-grid">
+                  {board.lineSlots.map((slot) => {
+                    const coverage = slotCoverage(slot, roleMap);
+                    const slotNames = parseNames(slot.assigned);
+                    const hasMatch = slotNames.some(isMatch);
+                    const collapsed = collapsedSlots.includes(slot);
+                    const dim = q.length >= 2 && !hasMatch;
+                    const statusClass = `slot-status-${slot.status.replace(/ /g, "-") || "none"}`;
+                    const countLabel = coverage.target !== null ? `${coverage.count}/${coverage.target}` : `${coverage.count}`;
+
+                    if (collapsed) return null;
+
+                    return (
+                      <div
+                        className={`line-slot-card ${coverage.warnings.length ? "line-slot-warn" : ""} ${dim ? "line-slot-dim" : ""}`}
+                        key={slot.id}
+                      >
+                        <div className={`slot-head ${statusClass}`}>
+                          <input
+                            className="slot-line-input"
+                            value={slot.line}
+                            onChange={(e) => updateSlot(slot.id, { line: e.target.value })}
+                          />
+                          <span
+                            className={`slot-count ${coverage.target !== null && coverage.count < coverage.target && slot.status === "Scheduled" ? "slot-count-short" : ""}`}
+                            title={coverage.target !== null ? `${coverage.count} assigned, ZBS target ${coverage.target}` : `${coverage.count} assigned`}
+                          >
+                            👥 {countLabel}
+                          </span>
+                          {compact && !isRunning(slot) && (
+                            <button
+                              className="btn small"
+                              onClick={() =>
+                                setExpanded((prev) => {
+                                  const next = new Set(prev);
+                                  next.delete(slot.id);
+                                  return next;
+                                })
+                              }
+                              title="Collapse this line"
+                            >
+                              ▴
+                            </button>
+                          )}
+                          <button className="btn small danger" onClick={() => removeSlot(slot.id)}>
+                            ✕
+                          </button>
+                        </div>
+                        <div className="slot-body">
+                          {coverage.warnings.length > 0 && (
+                            <ul className="slot-warnings">
+                              {coverage.warnings.map((w) => (
+                                <li key={w}>⚠ {w}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <select
+                            value={slot.status}
+                            onChange={(e) => updateSlot(slot.id, { status: e.target.value as LineSlot["status"] })}
+                          >
+                            <option value="">— status —</option>
+                            <option value="Scheduled">Scheduled</option>
+                            <option value="Not Scheduled">Not Scheduled</option>
+                            <option value="PM">PM</option>
+                          </select>
+                          <input
+                            placeholder="Note (e.g. ZBS-6)"
+                            value={slot.subNote}
+                            onChange={(e) => updateSlot(slot.id, { subNote: e.target.value })}
+                          />
+                          <NameMultiSelect
+                            value={slot.assigned}
+                            onChange={(next) => updateSlot(slot.id, { assigned: next })}
+                            options={employeeNames}
+                            slotId={slot.id}
+                            onDropEmployee={(name, fromSlotId) => moveEmployee(name, fromSlotId, slot.id)}
+                            roleMap={roleMap}
+                            describe={describe}
+                            chipWarning={(name) => warningFor(name, slot.id)}
+                            isMatch={isMatch}
+                          />
+                          <select
+                            value=""
+                            disabled={!slot.assigned.trim()}
+                            title={!slot.assigned.trim() ? "No team assigned to this line to transfer." : undefined}
+                            onChange={(e) => transferTeamTo(slot, e.target.value)}
+                          >
+                            <option value="">🔀 Transfer team to…</option>
+                            {board.lineSlots
+                              .filter((s) => s.id !== slot.id)
+                              .map((s) => (
+                                <option key={s.id} value={s.id}>
+                                  {s.line}
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button className="btn small" style={{ marginTop: 10 }} onClick={addSlot}>
+                  + Add line
+                </button>
+              </div>
+
+              <div className="panel">
+                <h2>Room &amp; Duty Assignments</h2>
+                <p className="panel-hint">
+                  Prints alongside the line grid above (Label Room, Wash Room, Maintenance Mechs, etc.). You can drag people
+                  here too.
+                </p>
+                <div className="sections-grid">
+                  {board.roomSections.map((section) => (
+                    <div
+                      className="section-card"
+                      key={section.id}
+                      onDragOver={handleRoomDragOver}
+                      onDragLeave={(e) => e.currentTarget.classList.remove("name-multiselect-drag-over")}
+                      onDrop={(e) => handleRoomDrop(e, section.id)}
+                    >
+                      <div className="section-title">
+                        <input
+                          value={section.title}
+                          onChange={(e) => updateSection("roomSections", section.id, { title: e.target.value })}
+                        />
+                        <button className="btn small danger" onClick={() => removeSection("roomSections", section.id)}>
+                          ✕
+                        </button>
+                      </div>
+                      {section.items.map((item, i) => {
+                        const warning = item.trim() ? warningFor(item, section.id) : undefined;
+                        const classes = [warning ? "section-item-warn" : "", isMatch(item) ? "name-chip-match" : ""];
+                        return (
+                          <div className="section-item-row" key={i}>
+                            <input
+                              className={classes.join(" ").trim()}
+                              value={item}
+                              title={warning}
+                              onChange={(e) => setItem("roomSections", section, i, e.target.value)}
+                            />
+                            <button className="btn small danger" onClick={() => removeItem("roomSections", section, i)}>
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      })}
+                      <div className="section-add-row">
+                        <PersonPicker
+                          names={employeeNames.filter((n) => !section.items.some((item) => nameKey(item) === nameKey(n)))}
+                          describe={describe}
+                          onPick={(name) => placeInRoom(name, section.id)}
+                        />
+                        <button className="btn small" onClick={() => addItem("roomSections", section)}>
+                          + Text
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="btn small" style={{ marginTop: 10 }} onClick={() => addSection("roomSections")}>
+                  + Add section
+                </button>
+              </div>
             </div>
-            <button className="btn small" style={{ marginTop: 10 }} onClick={() => addSection("roomSections")}>
-              + Add section
-            </button>
+
+            <UnassignedPanel
+              employees={employees}
+              placements={placements}
+              out={out}
+              roleMap={roleMap}
+              doubleBooked={doubleBooked}
+              isMatch={isMatch}
+              onUnassign={unassign}
+            />
           </div>
 
           <div className="panel">

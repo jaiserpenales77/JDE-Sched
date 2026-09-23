@@ -141,30 +141,66 @@ export function snapResize(rect: BoxLayout, others: BoxLayout[]): SnapResult {
   return { x: rect.x, y: rect.y, width, height, guideX, guideY };
 }
 
-// First-name lookup: the day board and the skills roster were kept as two
-// separate sheets in the original workbook and don't always agree on a
-// person's last name/nickname (e.g. roster "Vicky LL" vs board "Vicky
-// Rama") - first name is the reliable common key between them.
-export function buildFirstNameRoleMap(employees: Employee[]): Map<string, string> {
+// Canonical comparison key for a person's name, so the same person matches
+// however they were typed: "Sanchez, Maggie" and "Maggie Sanchez" both
+// become "maggie sanchez", and trailing notes/tags like "(Training)",
+// " - PTO" or a " MLL" role suffix are ignored.
+export function nameKey(raw: string): string {
+  let s = raw.toLowerCase().replace(/\(.*?\)/g, " ");
+  s = s.split(/\s[-–—]\s/)[0];
+  s = s.replace(/\s+(mll|mlt|ll)\s*$/, "");
+  if (s.includes(",")) {
+    const [last, ...rest] = s.split(",");
+    s = `${rest.join(" ")} ${last}`;
+  }
+  return s.replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// Name -> role lookup. Matches the full name first; falls back to first
+// name only when that first name is unique on the roster, because the day
+// board and the roster don't always agree on a last name/nickname (e.g.
+// roster "Vicky LL" vs board "Vicky Rama") - but a shared first name
+// (three "Alma"s on one shift) must never guess the wrong person's role.
+export function buildRoleMap(employees: Employee[]): Map<string, string> {
   const map = new Map<string, string>();
+  const firstCounts = new Map<string, number>();
   for (const e of employees) {
-    const first = e.name.trim().split(/\s+/)[0]?.toLowerCase();
-    if (first) map.set(first, e.role);
+    const first = nameKey(e.name).split(" ")[0];
+    if (first) firstCounts.set(first, (firstCounts.get(first) ?? 0) + 1);
+  }
+  for (const e of employees) {
+    const key = nameKey(e.name);
+    if (!key) continue;
+    map.set(`full:${key}`, e.role);
+    const first = key.split(" ")[0];
+    if (firstCounts.get(first) === 1) map.set(`first:${first}`, e.role);
   }
   return map;
 }
+
+export function roleOf(name: string, roleMap: Map<string, string>): string | undefined {
+  const key = nameKey(name);
+  if (!key) return undefined;
+  return roleMap.get(`full:${key}`) ?? roleMap.get(`first:${key.split(" ")[0]}`);
+}
+
+export type RoleCategory = "mll" | "leader" | "mlt" | "other";
+
+export function roleCategory(role: string | undefined): RoleCategory {
+  if (!role) return "other";
+  if (/\bMLL\b/i.test(role)) return "mll";
+  if (/\bline lead(er)?\b/i.test(role) || /^\s*LL\s*$/i.test(role)) return "leader";
+  if (/\bMLT\b/i.test(role)) return "mlt";
+  return "other";
+}
+
+const ROLE_RANK: Record<RoleCategory, number> = { mll: 0, leader: 1, mlt: 2, other: 3 };
 
 // Priority for displaying a line's assigned team: MLL first, then Line
 // Leader, then MLT, then everyone else - keeps the crew hierarchy visible
 // at a glance instead of relying only on the role highlight colors.
 function roleRank(name: string, roleMap: Map<string, string>): number {
-  const first = name.trim().split(/\s+/)[0]?.toLowerCase();
-  const role = first ? roleMap.get(first) : undefined;
-  if (!role) return 3;
-  if (/\bMLL\b/i.test(role)) return 0;
-  if (/line leader/i.test(role)) return 1;
-  if (/\bMLT\b/i.test(role)) return 2;
-  return 3;
+  return ROLE_RANK[roleCategory(roleOf(name, roleMap))];
 }
 
 export function sortByRole(names: string[], roleMap: Map<string, string>): string[] {

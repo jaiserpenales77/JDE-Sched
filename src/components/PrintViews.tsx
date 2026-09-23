@@ -13,7 +13,7 @@ import {
   SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
-import { buildFirstNameRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roomBoxKey, sortByRole } from "../printLayout";
+import { buildRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roleCategory, roleOf, roomBoxKey, sortByRole } from "../printLayout";
 import ProgressBar from "./ProgressBar";
 
 // Print layouts that mirror the original workbook's printed pages as
@@ -281,12 +281,10 @@ function statusKey(status: LineSlot["status"]): "scheduled" | "not-scheduled" | 
 // MLL/MLT crew (navy) by name within the assigned-names lists.
 function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: boolean): string {
   if (!enabled) return "";
-  const first = name.trim().split(/\s+/)[0]?.toLowerCase();
-  const role = first ? roleMap.get(first) : undefined;
-  if (!role) return "";
-  if (/line leader/i.test(role)) return "print-assign-role-leader";
-  if (/\bMLL\b/i.test(role)) return "print-assign-role-mll";
-  if (/\bMLT\b/i.test(role)) return "print-assign-role-mlt";
+  const category = roleCategory(roleOf(name, roleMap));
+  if (category === "leader") return "print-assign-role-leader";
+  if (category === "mll") return "print-assign-role-mll";
+  if (category === "mlt") return "print-assign-role-mlt";
   return "";
 }
 
@@ -387,7 +385,7 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
     );
   }
 
-  const roleMap = buildFirstNameRoleMap(employees);
+  const roleMap = buildRoleMap(employees);
   const roomSections = settings.includeRoomSections ? board.roomSections : [];
   const printedComments = board.comments.filter((c) => c.includeInPrint);
 
