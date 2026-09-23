@@ -824,6 +824,12 @@ table.roster select {
     display: none !important;
   }
 
+  /* Otherwise "Background graphics" in the print dialog prints the app's
+     page tint - dark navy in dark mode - around the report. */
+  body {
+    background: #fff !important;
+  }
+
   .print-root {
     display: block;
   }
