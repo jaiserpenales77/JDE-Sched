@@ -100,7 +100,7 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
 // the JDE template's "WO") - each field lists every header text seen in the
 // wild, tried in order, so either format (or a mix) is recognized.
 const COLUMN_ALIASES = {
-  line: ["LINE"],
+  line: ["LINE", "WORK CENTER"],
   wo: ["WO", "ORDER NUMBER"],
   seq: ["SEQ", "SEQUENCE NUMBER"],
   item: ["ITEM", "2ND ITEM NUMBER"],
@@ -143,7 +143,7 @@ export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]>
           const headerRowIdx = grid.findIndex((row) => {
             if (!Array.isArray(row)) return false;
             const upper = row.map((c) => String(c ?? "").trim().toUpperCase());
-            const hasLine = upper.includes("LINE");
+            const hasLine = COLUMN_ALIASES.line.some((alias) => upper.includes(alias));
             const hasWo = COLUMN_ALIASES.wo.some((alias) => upper.includes(alias));
             return hasLine && hasWo;
           });
@@ -169,11 +169,16 @@ export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]>
           };
 
           const result: WorkOrder[] = [];
+          // ERP exports can list the same work order row twice, identically.
+          const seen = new Set<string>();
           for (let r = headerRowIdx + 1; r < grid.length; r++) {
             const row = grid[r] ?? [];
             const lineVal = String(row[idx.line] ?? "").trim();
             if (lineVal.toUpperCase() === "LEGEND") break;
             if (!lineVal) continue;
+            const rowKey = JSON.stringify(row.map((c) => String(c ?? "").trim()));
+            if (seen.has(rowKey)) continue;
+            seen.add(rowKey);
             result.push({
               id: crypto.randomUUID(),
               line: lineVal,
