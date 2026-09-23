@@ -49,12 +49,11 @@ function App() {
     const printRoot = document.querySelector(".print-root") as HTMLElement | null;
     const assignEl = document.querySelector(".print-assignments") as HTMLElement | null;
 
-    // The free-form layout's canvas is already sized to the page's exact
-    // aspect ratio, so it always fits one page. The normal flowing grid
-    // has no such ceiling - with enough lines/room sections/comments it
-    // can run past one page - so shrink it down (never up) to fit, the
-    // same way Excel's "fit sheet on one page" print option works.
-    if (printTarget === "assignments" && printRoot && assignEl && !printSettings.freeFormLayout) {
+    // Shrink the report down (never up) to fit one page, the way Excel's
+    // "fit sheet on one page" print option works. The flowing grid grows
+    // with every line/room section/comment; the free-form canvas is
+    // page-shaped but sits below the title and banner, so it overflows too.
+    if (printTarget === "assignments" && printRoot && assignEl) {
       const PX_PER_IN = 96;
       const PX_PER_MM = PX_PER_IN / 25.4;
       const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
@@ -80,8 +79,10 @@ function App() {
 
       const scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
       if (scale < 1) {
+        // Shift right by half the width it lost, so it's centered on the page.
+        const offsetPx = ((1 - scale) * pageContentWidthPx) / 2;
         assignEl.style.transformOrigin = "top left";
-        assignEl.style.transform = `scale(${scale})`;
+        assignEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
         printRoot.style.height = `${naturalHeight * scale}px`;
         printRoot.style.overflow = "hidden";
       } else {
