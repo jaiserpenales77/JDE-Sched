@@ -4,6 +4,7 @@ import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from ".
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
+import TimeOff from "./components/TimeOff";
 import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
 import {
   exportAppDataToJson,
@@ -11,17 +12,25 @@ import {
   readAppDataFromJsonFile,
   readWorkOrdersFromWorkbookFile,
 } from "./excel";
-import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, ShiftKey } from "./types";
+import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 
-type Tab = "schedule" | "assignments" | "roster";
+type Tab = "schedule" | "assignments" | "roster" | "timeoff";
 type PrintTarget = "schedule" | "assignments" | null;
 
 function App() {
   const [shift, chooseShift] = useCurrentShift();
   const [data, setData] = useShiftData(shift);
-  const { workOrders, employees, printSettings, scheduledLines, printScheduleColumnWidths, printScheduleHiddenColumns, boards } =
-    data;
+  const {
+    workOrders,
+    employees,
+    printSettings,
+    scheduledLines,
+    printScheduleColumnWidths,
+    printScheduleHiddenColumns,
+    boards,
+    timeOff,
+  } = data;
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
@@ -144,6 +153,9 @@ function App() {
   function setEmployees(updater: (emps: Employee[]) => Employee[]) {
     setData((d) => ({ ...d, employees: updater(d.employees) }));
   }
+  function setTimeOff(updater: (entries: TimeOffEntry[]) => TimeOffEntry[]) {
+    setData((d) => ({ ...d, timeOff: updater(d.timeOff) }));
+  }
   function setPrintSettings(updater: (s: PrintAssignSettings) => PrintAssignSettings) {
     setData((d) => ({ ...d, printSettings: updater(d.printSettings) }));
   }
@@ -212,7 +224,7 @@ function App() {
           </div>
           <p className="shift-chooser-hint">
             You can change this anytime from the header. Each shift has its own completely separate Production
-            Schedule, Line Assignments boards and Skills &amp; Roles roster - nothing here is shared between shifts.
+            Schedule, Line Assignments boards, Skills &amp; Roles roster and Time Off schedule - nothing here is shared between shifts.
           </p>
         </div>
       </div>
@@ -235,6 +247,9 @@ function App() {
           </button>
           <button className={`tab-btn ${tab === "roster" ? "active" : ""}`} onClick={() => setTab("roster")}>
             Skills &amp; Roles
+          </button>
+          <button className={`tab-btn ${tab === "timeoff" ? "active" : ""}`} onClick={() => setTab("timeoff")}>
+            Time Off
           </button>
         </nav>
         <label className="shift-picker">
@@ -325,14 +340,16 @@ function App() {
             defaultShiftLabel={SHIFT_LABELS[shift]}
             printSettings={printSettings}
             setPrintSettings={setPrintSettings}
+            timeOff={timeOff}
           />
         )}
         {tab === "roster" && <SkillsRoles employees={employees} setEmployees={setEmployees} />}
+        {tab === "timeoff" && <TimeOff timeOff={timeOff} setTimeOff={setTimeOff} employees={employees} />}
       </main>
 
       <footer className="toolbar-footer">
-        Synced live to the cloud - this device's {SHIFT_LABELS[shift]} Production Schedule, Line Assignments boards
-        and Skills &amp; Roles roster are kept completely separate from the other shifts. Use "Backup (JSON)"
+        Synced live to the cloud - this device's {SHIFT_LABELS[shift]} Production Schedule, Line Assignments boards,
+        Skills &amp; Roles roster and Time Off schedule are kept completely separate from the other shifts. Use "Backup (JSON)"
         regularly to keep a copy you can restore from any device.
       </footer>
 

@@ -1,4 +1,5 @@
-import type { DailyBoard, Employee, LineSlot, ListSection } from "./types";
+import type { DailyBoard, Employee, LineSlot, ListSection, TimeOffEntry } from "./types";
+import { describeEntry, entriesOn } from "./timeOffLogic";
 import { nameKey, roleCategory, roleOf } from "./printLayout";
 
 // Drag payload type for moving a person between lines, duty sections and
@@ -80,10 +81,15 @@ export function boardPlacements(board: DailyBoard | undefined): Map<string, Plac
   return map;
 }
 
-// nameKey -> the absence section they're listed under.
-export function boardOut(board: DailyBoard | undefined): Map<string, string> {
+// nameKey -> why they're out: scheduled time off covering the board's date
+// (from the Time Off tab) first, then anyone typed into an absence list.
+export function boardOut(board: DailyBoard | undefined, timeOff: TimeOffEntry[] = []): Map<string, string> {
   const map = new Map<string, string>();
   if (!board) return map;
+  for (const entry of entriesOn(timeOff, board.date)) {
+    const key = nameKey(entry.name);
+    if (key && !map.has(key)) map.set(key, describeEntry(entry));
+  }
   for (const section of board.listSections) {
     if (!isOutSection(section)) continue;
     for (const item of section.items) {

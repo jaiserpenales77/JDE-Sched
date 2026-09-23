@@ -210,4 +210,18 @@ export interface AppData {
   // omitted entirely from the printed Production Schedule report.
   printScheduleHiddenColumns: string[];
   boards: DailyBoard[];
+  timeOff: TimeOffEntry[];
+}
+
+export const TIME_OFF_TYPES = ["PTO", "LOA", "Sick", "Bereavement", "Other"] as const;
+export type TimeOffType = (typeof TIME_OFF_TYPES)[number];
+
+// One stretch of scheduled time off. Dates are YYYY-MM-DD, inclusive.
+export interface TimeOffEntry {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+  type: TimeOffType;
+  note: string;
 }

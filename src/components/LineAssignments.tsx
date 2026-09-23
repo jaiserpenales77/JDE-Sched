@@ -1,5 +1,15 @@
 import { useState } from "react";
-import type { CommentBox, DailyBoard, Employee, ListSection, LineSlot, PrintAssignSettings, SectionStyle } from "../types";
+import type {
+  CommentBox,
+  DailyBoard,
+  Employee,
+  ListSection,
+  LineSlot,
+  PrintAssignSettings,
+  SectionStyle,
+  TimeOffEntry,
+} from "../types";
+import { describeEntry, entriesOn } from "../timeOffLogic";
 import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
@@ -22,6 +32,9 @@ interface Props {
   defaultShiftLabel: string;
   printSettings: PrintAssignSettings;
   setPrintSettings: (updater: (s: PrintAssignSettings) => PrintAssignSettings) => void;
+  // Scheduled time off from the Time Off tab - anyone covering the board's
+  // date counts as out on that board.
+  timeOff: TimeOffEntry[];
 }
 
 function todayIso() {
@@ -85,6 +98,7 @@ export default function LineAssignments({
   defaultShiftLabel,
   printSettings,
   setPrintSettings,
+  timeOff,
 }: Props) {
   const sorted = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
   const board = boards.find((b) => b.id === selectedId) ?? sorted[0];
@@ -97,7 +111,8 @@ export default function LineAssignments({
   const [selection, setSelection] = useState<PageSelection | null>(null);
 
   const placements = boardPlacements(board);
-  const out = boardOut(board);
+  const out = boardOut(board, timeOff);
+  const scheduledOff = board ? entriesOn(timeOff, board.date) : [];
 
   // Best display name for each person key - roster spelling first, then
   // however they were typed onto the board.
@@ -843,6 +858,24 @@ export default function LineAssignments({
           <div className="panel">
             <h2>Rosters &amp; Notes</h2>
             <p className="panel-hint">On-screen only — not included in the print report.</p>
+            {scheduledOff.length > 0 && (
+              <div className="scheduled-off">
+                <strong>Scheduled time off on {board.date}</strong> <span className="panel-hint">(from the Time Off tab)</span>
+                <ul>
+                  {scheduledOff.map((e) => (
+                    <li key={e.id}>
+                      {e.name} — {describeEntry(e)}
+                      {e.start !== e.end && (
+                        <span className="scheduled-off-range">
+                          {" "}
+                          ({e.start} to {e.end})
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="sections-grid">
               {board.listSections.map((section) => (
                 <div className="section-card" key={section.id}>

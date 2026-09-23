@@ -244,5 +244,6 @@ export function buildSeedData(shift: ShiftKey): AppData {
     printScheduleColumnWidths: {},
     printScheduleHiddenColumns: [],
     boards: seedBoardsForShift(shift),
+    timeOff: [],
   };
 }

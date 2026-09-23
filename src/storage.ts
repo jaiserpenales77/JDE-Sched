@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import type { AppData, DailyBoard, PrintAssignSettings, ShiftKey } from "./types";
-import { SHIFT_KEYS } from "./types";
+import type { AppData, DailyBoard, PrintAssignSettings, ShiftKey, TimeOffEntry } from "./types";
+import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings } from "./seedData";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
@@ -22,6 +22,19 @@ function shiftDoc(shift: ShiftKey) {
 // Backfills fields added to the data model after some users already had
 // data saved in localStorage (e.g. roomSections), so old saved boards
 // don't crash the app by being missing an array a newer build expects.
+function normalizeTimeOff(entry: Partial<TimeOffEntry>): TimeOffEntry {
+  const start = typeof entry.start === "string" ? entry.start : "";
+  const end = typeof entry.end === "string" && entry.end >= start ? entry.end : start;
+  return {
+    id: entry.id ?? crypto.randomUUID(),
+    name: typeof entry.name === "string" ? entry.name : "",
+    start,
+    end,
+    type: (TIME_OFF_TYPES as readonly string[]).includes(entry.type ?? "") ? (entry.type as TimeOffEntry["type"]) : "PTO",
+    note: typeof entry.note === "string" ? entry.note : "",
+  };
+}
+
 function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
   return {
     id: board.id ?? crypto.randomUUID(),
@@ -61,6 +74,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
         : {},
     printScheduleHiddenColumns: Array.isArray(raw.printScheduleHiddenColumns) ? raw.printScheduleHiddenColumns : [],
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
+    timeOff: Array.isArray(raw.timeOff) ? raw.timeOff.map(normalizeTimeOff) : [],
   };
 }
 
@@ -175,5 +189,6 @@ export function emptyAppData(): AppData {
     printScheduleColumnWidths: {},
     printScheduleHiddenColumns: [],
     boards: [],
+    timeOff: [],
   };
 }
