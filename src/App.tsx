@@ -11,7 +11,6 @@ import {
   readAppDataFromJsonFile,
   readWorkOrdersFromWorkbookFile,
 } from "./excel";
-import PrintDesignSettings from "./components/PrintDesignSettings";
 import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, ShiftKey } from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 
@@ -317,19 +316,16 @@ function App() {
           />
         )}
         {tab === "assignments" && (
-          <>
-            <LineAssignments
-              boards={boards}
-              setBoards={setBoards}
-              selectedId={selectedBoard?.id ?? ""}
-              setSelectedId={setSelectedBoardId}
-              employees={employees}
-              defaultShiftLabel={SHIFT_LABELS[shift]}
-              printSettings={printSettings}
-              setPrintSettings={setPrintSettings}
-            />
-            <PrintDesignSettings settings={printSettings} setSettings={setPrintSettings} />
-          </>
+          <LineAssignments
+            boards={boards}
+            setBoards={setBoards}
+            selectedId={selectedBoard?.id ?? ""}
+            setSelectedId={setSelectedBoardId}
+            employees={employees}
+            defaultShiftLabel={SHIFT_LABELS[shift]}
+            printSettings={printSettings}
+            setPrintSettings={setPrintSettings}
+          />
         )}
         {tab === "roster" && <SkillsRoles employees={employees} setEmployees={setEmployees} />}
       </main>

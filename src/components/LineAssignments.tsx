@@ -7,6 +7,7 @@ import UnassignedPanel from "./UnassignedPanel";
 import PageEditor from "./PageEditor";
 import type { PageSelection } from "./PageEditor";
 import PersonPicker from "./PersonPicker";
+import PrintDesignSettings from "./PrintDesignSettings";
 import { buildRoleMap, nameKey, roleCategory, roleOf } from "../printLayout";
 import { autoFillFromPrimaryLines, boardOut, boardPlacements, cleanEmployeeName, parseNames, slotCoverage } from "../assignmentLogic";
 
@@ -807,6 +808,8 @@ export default function LineAssignments({
                   searching={q.length >= 2}
                 />
               </div>
+
+              <PrintDesignSettings settings={printSettings} setSettings={setPrintSettings} />
             </div>
 
             <div className="assign-side">
