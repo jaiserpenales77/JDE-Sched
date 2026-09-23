@@ -37,7 +37,8 @@ function App() {
     document.body.classList.add(`printing-${printTarget}`);
 
     const orientation = printTarget === "assignments" ? printSettings.orientation : "landscape";
-    const marginMm = 10;
+    const marginMm =
+      printTarget === "assignments" ? Math.min(30, Math.max(0, Number(printSettings.printMarginMm) || 0)) : 10;
     let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
     if (!pageStyle) {
       pageStyle = document.createElement("style");
@@ -132,6 +133,7 @@ function App() {
     printSettings.freeFormLayout,
     printSettings.printScaleMode,
     printSettings.printScalePercent,
+    printSettings.printMarginMm,
   ]);
 
   function setBoards(updater: DailyBoard[] | ((boards: DailyBoard[]) => DailyBoard[])) {

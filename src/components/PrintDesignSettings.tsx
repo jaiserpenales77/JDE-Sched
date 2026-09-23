@@ -16,6 +16,14 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
+const MARGIN_OPTIONS = [
+  { mm: 0, label: "None" },
+  { mm: 5, label: "Narrow (5 mm)" },
+  { mm: 10, label: "Normal (10 mm)" },
+  { mm: 15, label: "Wide (15 mm)" },
+  { mm: 20, label: "Extra wide (20 mm)" },
+];
+
 function clampScale(value: number): number {
   return Math.min(200, Math.max(25, Math.round(Number(value) || 100)));
 }
@@ -113,6 +121,19 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
                 />
               </>
             )}
+            <label className="print-design-field">
+              Margins
+              <select value={settings.printMarginMm} onChange={(e) => set("printMarginMm", Number(e.target.value))}>
+                {MARGIN_OPTIONS.some((o) => o.mm === settings.printMarginMm) ? null : (
+                  <option value={settings.printMarginMm}>{settings.printMarginMm} mm</option>
+                )}
+                {MARGIN_OPTIONS.map((o) => (
+                  <option key={o.mm} value={o.mm}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <span className="print-scale-hint">
               {settings.printScaleMode === "fit"
                 ? "Prints at full size, shrinking only when needed to fit on one page."

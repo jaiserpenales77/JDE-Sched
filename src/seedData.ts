@@ -211,6 +211,7 @@ export const defaultPrintSettings: PrintAssignSettings = {
   boxLayouts: {},
   printScaleMode: "fit",
   printScalePercent: 100,
+  printMarginMm: 10,
 };
 
 // The sample board is written as a 3rd-shift example, but seeding a shift

@@ -176,6 +176,8 @@ export interface PrintAssignSettings {
   // print at printScalePercent, even if that runs onto a second page.
   printScaleMode: "fit" | "fixed";
   printScalePercent: number;
+  // Page margin on every side of the printed Line Assignments report.
+  printMarginMm: number;
 }
 
 // Which shift a device is currently showing - chosen once at the top of
