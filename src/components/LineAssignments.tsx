@@ -47,6 +47,13 @@ function blankSlot(): LineSlot {
   return { id: crypto.randomUUID(), line: "New Line", status: "", subNote: "", assigned: "" };
 }
 
+// A "(+1)" adder like the original sheet's Cremer / Labeler Training
+// headers: gold #FEC802 fill with black text.
+const ADDER_PRESET: Pick<ListSection, "title" | "style"> = {
+  title: "New Adder",
+  style: { ...DEFAULT_SECTION_STYLE, headerFillColor: "#fec802", headerTextColor: "#000000" },
+};
+
 function blankSection(): ListSection {
   return { id: crypto.randomUUID(), title: "New Section", items: [] };
 }
@@ -305,9 +312,9 @@ export default function LineAssignments({
     if (!board) return;
     updateBoard(board.id, { [field]: board[field].filter((s) => s.id !== id) });
   }
-  function addSection(field: SectionField) {
+  function addSection(field: SectionField, preset?: Pick<ListSection, "title" | "style">) {
     if (!board) return;
-    const section = blankSection();
+    const section = { ...blankSection(), ...preset };
     updateBoard(board.id, { [field]: [...board[field], section] });
     if (field === "roomSections") setSelection({ kind: "room", id: section.id });
   }
@@ -741,6 +748,13 @@ export default function LineAssignments({
                   </button>
                   <button className="btn small" onClick={() => addSection("roomSections")}>
                     + Duty section
+                  </button>
+                  <button
+                    className="btn small"
+                    onClick={() => addSection("roomSections", ADDER_PRESET)}
+                    title="A duty section styled like the sheet's (+1) adders: #FEC802 header, black text"
+                  >
+                    + Adder
                   </button>
                   <button
                     className="btn small"
