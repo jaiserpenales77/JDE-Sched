@@ -187,8 +187,8 @@ export default function LineAssignments({
     }
   }
 
-  // MLLs and Line Leads may cover more than one line; everyone else is
-  // one place at a time.
+  // Anyone can be on more than one line; for MLLs and Line Leads it's
+  // expected, so they get a soft note rather than the amber warning.
   function isLead(name: string): boolean {
     const category = roleCategory(roleOf(name, roleMap));
     return category === "mll" || category === "leader";
@@ -209,7 +209,7 @@ export default function LineAssignments({
     const places = placements.get(key);
     if (places?.length) {
       const labels = places.map((p) => p.label).join(", ");
-      return { status: "elsewhere", note: isLead(name) ? `also on ${labels}` : `on ${labels} · moves here` };
+      return { status: "elsewhere", note: `also on ${labels}` };
     }
     return { status: "free" };
   }
@@ -222,70 +222,7 @@ export default function LineAssignments({
     const others = (placements.get(key) ?? []).filter((p) => p.id !== placeId);
     if (!others.length) return undefined;
     const labels = others.map((p) => p.label).join(", ");
-    return isLead(name)
-      ? { text: `Also covering ${labels}`, soft: true }
-      : { text: `Also on ${labels} — only MLLs and Line Leads should be on more than one line` };
-  }
-
-  // Everywhere a person is on the board except placeId, as a board patch
-  // that takes them off all of it.
-  function withoutPerson(key: string, placeId: string): Pick<DailyBoard, "lineSlots" | "roomSections"> {
-    return {
-      lineSlots: board!.lineSlots.map((s) =>
-        s.id === placeId ? s : { ...s, assigned: parseNames(s.assigned).filter((n) => nameKey(n) !== key).join(", ") },
-      ),
-      roomSections: board!.roomSections.map((r) =>
-        r.id === placeId ? r : { ...r, items: r.items.filter((item) => nameKey(item) !== key) },
-      ),
-    };
-  }
-
-  // Picking someone already placed elsewhere: a lead just gets added here
-  // too; anyone else is moved here (after confirming) instead of being
-  // double-booked. Returns false when the pick was cancelled.
-  function confirmPlacement(name: string, placeId: string, placeLabel: string): "add" | "move" | false {
-    const others = (placements.get(nameKey(name)) ?? []).filter((p) => p.id !== placeId);
-    if (!others.length || isLead(name)) return "add";
-    const labels = others.map((p) => p.label).join(", ");
-    return confirm(
-      `${name} is already on ${labels}.\n\nOnly MLLs and Line Leads can cover more than one line. Move ${name} to ${placeLabel} instead?`,
-    )
-      ? "move"
-      : false;
-  }
-
-  function assignToSlot(name: string, slotId: string) {
-    if (!board) return;
-    const slot = board.lineSlots.find((s) => s.id === slotId);
-    if (!slot) return;
-    const mode = confirmPlacement(name, slotId, slot.line.trim() || "this line");
-    if (!mode) return;
-    const key = nameKey(name);
-    const base = mode === "move" ? withoutPerson(key, slotId) : { lineSlots: board.lineSlots, roomSections: board.roomSections };
-    updateBoard(board.id, {
-      ...base,
-      lineSlots: base.lineSlots.map((s) => {
-        if (s.id !== slotId) return s;
-        const names = parseNames(s.assigned);
-        return names.some((n) => nameKey(n) === key) ? s : { ...s, assigned: [...names, name].join(", ") };
-      }),
-    });
-  }
-
-  function pickForRoom(name: string, sectionId: string) {
-    if (!board) return;
-    const section = board.roomSections.find((r) => r.id === sectionId);
-    if (!section) return;
-    const mode = confirmPlacement(name, sectionId, section.title.trim() || "this duty");
-    if (!mode) return;
-    const key = nameKey(name);
-    const base = mode === "move" ? withoutPerson(key, sectionId) : { lineSlots: board.lineSlots, roomSections: board.roomSections };
-    updateBoard(board.id, {
-      ...base,
-      roomSections: base.roomSections.map((r) =>
-        r.id === sectionId && !r.items.some((item) => nameKey(item) === key) ? { ...r, items: [...r.items, name] } : r,
-      ),
-    });
+    return isLead(name) ? { text: `Also covering ${labels}`, soft: true } : { text: `Also on ${labels}` };
   }
 
   const q = query.trim().toLowerCase();
@@ -709,7 +646,6 @@ export default function LineAssignments({
                             roleMap={roleMap}
                             describe={describe}
                             chipWarning={(name) => warningFor(name, slot.id)}
-                            onPick={(name) => assignToSlot(name, slot.id)}
                             isMatch={isMatch}
                           />
                           <select
@@ -785,7 +721,7 @@ export default function LineAssignments({
                         <PersonPicker
                           names={employeeNames.filter((n) => !section.items.some((item) => nameKey(item) === nameKey(n)))}
                           describe={describe}
-                          onPick={(name) => pickForRoom(name, section.id)}
+                          onPick={(name) => placeInRoom(name, section.id)}
                         />
                         <button className="btn small" onClick={() => addItem("roomSections", section)}>
                           + Text

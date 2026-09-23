@@ -34,9 +34,6 @@ interface Props {
   chipWarning?: (name: string) => ChipWarning | undefined;
   // Search text - chips that match get highlighted.
   isMatch?: (name: string) => boolean;
-  // Replaces the plain "add to this box" when someone is picked, so the
-  // caller can decide (e.g. move them off another line instead).
-  onPick?: (name: string) => void;
 }
 
 export default function NameMultiSelect({
@@ -49,7 +46,6 @@ export default function NameMultiSelect({
   describe,
   chipWarning,
   isMatch,
-  onPick,
 }: Props) {
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState("");
@@ -68,8 +64,7 @@ export default function NameMultiSelect({
   function addName(name: string) {
     const trimmed = name.trim();
     if (!trimmed || selected.includes(trimmed)) return;
-    if (onPick) onPick(trimmed);
-    else onChange([...selected, trimmed].join(", "));
+    onChange([...selected, trimmed].join(", "));
   }
   function removeName(name: string) {
     onChange(selected.filter((n) => n !== name).join(", "));
