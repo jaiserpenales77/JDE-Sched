@@ -16,6 +16,10 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
+function clampScale(value: number): number {
+  return Math.min(200, Math.max(25, Math.round(Number(value) || 100)));
+}
+
 export default function PrintDesignSettings({ settings, setSettings }: Props) {
   const [open, setOpen] = useState(false);
 
@@ -70,6 +74,52 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
               />
               Use custom box positions (drag &amp; resize boxes on the page above)
             </label>
+          </div>
+
+          <div className="print-design-row">
+            <label className="print-design-field">
+              Print size
+              <select
+                value={settings.printScaleMode}
+                onChange={(e) => set("printScaleMode", e.target.value as PrintAssignSettings["printScaleMode"])}
+              >
+                <option value="fit">Fit to one page</option>
+                <option value="fixed">Fixed size</option>
+              </select>
+            </label>
+            {settings.printScaleMode === "fixed" && (
+              <>
+                <label className="print-design-field print-scale-field">
+                  Size (%)
+                  <input
+                    type="number"
+                    min={25}
+                    max={200}
+                    step={5}
+                    value={settings.printScalePercent}
+                    onChange={(e) => set("printScalePercent", Number(e.target.value))}
+                    onBlur={() => set("printScalePercent", clampScale(settings.printScalePercent))}
+                  />
+                </label>
+                <input
+                  type="range"
+                  className="print-scale-slider"
+                  min={25}
+                  max={200}
+                  step={5}
+                  value={clampScale(settings.printScalePercent)}
+                  onChange={(e) => set("printScalePercent", Number(e.target.value))}
+                  aria-label="Print size percent"
+                />
+              </>
+            )}
+            <span className="print-scale-hint">
+              {settings.printScaleMode === "fit"
+                ? "Prints at full size, shrinking only when needed to fit on one page."
+                : settings.freeFormLayout
+                  ? "With custom box positions this sets the text size inside the boxes; the page still prints on one sheet. Make a box bigger if its names get cut off."
+                  : "Always prints at this size. Below 100% fits more per page; above 100% is easier to read but may run onto a second page."}
+            </span>
           </div>
 
           <div className="print-design-row">

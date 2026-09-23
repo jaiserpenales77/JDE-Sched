@@ -172,6 +172,10 @@ export interface PrintAssignSettings {
   // position instead of the automatic flowing grid.
   freeFormLayout: boolean;
   boxLayouts: Record<string, BoxLayout>;
+  // "fit": shrink only if the report won't fit one page. "fixed": always
+  // print at printScalePercent, even if that runs onto a second page.
+  printScaleMode: "fit" | "fixed";
+  printScalePercent: number;
 }
 
 // Which shift a device is currently showing - chosen once at the top of

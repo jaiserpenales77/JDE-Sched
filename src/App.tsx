@@ -49,10 +49,16 @@ function App() {
     const printRoot = document.querySelector(".print-root") as HTMLElement | null;
     const assignEl = document.querySelector(".print-assignments") as HTMLElement | null;
 
-    // Shrink the report down (never up) to fit one page, the way Excel's
-    // "fit sheet on one page" print option works. The flowing grid grows
-    // with every line/room section/comment; the free-form canvas is
-    // page-shaped but sits below the title and banner, so it overflows too.
+    if (assignEl) {
+      assignEl.style.transform = "";
+      assignEl.style.zoom = "";
+      assignEl.style.width = "";
+    }
+    if (printRoot) {
+      printRoot.style.height = "";
+      printRoot.style.overflow = "";
+    }
+
     if (printTarget === "assignments" && printRoot && assignEl) {
       const PX_PER_IN = 96;
       const PX_PER_MM = PX_PER_IN / 25.4;
@@ -70,30 +76,35 @@ function App() {
       const pageContentWidthPx = pageWidthIn * PX_PER_IN - marginPx * 2;
       const pageContentHeightPx = pageHeightIn * PX_PER_IN - marginPx * 2 - HEADER_FOOTER_BUFFER_PX;
 
-      assignEl.style.transform = "";
-      assignEl.style.width = `${pageContentWidthPx}px`;
-      printRoot.classList.add("measuring");
-      const naturalHeight = assignEl.scrollHeight;
-      printRoot.classList.remove("measuring");
-      assignEl.style.width = "";
+      // A fixed Print size is applied with zoom, which (unlike transform:
+      // scale) changes the layout size - so in the flowing grid an
+      // oversized report runs onto a second page instead of being cut off.
+      // Widening by 1/zoom keeps it spanning the full page width.
+      const fixed = printSettings.printScaleMode === "fixed";
+      const zoom = fixed ? Math.min(200, Math.max(25, Number(printSettings.printScalePercent) || 100)) / 100 : 1;
+      if (zoom !== 1) assignEl.style.zoom = String(zoom);
+      assignEl.style.width = `${pageContentWidthPx / zoom}px`;
 
-      const scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
-      if (scale < 1) {
-        // Shift right by half the width it lost, so it's centered on the page.
-        const offsetPx = ((1 - scale) * pageContentWidthPx) / 2;
-        assignEl.style.transformOrigin = "top left";
-        assignEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
-        printRoot.style.height = `${naturalHeight * scale}px`;
-        printRoot.style.overflow = "hidden";
-      } else {
-        printRoot.style.height = "";
-        printRoot.style.overflow = "";
-      }
-    } else {
-      if (assignEl) assignEl.style.transform = "";
-      if (printRoot) {
-        printRoot.style.height = "";
-        printRoot.style.overflow = "";
+      // Then shrink the report (never enlarge) to fit one page, the way
+      // Excel's "fit sheet on one page" works: always in "fit" mode, and
+      // always for the free-form layout - a page-shaped canvas that also
+      // sits below the title, so a fixed size there only changes how big
+      // the text inside the boxes is, never how many sheets it takes.
+      if (!fixed || printSettings.freeFormLayout) {
+        printRoot.classList.add("measuring");
+        const naturalHeight = assignEl.getBoundingClientRect().height;
+        printRoot.classList.remove("measuring");
+
+        const scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
+        if (scale < 1) {
+          // Shift right by half the width it lost, so it's centered on the
+          // page. Transform lengths are in the element's zoomed units.
+          const offsetPx = ((1 - scale) * pageContentWidthPx) / 2 / zoom;
+          assignEl.style.transformOrigin = "top left";
+          assignEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
+          printRoot.style.height = `${naturalHeight * scale}px`;
+          printRoot.style.overflow = "hidden";
+        }
       }
     }
 
@@ -106,6 +117,7 @@ function App() {
       window.removeEventListener("afterprint", reset);
       if (assignEl) {
         assignEl.style.transform = "";
+        assignEl.style.zoom = "";
         assignEl.style.width = "";
       }
       if (printRoot) {
@@ -114,7 +126,13 @@ function App() {
         printRoot.classList.remove("measuring");
       }
     };
-  }, [printTarget, printSettings.orientation, printSettings.freeFormLayout]);
+  }, [
+    printTarget,
+    printSettings.orientation,
+    printSettings.freeFormLayout,
+    printSettings.printScaleMode,
+    printSettings.printScalePercent,
+  ]);
 
   function setBoards(updater: DailyBoard[] | ((boards: DailyBoard[]) => DailyBoard[])) {
     setData((d) => ({ ...d, boards: typeof updater === "function" ? updater(d.boards) : updater }));

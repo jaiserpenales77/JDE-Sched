@@ -209,6 +209,8 @@ export const defaultPrintSettings: PrintAssignSettings = {
   mltColor: "#002060",
   freeFormLayout: false,
   boxLayouts: {},
+  printScaleMode: "fit",
+  printScalePercent: 100,
 };
 
 // The sample board is written as a 3rd-shift example, but seeding a shift

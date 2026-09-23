@@ -1133,8 +1133,23 @@ tr.print-line-spacer td {
   font-size: 12px;
   color: var(--muted);
 }
+.print-scale-field input {
+  width: 80px;
+}
+.print-scale-slider {
+  width: 200px;
+  margin-bottom: 8px;
+  accent-color: var(--accent);
+}
+.print-scale-hint {
+  font-size: 12px;
+  color: var(--muted);
+  flex: 1 1 260px;
+  padding-bottom: 7px;
+}
 .print-design-field select,
-.print-design-field input[type="text"] {
+.print-design-field input[type="text"],
+.print-design-field input[type="number"] {
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
