@@ -1,4 +1,5 @@
-import type { BoxLayout, Employee } from "./types";
+import type { CSSProperties } from "react";
+import type { BoxLayout, Employee, LineSlot, PrintAssignSettings } from "./types";
 
 // Stable keys for a box's saved position/size, independent of the
 // underlying slot/section's generated id (which is regenerated every time
@@ -208,4 +209,46 @@ export function sortByRole(names: string[], roleMap: Map<string, string>): strin
     .map((name, index) => ({ name, index, rank: roleRank(name, roleMap) }))
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((entry) => entry.name);
+}
+
+export const SLOTS_PER_BAND = 6;
+
+export function printCssVars(settings: PrintAssignSettings): CSSProperties {
+  return {
+    "--print-title-color": settings.titleColor,
+    "--print-banner-color": settings.bannerColor,
+    "--print-banner-text-color": settings.bannerTextColor,
+    "--print-scheduled-color": settings.scheduledColor,
+    "--print-not-scheduled-color": settings.notScheduledColor,
+    "--print-pm-color": settings.pmColor,
+    "--print-leader-color": settings.leaderColor,
+    "--print-mll-color": settings.mllColor,
+    "--print-mlt-color": settings.mltColor,
+  } as CSSProperties;
+}
+
+export function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+// Matches the fill colors the original "3rd Shift | Line Assignments" sheet
+// used for a line's header block, keyed off the same status text the sheet
+// itself carried (Scheduled = navy/blue, Not Scheduled = gray, PM = blue-gray).
+export function statusKey(status: LineSlot["status"]): "scheduled" | "not-scheduled" | "pm" {
+  if (status === "Scheduled") return "scheduled";
+  if (status === "PM") return "pm";
+  return "not-scheduled";
+}
+
+// The original sheet hand-highlighted Line Leaders (dark green) and
+// MLL/MLT crew (navy) by name within the assigned-names lists.
+export function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: boolean): string {
+  if (!enabled) return "";
+  const category = roleCategory(roleOf(name, roleMap));
+  if (category === "leader") return "print-assign-role-leader";
+  if (category === "mll") return "print-assign-role-mll";
+  if (category === "mlt") return "print-assign-role-mlt";
+  return "";
 }

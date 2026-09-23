@@ -13,7 +13,18 @@ import {
   SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
-import { buildRoleMap, commentBoxKey, lineBoxKey, resolveBoxLayout, roleCategory, roleOf, roomBoxKey, sortByRole } from "../printLayout";
+import {
+  buildRoleMap,
+  chunk,
+  commentBoxKey,
+  lineBoxKey,
+  nameRoleClass,
+  resolveBoxLayout,
+  roomBoxKey,
+  SLOTS_PER_BAND,
+  sortByRole,
+  statusKey,
+} from "../printLayout";
 import ProgressBar from "./ProgressBar";
 
 // Print layouts that mirror the original workbook's printed pages as
@@ -258,34 +269,6 @@ export function PrintSchedule({
       </table>
     </div>
   );
-}
-
-const SLOTS_PER_BAND = 6;
-
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
-
-// Matches the fill colors the original "3rd Shift | Line Assignments" sheet
-// used for a line's header block, keyed off the same status text the sheet
-// itself carried (Scheduled = navy/blue, Not Scheduled = gray, PM = blue-gray).
-function statusKey(status: LineSlot["status"]): "scheduled" | "not-scheduled" | "pm" {
-  if (status === "Scheduled") return "scheduled";
-  if (status === "PM") return "pm";
-  return "not-scheduled";
-}
-
-// The original sheet hand-highlighted Line Leaders (dark green) and
-// MLL/MLT crew (navy) by name within the assigned-names lists.
-function nameRoleClass(name: string, roleMap: Map<string, string>, enabled: boolean): string {
-  if (!enabled) return "";
-  const category = roleCategory(roleOf(name, roleMap));
-  if (category === "leader") return "print-assign-role-leader";
-  if (category === "mll") return "print-assign-role-mll";
-  if (category === "mlt") return "print-assign-role-mlt";
-  return "";
 }
 
 export function LineBoxContent({

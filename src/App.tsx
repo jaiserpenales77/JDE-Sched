@@ -12,7 +12,6 @@ import {
   readWorkOrdersFromWorkbookFile,
 } from "./excel";
 import PrintDesignSettings from "./components/PrintDesignSettings";
-import PrintLayoutEditor from "./components/PrintLayoutEditor";
 import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, ShiftKey } from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 
@@ -305,16 +304,10 @@ function App() {
               setSelectedId={setSelectedBoardId}
               employees={employees}
               defaultShiftLabel={SHIFT_LABELS[shift]}
+              printSettings={printSettings}
+              setPrintSettings={setPrintSettings}
             />
             <PrintDesignSettings settings={printSettings} setSettings={setPrintSettings} />
-            {printSettings.freeFormLayout && selectedBoard && (
-              <PrintLayoutEditor
-                board={selectedBoard}
-                employees={employees}
-                settings={printSettings}
-                setSettings={setPrintSettings}
-              />
-            )}
           </>
         )}
         {tab === "roster" && <SkillsRoles employees={employees} setEmployees={setEmployees} />}

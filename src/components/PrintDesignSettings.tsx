@@ -68,7 +68,7 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
                 checked={settings.freeFormLayout}
                 onChange={(e) => set("freeFormLayout", e.target.checked)}
               />
-              Use custom box positions (drag &amp; resize below)
+              Use custom box positions (drag &amp; resize boxes on the page above)
             </label>
           </div>
 
