@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { BoxLayout, Employee, LineSlot, PrintAssignSettings } from "./types";
+import type { BoxLayout, Employee, LineSlot, PrintAssignSettings, SectionStyle } from "./types";
 
 // Stable keys for a box's saved position/size, independent of the
 // underlying slot/section's generated id (which is regenerated every time
@@ -251,4 +251,33 @@ export function nameRoleClass(name: string, roleMap: Map<string, string>, enable
   if (category === "mll") return "print-assign-role-mll";
   if (category === "mlt") return "print-assign-role-mlt";
   return "";
+}
+
+// A Room & Duty section's custom look (see SectionStyle) as inline styles -
+// undefined when the section has none, so it keeps the stylesheet's look.
+export function sectionHeaderStyle(style: SectionStyle | undefined): CSSProperties | undefined {
+  if (!style) return undefined;
+  return {
+    fontFamily: style.fontFamily,
+    fontSize: `${style.headerFontSize}pt`,
+    color: style.headerTextColor,
+    background: style.headerFillColor,
+    textAlign: style.headerAlign,
+  };
+}
+
+const JUSTIFY = { left: "flex-start", center: "center", right: "flex-end" } as const;
+
+// roleClass: a highlighted MLL/Line Lead/MLT row keeps its own white-on-color
+// text, so the custom text color only applies to everyone else.
+export function sectionItemStyle(style: SectionStyle | undefined, roleClass: string): CSSProperties | undefined {
+  if (!style) return undefined;
+  return {
+    fontFamily: style.fontFamily,
+    fontSize: `${style.textFontSize}pt`,
+    color: roleClass ? undefined : style.textColor,
+    fontWeight: style.textBold ? 700 : undefined,
+    textAlign: style.textAlign,
+    justifyContent: JUSTIFY[style.textAlign],
+  };
 }

@@ -1577,6 +1577,31 @@ tr.print-line-spacer td {
 .inspector-empty strong {
   color: var(--text);
 }
+.inspector-details {
+  margin-top: 12px;
+  border-top: 1px solid var(--hairline);
+  padding-top: 8px;
+}
+.inspector-details summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.style-colors {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+.style-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
 .inspector .section-item-row input {
   background: var(--panel);
   color: var(--text);

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { CommentBox, DailyBoard, Employee, ListSection, LineSlot, PrintAssignSettings } from "../types";
-import { COMMENT_FONT_OPTIONS } from "../types";
+import type { CommentBox, DailyBoard, Employee, ListSection, LineSlot, PrintAssignSettings, SectionStyle } from "../types";
+import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
 import UnassignedPanel from "./UnassignedPanel";
@@ -338,6 +338,141 @@ export default function LineAssignments({
     updateBoard(board.id, { comments: [...board.comments, blankComment(board.comments.length)] });
   }
 
+  function setSectionStyle(section: ListSection, patch: Partial<SectionStyle>) {
+    updateSection("roomSections", section.id, { style: { ...(section.style ?? DEFAULT_SECTION_STYLE), ...patch } });
+  }
+
+  // Drops the style key entirely (not style: undefined - Firestore rejects
+  // undefined values) so the section goes back to the standard look.
+  function resetSectionStyle(section: ListSection) {
+    if (!board) return;
+    updateBoard(board.id, {
+      roomSections: board.roomSections.map((r) => {
+        if (r.id !== section.id) return r;
+        const { style: _style, ...rest } = r;
+        return rest;
+      }),
+    });
+  }
+
+  function applyStyleToAllSections(section: ListSection) {
+    if (!board) return;
+    const style = section.style ?? DEFAULT_SECTION_STYLE;
+    updateBoard(board.id, { roomSections: board.roomSections.map((r) => ({ ...r, style: { ...style } })) });
+  }
+
+  function renderSectionStyle(section: ListSection) {
+    const st = section.style ?? DEFAULT_SECTION_STYLE;
+    const size = (value: string, fallback: number) => Math.min(48, Math.max(4, Number(value) || fallback));
+    return (
+      <details className="inspector-details" open>
+        <summary>Style</summary>
+        <label className="inspector-field">
+          Font
+          <select value={st.fontFamily} onChange={(e) => setSectionStyle(section, { fontFamily: e.target.value })}>
+            {COMMENT_FONT_OPTIONS.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="inspector-row">
+          <label className="inspector-field">
+            Header size (pt)
+            <input
+              type="number"
+              min={4}
+              max={48}
+              step={0.5}
+              value={st.headerFontSize}
+              onChange={(e) => setSectionStyle(section, { headerFontSize: size(e.target.value, st.headerFontSize) })}
+            />
+          </label>
+          <label className="inspector-field">
+            Header align
+            <select
+              value={st.headerAlign}
+              onChange={(e) => setSectionStyle(section, { headerAlign: e.target.value as SectionStyle["headerAlign"] })}
+            >
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+        </div>
+        <div className="style-colors">
+          <label className="color-field">
+            <input
+              type="color"
+              value={st.headerTextColor}
+              onChange={(e) => setSectionStyle(section, { headerTextColor: e.target.value })}
+            />
+            <span>Header text</span>
+          </label>
+          <label className="color-field">
+            <input
+              type="color"
+              value={st.headerFillColor}
+              onChange={(e) => setSectionStyle(section, { headerFillColor: e.target.value })}
+            />
+            <span>Header fill</span>
+          </label>
+        </div>
+
+        <div className="inspector-row">
+          <label className="inspector-field">
+            Text size (pt)
+            <input
+              type="number"
+              min={4}
+              max={48}
+              step={0.5}
+              value={st.textFontSize}
+              onChange={(e) => setSectionStyle(section, { textFontSize: size(e.target.value, st.textFontSize) })}
+            />
+          </label>
+          <label className="inspector-field">
+            Text align
+            <select
+              value={st.textAlign}
+              onChange={(e) => setSectionStyle(section, { textAlign: e.target.value as SectionStyle["textAlign"] })}
+            >
+              <option value="left">Left</option>
+              <option value="center">Center</option>
+              <option value="right">Right</option>
+            </select>
+          </label>
+        </div>
+        <div className="style-colors">
+          <label className="color-field">
+            <input type="color" value={st.textColor} onChange={(e) => setSectionStyle(section, { textColor: e.target.value })} />
+            <span>Text color</span>
+          </label>
+          <button
+            type="button"
+            className={`btn small toggle ${st.textBold ? "active" : ""}`}
+            onClick={() => setSectionStyle(section, { textBold: !st.textBold })}
+            title="Bold names"
+          >
+            B
+          </button>
+        </div>
+        <p className="panel-hint inspector-hint">MLL, Line Lead and MLT names keep their highlight colors.</p>
+
+        <div className="style-actions">
+          <button type="button" className="btn small" onClick={() => applyStyleToAllSections(section)}>
+            Apply to all duty sections
+          </button>
+          <button type="button" className="btn small" onClick={() => resetSectionStyle(section)} disabled={!section.style}>
+            Reset
+          </button>
+        </div>
+      </details>
+    );
+  }
+
   // Edits whatever box is selected on the page.
   function renderInspector(board: DailyBoard) {
     const close = (
@@ -502,6 +637,7 @@ export default function LineAssignments({
               + Text
             </button>
           </div>
+          {renderSectionStyle(section)}
           <button
             className="btn small danger inspector-delete"
             onClick={() => {

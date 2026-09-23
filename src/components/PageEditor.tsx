@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import type { DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import type { BoxLayout, CommentBox, DailyBoard, LineSlot, ListSection, PrintAssignSettings } from "../types";
+import type { BoxLayout, CommentBox, DailyBoard, LineSlot, ListSection, PrintAssignSettings, SectionStyle } from "../types";
 import {
   chunk,
   clamp,
@@ -11,6 +11,8 @@ import {
   printCssVars,
   resolveBoxLayout,
   roomBoxKey,
+  sectionHeaderStyle,
+  sectionItemStyle,
   SLOTS_PER_BAND,
   snapMove,
   snapResize,
@@ -160,15 +162,17 @@ export default function PageEditor({
     };
   }
 
-  function nameRow(name: string, placeId: string, i: number) {
+  function nameRow(name: string, placeId: string, i: number, sectionStyle?: SectionStyle) {
     const warning = warningFor(name, placeId);
-    const classes = ["print-assign-name-row", "page-name", nameRoleClass(name, roleMap, settings.highlightRoles)];
+    const roleClass = nameRoleClass(name, roleMap, settings.highlightRoles);
+    const classes = ["print-assign-name-row", "page-name", roleClass];
     if (warning) classes.push(warning.soft ? "page-name-soft" : "page-name-warn");
     if (isMatch(name)) classes.push("page-name-match");
     return (
       <div
         key={`${i}-${name}`}
         className={classes.join(" ")}
+        style={sectionItemStyle(sectionStyle, roleClass)}
         draggable
         title={warning?.text ?? "Drag to another box to move"}
         onDragStart={(e) => {
@@ -244,8 +248,10 @@ export default function PageEditor({
     const items = section.items.filter((item) => item.trim());
     return (
       <>
-        <div className="print-assign-room-header">{section.title}</div>
-        <div className="print-assign-names">{items.map((item, i) => nameRow(item, section.id, i))}</div>
+        <div className="print-assign-room-header" style={sectionHeaderStyle(section.style)}>
+          {section.title}
+        </div>
+        <div className="print-assign-names">{items.map((item, i) => nameRow(item, section.id, i, section.style))}</div>
         {isSelected("room", section.id) && addRow(items, section.id)}
       </>
     );

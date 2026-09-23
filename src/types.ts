@@ -38,7 +38,34 @@ export interface ListSection {
   id: string;
   title: string;
   items: string[];
+  // Only used by Room & Duty sections; absent = the standard report look.
+  style?: SectionStyle;
 }
+
+export interface SectionStyle {
+  fontFamily: string;
+  headerFontSize: number; // pt
+  headerTextColor: string;
+  headerFillColor: string;
+  headerAlign: "left" | "center" | "right";
+  textFontSize: number; // pt
+  textColor: string;
+  textBold: boolean;
+  textAlign: "left" | "center" | "right";
+}
+
+// Matches the report's built-in Room & Duty look (see .print-assign-room-header).
+export const DEFAULT_SECTION_STYLE: SectionStyle = {
+  fontFamily: "Calibri, Arial, sans-serif",
+  headerFontSize: 10.5,
+  headerTextColor: "#ffffff",
+  headerFillColor: "#44546a",
+  headerAlign: "left",
+  textFontSize: 10,
+  textColor: "#000000",
+  textBold: false,
+  textAlign: "center",
+};
 
 export const COMMENT_FONT_OPTIONS = [
   { label: "Calibri", value: "Calibri, Arial, sans-serif" },

@@ -21,6 +21,8 @@ import {
   nameRoleClass,
   resolveBoxLayout,
   roomBoxKey,
+  sectionHeaderStyle,
+  sectionItemStyle,
   SLOTS_PER_BAND,
   sortByRole,
   statusKey,
@@ -316,13 +318,18 @@ export function RoomBoxContent({
 }) {
   return (
     <>
-      <div className="print-assign-room-header">{section.title}</div>
+      <div className="print-assign-room-header" style={sectionHeaderStyle(section.style)}>
+        {section.title}
+      </div>
       <div className="print-assign-names">
-        {section.items.map((item, i) => (
-          <div className={`print-assign-name-row ${nameRoleClass(item, roleMap, settings.highlightRoles)}`} key={i}>
-            {item}
-          </div>
-        ))}
+        {section.items.map((item, i) => {
+          const roleClass = nameRoleClass(item, roleMap, settings.highlightRoles);
+          return (
+            <div className={`print-assign-name-row ${roleClass}`} style={sectionItemStyle(section.style, roleClass)} key={i}>
+              {item}
+            </div>
+          );
+        })}
       </div>
     </>
   );
