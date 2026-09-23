@@ -4,13 +4,11 @@ import type { BoxLayout, CommentBox, DailyBoard, LineSlot, ListSection, PrintAss
 import {
   chunk,
   clamp,
-  commentBoxKey,
-  lineBoxKey,
   nameKey,
   nameRoleClass,
+  pageBoxKeys,
   printCssVars,
   resolveBoxLayout,
-  roomBoxKey,
   sectionHeaderStyle,
   sectionItemStyle,
   SLOTS_PER_BAND,
@@ -84,11 +82,7 @@ export default function PageEditor({
   const printedRooms = settings.includeRoomSections ? board.roomSections : [];
   const printedComments = board.comments.filter((c) => c.includeInPrint);
 
-  const layoutKeys = [
-    ...board.lineSlots.map((s) => lineBoxKey(s.line)),
-    ...printedRooms.map((r) => roomBoxKey(r.title)),
-    ...printedComments.map((c) => commentBoxKey(c.title)),
-  ];
+  const layoutKeys = pageBoxKeys(board.lineSlots, printedRooms, printedComments);
 
   function isSelected(kind: "line" | "room" | "comment", id: string) {
     return selection?.kind === kind && "id" in selection && selection.id === id;

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { BoxLayout, Employee, LineSlot, PrintAssignSettings, SectionStyle } from "./types";
+import type { BoxLayout, CommentBox, Employee, LineSlot, ListSection, PrintAssignSettings, SectionStyle } from "./types";
 
 // Stable keys for a box's saved position/size, independent of the
 // underlying slot/section's generated id (which is regenerated every time
@@ -13,6 +13,24 @@ export function roomBoxKey(title: string): string {
 }
 export function commentBoxKey(title: string): string {
   return `comment:${title.trim().toLowerCase()}`;
+}
+
+// Position keys for every box on the page, in page order (lines, then
+// printed duty sections, then printed comments). A repeated name gets
+// "#2", "#3"... so two boxes both called "New Section" don't share one
+// saved position and end up stacked on top of each other.
+export function pageBoxKeys(lines: LineSlot[], rooms: ListSection[], comments: CommentBox[]): string[] {
+  const seen = new Map<string, number>();
+  const unique = (key: string) => {
+    const n = (seen.get(key) ?? 0) + 1;
+    seen.set(key, n);
+    return n === 1 ? key : `${key}#${n}`;
+  };
+  return [
+    ...lines.map((s) => unique(lineBoxKey(s.line))),
+    ...rooms.map((r) => unique(roomBoxKey(r.title))),
+    ...comments.map((c) => unique(commentBoxKey(c.title))),
+  ];
 }
 
 const COLS = 6;

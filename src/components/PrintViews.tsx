@@ -16,11 +16,9 @@ import type { ScheduleColumnKey } from "../scheduleLogic";
 import {
   buildRoleMap,
   chunk,
-  commentBoxKey,
-  lineBoxKey,
   nameRoleClass,
+  pageBoxKeys,
   resolveBoxLayout,
-  roomBoxKey,
   sectionHeaderStyle,
   sectionItemStyle,
   SLOTS_PER_BAND,
@@ -378,6 +376,7 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
   const roleMap = buildRoleMap(employees);
   const roomSections = settings.includeRoomSections ? board.roomSections : [];
   const printedComments = board.comments.filter((c) => c.includeInPrint);
+  const boxKeys = pageBoxKeys(board.lineSlots, roomSections, printedComments);
 
   const cssVars = {
     "--print-title-color": settings.titleColor,
@@ -414,7 +413,7 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
           style={{ aspectRatio: settings.orientation === "landscape" ? "11 / 8.5" : "8.5 / 11" }}
         >
           {board.lineSlots.map((slot, i) => {
-            const rect = resolveBoxLayout(lineBoxKey(slot.line), i, settings.boxLayouts);
+            const rect = resolveBoxLayout(boxKeys[i], i, settings.boxLayouts);
             return (
               <div
                 className="print-assign-col print-assign-col-absolute"
@@ -426,7 +425,8 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
             );
           })}
           {roomSections.map((section, i) => {
-            const rect = resolveBoxLayout(roomBoxKey(section.title), board.lineSlots.length + i, settings.boxLayouts);
+            const index = board.lineSlots.length + i;
+            const rect = resolveBoxLayout(boxKeys[index], index, settings.boxLayouts);
             return (
               <div
                 className="print-assign-col print-assign-col-absolute"
@@ -438,11 +438,8 @@ export function PrintAssignments({ board, employees, settings }: PrintAssignment
             );
           })}
           {printedComments.map((comment, i) => {
-            const rect = resolveBoxLayout(
-              commentBoxKey(comment.title),
-              board.lineSlots.length + roomSections.length + i,
-              settings.boxLayouts,
-            );
+            const index = board.lineSlots.length + roomSections.length + i;
+            const rect = resolveBoxLayout(boxKeys[index], index, settings.boxLayouts);
             return (
               <div
                 className="print-assign-col-absolute print-comment-col-absolute"
