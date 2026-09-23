@@ -5,7 +5,14 @@ import { cleanEmployeeName, DRAG_MIME, parseNames, readDragPayload } from "../as
 
 export interface NameStatus {
   status: "free" | "elsewhere" | "out";
-  note?: string; // e.g. "Line 3" or "PTO / Absences"
+  note?: string; // e.g. "also on Line 3" or "PTO / Absences"
+}
+
+export interface ChipWarning {
+  text: string;
+  // Informational only - e.g. an MLL/Line Lead covering two lines, which
+  // is allowed - rather than a problem to fix.
+  soft?: boolean;
 }
 
 interface Props {
@@ -24,9 +31,12 @@ interface Props {
   // list so people already on another line or out today are set apart.
   describe?: (name: string) => NameStatus;
   // A problem with someone already in this box (double-booked, out today).
-  chipWarning?: (name: string) => string | undefined;
+  chipWarning?: (name: string) => ChipWarning | undefined;
   // Search text - chips that match get highlighted.
   isMatch?: (name: string) => boolean;
+  // Replaces the plain "add to this box" when someone is picked, so the
+  // caller can decide (e.g. move them off another line instead).
+  onPick?: (name: string) => void;
 }
 
 export default function NameMultiSelect({
@@ -39,6 +49,7 @@ export default function NameMultiSelect({
   describe,
   chipWarning,
   isMatch,
+  onPick,
 }: Props) {
   const [customOpen, setCustomOpen] = useState(false);
   const [customText, setCustomText] = useState("");
@@ -57,7 +68,8 @@ export default function NameMultiSelect({
   function addName(name: string) {
     const trimmed = name.trim();
     if (!trimmed || selected.includes(trimmed)) return;
-    onChange([...selected, trimmed].join(", "));
+    if (onPick) onPick(trimmed);
+    else onChange([...selected, trimmed].join(", "));
   }
   function removeName(name: string) {
     onChange(selected.filter((n) => n !== name).join(", "));
@@ -102,7 +114,7 @@ export default function NameMultiSelect({
         {displayed.map((name) => {
           const warning = chipWarning?.(name);
           const classes = ["name-chip"];
-          if (warning) classes.push("name-chip-warn");
+          if (warning) classes.push(warning.soft ? "name-chip-soft" : "name-chip-warn");
           if (isMatch?.(name)) classes.push("name-chip-match");
           return (
             <span
@@ -110,9 +122,9 @@ export default function NameMultiSelect({
               key={name}
               draggable={!!slotId}
               onDragStart={(e) => handleChipDragStart(e, name)}
-              title={[warning, slotId ? "Drag to another line to move this person" : ""].filter(Boolean).join(" — ")}
+              title={[warning?.text, slotId ? "Drag to another line to move this person" : ""].filter(Boolean).join(" — ")}
             >
-              {warning && <span aria-hidden="true">⚠</span>}
+              {warning && <span aria-hidden="true">{warning.soft ? "ℹ" : "⚠"}</span>}
               {name}
               <button type="button" onClick={() => removeName(name)} title={`Remove ${name}`}>
                 ✕
@@ -144,7 +156,7 @@ export default function NameMultiSelect({
                 <optgroup label="Already placed elsewhere">
                   {groups.elsewhere.map(({ name, note }) => (
                     <option key={name} value={name}>
-                      {name} — on {note}
+                      {name} — {note}
                     </option>
                   ))}
                 </optgroup>

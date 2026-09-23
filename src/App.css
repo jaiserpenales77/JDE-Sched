@@ -1404,6 +1404,10 @@ tr.print-line-spacer td {
   border-color: var(--warn);
   background: color-mix(in srgb, var(--warn) 16%, var(--panel-2));
 }
+.name-chip-soft {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--panel-2));
+}
 .name-chip-match {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -1519,6 +1523,13 @@ tr.print-line-spacer td {
   margin: 4px 0 0;
   padding-left: 18px;
 }
+.assign-alert-soft {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--panel));
+}
+.assign-alert-soft strong {
+  color: var(--accent);
+}
 
 .line-status-toolbar {
   display: flex;
@@ -1630,6 +1641,10 @@ tr.print-line-spacer td {
 .section-item-warn {
   border-color: var(--warn) !important;
   background: color-mix(in srgb, var(--warn) 12%, transparent);
+}
+.section-item-soft {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .section-add-row {
   display: flex;

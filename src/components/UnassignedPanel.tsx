@@ -11,7 +11,8 @@ interface Props {
   placements: Map<string, Placement[]>;
   out: Map<string, string>;
   roleMap: Map<string, string>;
-  doubleBooked: { name: string; places: string[] }[];
+  // soft: an MLL/Line Lead covering more than one line - allowed, just noted.
+  doubleBooked: { name: string; places: string[]; soft: boolean }[];
   isMatch: (name: string) => boolean;
   // A chip dragged off a line (or duty) and dropped here - take them off it.
   onUnassign: (name: string, fromSlotId: string) => void;
@@ -47,6 +48,8 @@ export default function UnassignedPanel({ employees, placements, out, roleMap, d
     }
   }
   const unassignedCount = GROUPS.reduce((n, g) => n + unassigned[g.category].length, 0);
+  const hardDoubles = doubleBooked.filter((d) => !d.soft);
+  const softDoubles = doubleBooked.filter((d) => d.soft);
 
   function handleDragStart(e: DragEvent<HTMLSpanElement>, name: string) {
     e.dataTransfer.effectAllowed = "move";
@@ -90,11 +93,23 @@ export default function UnassignedPanel({ employees, placements, out, roleMap, d
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
     >
-      {doubleBooked.length > 0 && (
+      {hardDoubles.length > 0 && (
         <div className="assign-alert">
           <strong>⚠ On more than one line</strong>
           <ul>
-            {doubleBooked.map((d) => (
+            {hardDoubles.map((d) => (
+              <li key={d.name}>
+                {d.name} — {d.places.join(", ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {softDoubles.length > 0 && (
+        <div className="assign-alert assign-alert-soft">
+          <strong>ℹ Leads covering more than one line</strong>
+          <ul>
+            {softDoubles.map((d) => (
               <li key={d.name}>
                 {d.name} — {d.places.join(", ")}
               </li>
