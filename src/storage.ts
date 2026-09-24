@@ -6,6 +6,8 @@ import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings } from "./seedData";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
+const HISTORY_LIMIT = 50;
+const HISTORY_GROUP_MS = 1000;
 
 function dataStorageKey(shift: ShiftKey): string {
   return `jde-sched-data-${shift}-v1`;
@@ -19,9 +21,6 @@ function shiftDoc(shift: ShiftKey) {
   return doc(db, "jde-sched", shift);
 }
 
-// Backfills fields added to the data model after some users already had
-// data saved in localStorage (e.g. roomSections), so old saved boards
-// don't crash the app by being missing an array a newer build expects.
 function normalizeTimeOff(entry: Partial<TimeOffEntry>): TimeOffEntry {
   const start = typeof entry.start === "string" ? entry.start : "";
   const end = typeof entry.end === "string" && entry.end >= start ? entry.end : start;
@@ -35,6 +34,9 @@ function normalizeTimeOff(entry: Partial<TimeOffEntry>): TimeOffEntry {
   };
 }
 
+// Backfills fields added to the data model after some users already had
+// data saved in localStorage (e.g. roomSections), so old saved boards
+// don't crash the app by being missing an array a newer build expects.
 function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
   return {
     id: board.id ?? crypto.randomUUID(),
@@ -119,11 +121,73 @@ export function useShiftData(shift: ShiftKey | null) {
   const lastSyncedJson = useRef<string>("");
   const [syncReady, setSyncReady] = useState(false);
 
+  // ---- Undo / redo of this device's own edits ----
+  // Every committed change to `data` is recorded unless it's flagged as
+  // coming from somewhere else: a shift switch or another device's update
+  // clears the history instead, so undo can never put back a stale copy
+  // over someone else's newer work.
+  const past = useRef<AppData[]>([]);
+  const future = useRef<AppData[]>([]);
+  const previous = useRef<AppData>(data);
+  const lastChangeAt = useRef(0);
+  const external = useRef(false);
+  const travelling = useRef(false);
+  // The shift the recorded history belongs to - undo is ignored in the
+  // instant after a shift switch, before the history has been cleared.
+  const historyShift = useRef(shift);
+  const [historySize, setHistorySize] = useState({ undo: 0, redo: 0 });
+
+  useEffect(() => {
+    const prev = previous.current;
+    previous.current = data;
+    if (prev === data) return;
+    if (external.current) {
+      external.current = false;
+      past.current = [];
+      future.current = [];
+      historyShift.current = shift;
+    } else if (travelling.current) {
+      travelling.current = false;
+    } else {
+      // Rapid edits (typing a name, dragging a box) collapse into one step.
+      const now = Date.now();
+      if (now - lastChangeAt.current > HISTORY_GROUP_MS || past.current.length === 0) {
+        past.current.push(prev);
+        if (past.current.length > HISTORY_LIMIT) past.current.shift();
+      }
+      lastChangeAt.current = now;
+      future.current = [];
+    }
+    setHistorySize({ undo: past.current.length, redo: future.current.length });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  function undo() {
+    if (historyShift.current !== shift) return;
+    const target = past.current.pop();
+    if (!target) return;
+    future.current.push(previous.current);
+    travelling.current = true;
+    lastChangeAt.current = 0;
+    setData(target);
+  }
+
+  function redo() {
+    if (historyShift.current !== shift) return;
+    const target = future.current.pop();
+    if (!target) return;
+    past.current.push(previous.current);
+    travelling.current = true;
+    lastChangeAt.current = 0;
+    setData(target);
+  }
+
   // Reload local state when the shift changes (including into/out of
   // null), so switching shifts doesn't briefly show the old shift's data.
   useEffect(() => {
     lastSyncedJson.current = "";
     setSyncReady(false);
+    external.current = true;
     setData(shift ? loadLocal(shift) : emptyAppData());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shift]);
@@ -147,6 +211,7 @@ export function useShiftData(shift: ShiftKey | null) {
           const remoteJson = JSON.stringify(remote);
           if (remoteJson !== lastSyncedJson.current) {
             lastSyncedJson.current = remoteJson;
+            external.current = true;
             setData(remote);
           }
         }
@@ -173,7 +238,8 @@ export function useShiftData(shift: ShiftKey | null) {
     return () => window.clearTimeout(timer);
   }, [data, shift, syncReady]);
 
-  return [data, setData] as const;
+  const history = { undo, redo, canUndo: historySize.undo > 0, canRedo: historySize.redo > 0 };
+  return [data, setData, history] as const;
 }
 
 export function seedDataForShift(shift: ShiftKey): AppData {

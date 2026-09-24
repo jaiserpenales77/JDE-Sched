@@ -20,7 +20,27 @@ type PrintTarget = "schedule" | "assignments" | null;
 
 function App() {
   const [shift, chooseShift] = useCurrentShift();
-  const [data, setData] = useShiftData(shift);
+  const [data, setData, history] = useShiftData(shift);
+
+  // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo - except while typing
+  // in a field, where the browser's own text undo should win.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return;
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        history.undo();
+      } else if ((key === "z" && e.shiftKey) || key === "y") {
+        e.preventDefault();
+        history.redo();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
   const {
     workOrders,
     employees,
@@ -263,6 +283,12 @@ function App() {
           </select>
         </label>
         <div className="toolbar toolbar-dark">
+          <button className="btn" onClick={history.undo} disabled={!history.canUndo} title="Undo your last change (Ctrl+Z)">
+            ↶ Undo
+          </button>
+          <button className="btn" onClick={history.redo} disabled={!history.canRedo} title="Redo (Ctrl+Y)">
+            ↷ Redo
+          </button>
           {tab === "schedule" && (
             <>
               <button className="btn" onClick={() => setPrintTarget("schedule")}>
