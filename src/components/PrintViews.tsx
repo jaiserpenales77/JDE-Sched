@@ -1,6 +1,16 @@
 import { Fragment, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import type { CommentBox, DailyBoard, Employee, LineSlot, ListSection, PrintAssignSettings, WorkOrder } from "../types";
+import type {
+  CommentBox,
+  DailyBoard,
+  Employee,
+  LineSlot,
+  ListSection,
+  PrintAssignSettings,
+  SchedulePrintSettings,
+  WorkOrder,
+} from "../types";
+import { defaultSchedulePrintSettings } from "../seedData";
 import {
   groupByLine,
   percentActual,
@@ -19,6 +29,7 @@ import {
   nameRoleClass,
   pageBoxKeys,
   resolveBoxLayout,
+  scheduleCssVars,
   sectionHeaderStyle,
   sectionItemStyle,
   SLOTS_PER_BAND,
@@ -98,6 +109,7 @@ interface PrintScheduleProps {
   // print output) - pass it to get draggable column resize handles (used
   // by the live preview).
   setColumnWidths?: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
+  design?: SchedulePrintSettings;
 }
 
 export function PrintSchedule({
@@ -106,6 +118,7 @@ export function PrintSchedule({
   columnWidths = {},
   hiddenColumns = [],
   setColumnWidths,
+  design = defaultSchedulePrintSettings,
 }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -168,7 +181,7 @@ export function PrintSchedule({
   }
 
   return (
-    <div className="print-schedule">
+    <div className="print-schedule" style={scheduleCssVars(design)}>
       <table className="print-table" ref={tableRef}>
         <colgroup>
           {visibleKeys.map((key) => (
@@ -178,8 +191,8 @@ export function PrintSchedule({
         <thead>
           <tr>
             <th colSpan={visibleKeys.length} className="print-title-row">
-              PRODUCTION LINE SCHEDULE
-              <span className="print-title-date">{today}</span>
+              {design.title}
+              {design.showDate && <span className="print-title-date">{today}</span>}
             </th>
           </tr>
           <tr className="print-col-headers">

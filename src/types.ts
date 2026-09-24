@@ -211,6 +211,32 @@ export interface AppData {
   printScheduleHiddenColumns: string[];
   boards: DailyBoard[];
   timeOff: TimeOffEntry[];
+  schedulePrintSettings: SchedulePrintSettings;
+}
+
+// Look of the printed Production Schedule report. Page options mirror the
+// Line Assignments ones; colors are the original workbook's by default.
+export interface SchedulePrintSettings {
+  orientation: "landscape" | "portrait";
+  printScaleMode: "fit" | "fixed";
+  printScalePercent: number;
+  printMarginMm: number;
+  title: string;
+  showDate: boolean;
+  titleFontSize: number; // pt
+  headerFontSize: number; // pt
+  textFontSize: number; // pt
+  headerFillColor: string;
+  formulaColColor: string;
+  allergenColor: string;
+  oilColor: string;
+  bulkColor: string;
+  readyColor: string;
+  pmColor: string;
+  trialColor: string;
+  dividerColor: string;
+  scheduledBorderColor: string;
+  countChangedColor: string;
 }
 
 export const TIME_OFF_TYPES = ["PTO", "LOA", "Sick", "Bereavement", "Other"] as const;

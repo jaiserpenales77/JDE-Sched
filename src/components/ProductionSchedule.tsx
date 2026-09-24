@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { WorkOrder } from "../types";
+import type { SchedulePrintSettings, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -13,6 +13,7 @@ import {
 } from "../scheduleLogic";
 import ProgressBar from "./ProgressBar";
 import { PrintSchedule } from "./PrintViews";
+import SchedulePrintDesign from "./SchedulePrintDesign";
 
 interface Props {
   workOrders: WorkOrder[];
@@ -23,6 +24,8 @@ interface Props {
   setColumnWidths: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
   hiddenColumns: string[];
   setHiddenColumns: (updater: (cols: string[]) => string[]) => void;
+  design: SchedulePrintSettings;
+  setDesign: (updater: (s: SchedulePrintSettings) => SchedulePrintSettings) => void;
 }
 
 const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: boolean }[] = [
@@ -54,6 +57,8 @@ export default function ProductionSchedule({
   setColumnWidths,
   hiddenColumns,
   setHiddenColumns,
+  design,
+  setDesign,
 }: Props) {
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
@@ -268,6 +273,8 @@ export default function ProductionSchedule({
         </div>
       </div>
 
+      <SchedulePrintDesign settings={design} setSettings={setDesign} />
+
       <div className="panel">
         <h2>🖨 Print Report Preview</h2>
         <p className="panel-hint">
@@ -293,6 +300,7 @@ export default function ProductionSchedule({
             columnWidths={columnWidths}
             setColumnWidths={setColumnWidths}
             hiddenColumns={hiddenColumns}
+            design={design}
           />
         </div>
       </div>

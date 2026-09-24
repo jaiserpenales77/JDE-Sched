@@ -1,5 +1,14 @@
 import type { CSSProperties } from "react";
-import type { BoxLayout, CommentBox, Employee, LineSlot, ListSection, PrintAssignSettings, SectionStyle } from "./types";
+import type {
+  BoxLayout,
+  CommentBox,
+  Employee,
+  LineSlot,
+  ListSection,
+  PrintAssignSettings,
+  SchedulePrintSettings,
+  SectionStyle,
+} from "./types";
 
 // Stable keys for a box's saved position/size, independent of the
 // underlying slot/section's generated id (which is regenerated every time
@@ -298,4 +307,26 @@ export function sectionItemStyle(style: SectionStyle | undefined, roleClass: str
     textAlign: style.textAlign,
     justifyContent: JUSTIFY[style.textAlign],
   };
+}
+
+// The Production Schedule report's look as CSS variables (see the
+// --sched-* rules in App.css), set on the report so the live preview and
+// the printout always match.
+export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
+  return {
+    "--sched-title-size": `${d.titleFontSize}pt`,
+    "--sched-header-size": `${d.headerFontSize}pt`,
+    "--sched-text-size": `${d.textFontSize}pt`,
+    "--sched-header-fill": d.headerFillColor,
+    "--sched-formula-fill": d.formulaColColor,
+    "--sched-allergen": d.allergenColor,
+    "--sched-oil": d.oilColor,
+    "--sched-bulk": d.bulkColor,
+    "--sched-ready": d.readyColor,
+    "--sched-pm": d.pmColor,
+    "--sched-trial": d.trialColor,
+    "--sched-divider": d.dividerColor,
+    "--sched-scheduled": d.scheduledBorderColor,
+    "--sched-count-changed": d.countChangedColor,
+  } as CSSProperties;
 }

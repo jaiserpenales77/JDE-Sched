@@ -12,7 +12,7 @@ import {
   readAppDataFromJsonFile,
   readWorkOrdersFromWorkbookFile,
 } from "./excel";
-import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, ShiftKey, TimeOffEntry } from "./types";
+import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
@@ -50,6 +50,7 @@ function App() {
     printScheduleHiddenColumns,
     boards,
     timeOff,
+    schedulePrintSettings,
   } = data;
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
@@ -64,9 +65,11 @@ function App() {
     if (!printTarget) return;
     document.body.classList.add(`printing-${printTarget}`);
 
-    const orientation = printTarget === "assignments" ? printSettings.orientation : "landscape";
-    const marginMm =
-      printTarget === "assignments" ? Math.min(30, Math.max(0, Number(printSettings.printMarginMm) || 0)) : 10;
+    // Page options for whichever report is printing - both reports share
+    // the same orientation / size / margins settings shape.
+    const design = printTarget === "assignments" ? printSettings : schedulePrintSettings;
+    const orientation = design.orientation;
+    const marginMm = Math.min(30, Math.max(0, Number(design.printMarginMm) || 0));
     let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
     if (!pageStyle) {
       pageStyle = document.createElement("style");
@@ -75,20 +78,14 @@ function App() {
     }
     pageStyle.textContent = `@media print { @page { size: ${orientation}; margin: ${marginMm}mm; } }`;
 
+    // Look only inside the print area - the Production Schedule tab has a
+    // live preview that also uses the .print-schedule class.
     const printRoot = document.querySelector(".print-root") as HTMLElement | null;
-    const assignEl = document.querySelector(".print-assignments") as HTMLElement | null;
+    const reportEl = printRoot?.querySelector(
+      printTarget === "assignments" ? ":scope > .print-assignments" : ":scope > .print-schedule",
+    ) as HTMLElement | null;
 
-    if (assignEl) {
-      assignEl.style.transform = "";
-      assignEl.style.zoom = "";
-      assignEl.style.width = "";
-    }
-    if (printRoot) {
-      printRoot.style.height = "";
-      printRoot.style.overflow = "";
-    }
-
-    if (printTarget === "assignments" && printRoot && assignEl) {
+    if (printRoot && reportEl) {
       const PX_PER_IN = 96;
       const PX_PER_MM = PX_PER_IN / 25.4;
       const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
@@ -106,22 +103,24 @@ function App() {
       const pageContentHeightPx = pageHeightIn * PX_PER_IN - marginPx * 2 - HEADER_FOOTER_BUFFER_PX;
 
       // A fixed Print size is applied with zoom, which (unlike transform:
-      // scale) changes the layout size - so in the flowing grid an
-      // oversized report runs onto a second page instead of being cut off.
-      // Widening by 1/zoom keeps it spanning the full page width.
-      const fixed = printSettings.printScaleMode === "fixed";
-      const zoom = fixed ? Math.min(200, Math.max(25, Number(printSettings.printScalePercent) || 100)) / 100 : 1;
-      if (zoom !== 1) assignEl.style.zoom = String(zoom);
-      assignEl.style.width = `${pageContentWidthPx / zoom}px`;
+      // scale) changes the layout size - so an oversized report runs onto
+      // more pages instead of being cut off. Widening by 1/zoom keeps it
+      // spanning the full page width.
+      const fixed = design.printScaleMode === "fixed";
+      const zoom = fixed ? Math.min(200, Math.max(25, Number(design.printScalePercent) || 100)) / 100 : 1;
+      if (zoom !== 1) reportEl.style.zoom = String(zoom);
+      reportEl.style.width = `${pageContentWidthPx / zoom}px`;
 
       // Then shrink the report (never enlarge) to fit one page, the way
       // Excel's "fit sheet on one page" works: always in "fit" mode, and
-      // always for the free-form layout - a page-shaped canvas that also
-      // sits below the title, so a fixed size there only changes how big
-      // the text inside the boxes is, never how many sheets it takes.
-      if (!fixed || printSettings.freeFormLayout) {
+      // always for the Line Assignments free-form layout - a page-shaped
+      // canvas that also sits below the title, so a fixed size there only
+      // changes how big the text inside the boxes is, never how many
+      // sheets it takes.
+      const freeForm = printTarget === "assignments" && printSettings.freeFormLayout;
+      if (!fixed || freeForm) {
         printRoot.classList.add("measuring");
-        const naturalHeight = assignEl.getBoundingClientRect().height;
+        const naturalHeight = reportEl.getBoundingClientRect().height;
         printRoot.classList.remove("measuring");
 
         const scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
@@ -129,8 +128,8 @@ function App() {
           // Shift right by half the width it lost, so it's centered on the
           // page. Transform lengths are in the element's zoomed units.
           const offsetPx = ((1 - scale) * pageContentWidthPx) / 2 / zoom;
-          assignEl.style.transformOrigin = "top left";
-          assignEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
+          reportEl.style.transformOrigin = "top left";
+          reportEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
           printRoot.style.height = `${naturalHeight * scale}px`;
           printRoot.style.overflow = "hidden";
         }
@@ -144,10 +143,10 @@ function App() {
       cancelAnimationFrame(id);
       document.body.classList.remove(`printing-${printTarget}`);
       window.removeEventListener("afterprint", reset);
-      if (assignEl) {
-        assignEl.style.transform = "";
-        assignEl.style.zoom = "";
-        assignEl.style.width = "";
+      if (reportEl) {
+        reportEl.style.transform = "";
+        reportEl.style.zoom = "";
+        reportEl.style.width = "";
       }
       if (printRoot) {
         printRoot.style.height = "";
@@ -155,14 +154,10 @@ function App() {
         printRoot.classList.remove("measuring");
       }
     };
-  }, [
-    printTarget,
-    printSettings.orientation,
-    printSettings.freeFormLayout,
-    printSettings.printScaleMode,
-    printSettings.printScalePercent,
-    printSettings.printMarginMm,
-  ]);
+    // Only re-run for a new print request - the settings are read when
+    // printing starts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [printTarget]);
 
   function setBoards(updater: DailyBoard[] | ((boards: DailyBoard[]) => DailyBoard[])) {
     setData((d) => ({ ...d, boards: typeof updater === "function" ? updater(d.boards) : updater }));
@@ -172,6 +167,9 @@ function App() {
   }
   function setEmployees(updater: (emps: Employee[]) => Employee[]) {
     setData((d) => ({ ...d, employees: updater(d.employees) }));
+  }
+  function setSchedulePrintSettings(updater: (s: SchedulePrintSettings) => SchedulePrintSettings) {
+    setData((d) => ({ ...d, schedulePrintSettings: updater(d.schedulePrintSettings) }));
   }
   function setTimeOff(updater: (entries: TimeOffEntry[]) => TimeOffEntry[]) {
     setData((d) => ({ ...d, timeOff: updater(d.timeOff) }));
@@ -354,6 +352,8 @@ function App() {
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}
             setHiddenColumns={setScheduleHiddenColumns}
+            design={schedulePrintSettings}
+            setDesign={setSchedulePrintSettings}
           />
         )}
         {tab === "assignments" && (
@@ -385,6 +385,7 @@ function App() {
           scheduledLines={scheduledLines}
           columnWidths={printScheduleColumnWidths}
           hiddenColumns={printScheduleHiddenColumns}
+          design={schedulePrintSettings}
         />
         <PrintAssignments board={selectedBoard} employees={employees} settings={printSettings} />
       </div>

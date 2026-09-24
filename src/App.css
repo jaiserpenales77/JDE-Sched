@@ -783,7 +783,7 @@ table.roster select {
 
 .print-title-row {
   text-align: center;
-  font-size: 16pt;
+  font-size: var(--sched-title-size, 16pt);
   font-weight: 700;
   padding: 4px 0 8px;
   border: none;
@@ -800,10 +800,10 @@ table.roster select {
 
 .print-col-headers th {
   position: relative;
-  background: #d9d9d9;
+  background: var(--sched-header-fill, #d9d9d9);
   border: 1px solid #000;
   padding: 2px 3px;
-  font-size: 6.5pt;
+  font-size: var(--sched-header-size, 6.5pt);
   text-transform: uppercase;
   text-align: left;
 }
@@ -835,7 +835,7 @@ table.roster select {
 .print-table tbody td {
   border: 1px solid #000;
   padding: 1px 3px;
-  font-size: 7pt;
+  font-size: var(--sched-text-size, 7pt);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -854,7 +854,7 @@ table.roster select {
 }
 
 .print-formula-col {
-  background: #fff9db;
+  background: var(--sched-formula-fill, #fff9db);
 }
 
 .print-progress-cell {
@@ -882,45 +882,45 @@ table.roster select {
    (the Changeover column names the code on the PREVIOUS row, but the
    count that actually differs is on this one). */
 td.print-count-changed {
-  color: #ff0000 !important;
+  color: var(--sched-count-changed, #ff0000) !important;
   font-weight: 700;
 }
 
 tr.print-hl-allergen td {
-  background: #f8cbad;
+  background: var(--sched-allergen, #f8cbad);
 }
 tr.print-hl-oil td {
-  background: #fff2cc;
+  background: var(--sched-oil, #fff2cc);
 }
 tr.print-hl-bulk td {
-  background: #bdd7ee;
+  background: var(--sched-bulk, #bdd7ee);
 }
 td.print-line-ready {
-  background: #c6efce;
+  background: var(--sched-ready, #c6efce);
 }
 td.print-line-pm {
-  background: #bdd7ee;
+  background: var(--sched-pm, #bdd7ee);
 }
 td.print-line-trial {
-  background: #d9d2e9;
+  background: var(--sched-trial, #d9d2e9);
 }
 tr.print-divider td {
-  border-bottom: 3px solid #000080;
+  border-bottom: 3px solid var(--sched-divider, #000080);
 }
 
 /* A production line checked in the "Scheduled Lines" panel - draws a
    green box around the whole line's block of rows. */
 tr.print-line-scheduled td:first-child {
-  border-left: 6px solid #00c805;
+  border-left: 6px solid var(--sched-scheduled, #00c805);
 }
 tr.print-line-scheduled td:last-child {
-  border-right: 6px solid #00c805;
+  border-right: 6px solid var(--sched-scheduled, #00c805);
 }
 tr.print-line-scheduled-first td {
-  border-top: 6px solid #00c805;
+  border-top: 6px solid var(--sched-scheduled, #00c805);
 }
 tr.print-line-scheduled-last td {
-  border-bottom: 6px solid #00c805;
+  border-bottom: 6px solid var(--sched-scheduled, #00c805);
 }
 
 /* A blank, borderless row between each production line's group of work

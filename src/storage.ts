@@ -3,7 +3,7 @@ import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import type { AppData, DailyBoard, PrintAssignSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
-import { buildSeedData, defaultPrintSettings } from "./seedData";
+import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
 const HISTORY_LIMIT = 50;
@@ -77,6 +77,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     printScheduleHiddenColumns: Array.isArray(raw.printScheduleHiddenColumns) ? raw.printScheduleHiddenColumns : [],
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
     timeOff: Array.isArray(raw.timeOff) ? raw.timeOff.map(normalizeTimeOff) : [],
+    schedulePrintSettings: { ...defaultSchedulePrintSettings, ...raw.schedulePrintSettings },
   };
 }
 
@@ -256,5 +257,6 @@ export function emptyAppData(): AppData {
     printScheduleHiddenColumns: [],
     boards: [],
     timeOff: [],
+    schedulePrintSettings: { ...defaultSchedulePrintSettings },
   };
 }

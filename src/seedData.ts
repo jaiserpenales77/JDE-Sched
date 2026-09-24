@@ -1,4 +1,4 @@
-import type { AppData, DailyBoard, Employee, PrintAssignSettings, ShiftKey, WorkOrder } from "./types";
+import type { AppData, DailyBoard, Employee, PrintAssignSettings, SchedulePrintSettings, ShiftKey, WorkOrder } from "./types";
 import { SHIFT_LABELS } from "./types";
 
 // Seed data carried over from JDE_Sched_FINAL_v1.8.xlsm so the app opens
@@ -230,6 +230,31 @@ export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
   }));
 }
 
+// Matches the printed Production Schedule's original look, so an existing
+// shift prints exactly as before until someone changes a setting.
+export const defaultSchedulePrintSettings: SchedulePrintSettings = {
+  orientation: "landscape",
+  printScaleMode: "fixed",
+  printScalePercent: 100,
+  printMarginMm: 10,
+  title: "PRODUCTION LINE SCHEDULE",
+  showDate: true,
+  titleFontSize: 16,
+  headerFontSize: 6.5,
+  textFontSize: 7,
+  headerFillColor: "#d9d9d9",
+  formulaColColor: "#fff9db",
+  allergenColor: "#f8cbad",
+  oilColor: "#fff2cc",
+  bulkColor: "#bdd7ee",
+  readyColor: "#c6efce",
+  pmColor: "#bdd7ee",
+  trialColor: "#d9d2e9",
+  dividerColor: "#000080",
+  scheduledBorderColor: "#00c805",
+  countChangedColor: "#ff0000",
+};
+
 // Every shift starts from the same sample Production Schedule / roster
 // content (there's no naturally shift-specific version of it in the
 // original spreadsheet), but each shift gets its own independent copy
@@ -245,5 +270,6 @@ export function buildSeedData(shift: ShiftKey): AppData {
     printScheduleHiddenColumns: [],
     boards: seedBoardsForShift(shift),
     timeOff: [],
+    schedulePrintSettings: { ...defaultSchedulePrintSettings },
   };
 }

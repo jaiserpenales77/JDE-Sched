@@ -1,31 +1,20 @@
 import { useState } from "react";
 import type { PrintAssignSettings } from "../types";
 import { defaultPrintSettings } from "../seedData";
+import PageSizeControls from "./PageSizeControls";
 
 interface Props {
   settings: PrintAssignSettings;
   setSettings: (updater: (s: PrintAssignSettings) => PrintAssignSettings) => void;
 }
 
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="color-field">
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
       <span>{label}</span>
     </label>
   );
-}
-
-const MARGIN_OPTIONS = [
-  { mm: 0, label: "None" },
-  { mm: 5, label: "Narrow (5 mm)" },
-  { mm: 10, label: "Normal (10 mm)" },
-  { mm: 15, label: "Wide (15 mm)" },
-  { mm: 20, label: "Extra wide (20 mm)" },
-];
-
-function clampScale(value: number): number {
-  return Math.min(200, Math.max(25, Math.round(Number(value) || 100)));
 }
 
 export default function PrintDesignSettings({ settings, setSettings }: Props) {
@@ -85,62 +74,17 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
           </div>
 
           <div className="print-design-row">
-            <label className="print-design-field">
-              Print size
-              <select
-                value={settings.printScaleMode}
-                onChange={(e) => set("printScaleMode", e.target.value as PrintAssignSettings["printScaleMode"])}
-              >
-                <option value="fit">Fit to one page</option>
-                <option value="fixed">Fixed size</option>
-              </select>
-            </label>
-            {settings.printScaleMode === "fixed" && (
-              <>
-                <label className="print-design-field print-scale-field">
-                  Size (%)
-                  <input
-                    type="number"
-                    min={25}
-                    max={200}
-                    step={5}
-                    value={settings.printScalePercent}
-                    onChange={(e) => set("printScalePercent", Number(e.target.value))}
-                    onBlur={() => set("printScalePercent", clampScale(settings.printScalePercent))}
-                  />
-                </label>
-                <input
-                  type="range"
-                  className="print-scale-slider"
-                  min={25}
-                  max={200}
-                  step={5}
-                  value={clampScale(settings.printScalePercent)}
-                  onChange={(e) => set("printScalePercent", Number(e.target.value))}
-                  aria-label="Print size percent"
-                />
-              </>
-            )}
-            <label className="print-design-field">
-              Margins
-              <select value={settings.printMarginMm} onChange={(e) => set("printMarginMm", Number(e.target.value))}>
-                {MARGIN_OPTIONS.some((o) => o.mm === settings.printMarginMm) ? null : (
-                  <option value={settings.printMarginMm}>{settings.printMarginMm} mm</option>
-                )}
-                {MARGIN_OPTIONS.map((o) => (
-                  <option key={o.mm} value={o.mm}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <span className="print-scale-hint">
-              {settings.printScaleMode === "fit"
-                ? "Prints at full size, shrinking only when needed to fit on one page."
-                : settings.freeFormLayout
-                  ? "With custom box positions this sets the text size inside the boxes; the page still prints on one sheet. Make a box bigger if its names get cut off."
-                  : "Always prints at this size. Below 100% fits more per page; above 100% is easier to read but may run onto a second page."}
-            </span>
+            <PageSizeControls
+              values={settings}
+              onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))}
+              hint={
+                settings.printScaleMode === "fit"
+                  ? "Prints at full size, shrinking only when needed to fit on one page."
+                  : settings.freeFormLayout
+                    ? "With custom box positions this sets the text size inside the boxes; the page still prints on one sheet. Make a box bigger if its names get cut off."
+                    : "Always prints at this size. Below 100% fits more per page; above 100% is easier to read but may run onto a second page."
+              }
+            />
           </div>
 
           <div className="print-design-row">
