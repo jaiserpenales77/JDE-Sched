@@ -14,11 +14,15 @@ interface Props {
 const WINDOW_DAYS = 14;
 const TYPE_CLASS: Record<TimeOffType, string> = {
   PTO: "to-pto",
+  "Call Out": "to-callout",
   LOA: "to-loa",
   Sick: "to-sick",
   Bereavement: "to-bereavement",
   Other: "to-other",
 };
+
+// Short labels for the calendar's narrow day cells.
+const SHORT_LABEL: Partial<Record<TimeOffType, string>> = { Bereavement: "Brv", "Call Out": "C/O" };
 
 type Filter = "upcoming" | "past" | "all";
 
@@ -45,6 +49,7 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
   );
 
   const [draft, setDraft] = useState({ name: "", type: "PTO" as TimeOffType, start: today, end: today, note: "" });
+  const [callOut, setCallOut] = useState({ name: "", note: "" });
   const [windowStart, setWindowStart] = useState(today);
   const [filter, setFilter] = useState<Filter>("upcoming");
 
@@ -57,6 +62,25 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
     const [start, end] = draft.end && draft.end < draft.start ? [draft.end, draft.start] : [draft.start, draft.end || draft.start];
     setTimeOff((entries) => [...entries, { id: crypto.randomUUID(), name, type: draft.type, start, end, note: draft.note.trim() }]);
     setDraft((d) => ({ ...d, name: "", note: "" }));
+  }
+
+  // One-click "they called in today" - a Call Out entry for today only.
+  function logCallOut() {
+    const name = cleanEmployeeName(callOut.name);
+    if (!name) {
+      alert("Pick who called out.");
+      return;
+    }
+    const key = nameKey(name);
+    if (timeOff.some((e) => e.type === "Call Out" && nameKey(e.name) === key && covers(e, today))) {
+      alert(`${name} is already logged as a call-out today.`);
+      return;
+    }
+    setTimeOff((entries) => [
+      ...entries,
+      { id: crypto.randomUUID(), name, type: "Call Out", start: today, end: today, note: callOut.note.trim() },
+    ]);
+    setCallOut({ name: "", note: "" });
   }
 
   function update(id: string, patch: Partial<TimeOffEntry>) {
@@ -88,6 +112,7 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
   }
   const rows = [...people.values()].sort((a, b) => a.name.localeCompare(b.name));
   const outToday = entriesOn(timeOff, today);
+  const callOutsToday = outToday.filter((e) => e.type === "Call Out");
 
   // ---- List ----
   const listed = timeOff
@@ -101,6 +126,45 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
           <option key={n} value={n} />
         ))}
       </datalist>
+
+      <div className="panel call-out-panel">
+        <h2>📞 Log a call-out</h2>
+        <p className="panel-hint">Someone called in and won't be at work today — marks them out on today's board right away.</p>
+        <div className="time-off-form">
+          <label className="time-off-field time-off-name">
+            Employee
+            <input
+              list="time-off-names"
+              placeholder="Pick or type a name"
+              value={callOut.name}
+              onChange={(e) => setCallOut((c) => ({ ...c, name: e.target.value }))}
+            />
+          </label>
+          <label className="time-off-field time-off-note">
+            Note (optional)
+            <input
+              placeholder="e.g. called at 5:40, car trouble"
+              value={callOut.note}
+              onChange={(e) => setCallOut((c) => ({ ...c, note: e.target.value }))}
+              onKeyDown={(e) => e.key === "Enter" && logCallOut()}
+            />
+          </label>
+          <button className="btn call-out-btn" onClick={logCallOut}>
+            📞 Log call-out
+          </button>
+        </div>
+        {callOutsToday.length > 0 && (
+          <div className="call-out-today">
+            <strong>Called out today ({callOutsToday.length}):</strong>
+            {callOutsToday.map((e) => (
+              <span key={e.id} className="time-off-chip to-callout" title={describeEntry(e)}>
+                {e.name}
+                {e.note ? ` – ${e.note}` : ""}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="panel">
         <h2>Add time off</h2>
@@ -209,7 +273,7 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
                       <td key={iso} className={`${label.weekend ? "time-off-weekend" : ""} ${iso === today ? "time-off-is-today" : ""}`}>
                         {entry && (
                           <span className={`time-off-chip ${TYPE_CLASS[entry.type]}`} title={`${row.name}: ${describeEntry(entry)}`}>
-                            {entry.type === "Bereavement" ? "Brv" : entry.type}
+                            {SHORT_LABEL[entry.type] ?? entry.type}
                           </span>
                         )}
                       </td>

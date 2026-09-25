@@ -239,7 +239,8 @@ export interface SchedulePrintSettings {
   countChangedColor: string;
 }
 
-export const TIME_OFF_TYPES = ["PTO", "LOA", "Sick", "Bereavement", "Other"] as const;
+// "Call Out": an unscheduled same-day absence - the employee called in.
+export const TIME_OFF_TYPES = ["PTO", "Call Out", "Sick", "LOA", "Bereavement", "Other"] as const;
 export type TimeOffType = (typeof TIME_OFF_TYPES)[number];
 
 // One stretch of scheduled time off. Dates are YYYY-MM-DD, inclusive.

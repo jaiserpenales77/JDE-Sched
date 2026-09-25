@@ -1970,6 +1970,9 @@ tr.print-line-spacer td {
 .to-loa {
   background: #7c3aed;
 }
+.to-callout {
+  background: #ea580c;
+}
 .to-sick {
   background: #dc2626;
 }
@@ -1977,7 +1980,7 @@ tr.print-line-spacer td {
   background: #475569;
 }
 .to-other {
-  background: #b45309;
+  background: #0f766e;
 }
 table.time-off-cal {
   border-collapse: collapse;
@@ -2051,4 +2054,25 @@ td.time-off-is-today {
 }
 .scheduled-off-range {
   color: var(--muted);
+}
+
+.call-out-panel {
+  border-left: 4px solid #ea580c;
+}
+.call-out-btn {
+  background: #ea580c;
+  border-color: #ea580c;
+  color: #fff;
+  font-weight: 600;
+}
+.call-out-btn:hover {
+  background: #c2410c;
+}
+.call-out-today {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 13px;
 }
