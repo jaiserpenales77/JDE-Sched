@@ -49,7 +49,7 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
   );
 
   const [draft, setDraft] = useState({ name: "", type: "PTO" as TimeOffType, start: today, end: today, note: "" });
-  const [callOut, setCallOut] = useState({ name: "", note: "" });
+  const [callOut, setCallOut] = useState({ name: "", note: "", date: today });
   const [windowStart, setWindowStart] = useState(today);
   const [filter, setFilter] = useState<Filter>("upcoming");
 
@@ -64,23 +64,26 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
     setDraft((d) => ({ ...d, name: "", note: "" }));
   }
 
-  // One-click "they called in today" - a Call Out entry for today only.
+  // One-click "they called in" - a one-day Call Out entry. The date is
+  // today unless changed (e.g. an overnight shift whose board is dated
+  // the day it started).
   function logCallOut() {
     const name = cleanEmployeeName(callOut.name);
     if (!name) {
       alert("Pick who called out.");
       return;
     }
+    const date = callOut.date || today;
     const key = nameKey(name);
-    if (timeOff.some((e) => e.type === "Call Out" && nameKey(e.name) === key && covers(e, today))) {
-      alert(`${name} is already logged as a call-out today.`);
+    if (timeOff.some((e) => e.type === "Call Out" && nameKey(e.name) === key && covers(e, date))) {
+      alert(`${name} is already logged as a call-out on ${date}.`);
       return;
     }
     setTimeOff((entries) => [
       ...entries,
-      { id: crypto.randomUUID(), name, type: "Call Out", start: today, end: today, note: callOut.note.trim() },
+      { id: crypto.randomUUID(), name, type: "Call Out", start: date, end: date, note: callOut.note.trim() },
     ]);
-    setCallOut({ name: "", note: "" });
+    setCallOut((c) => ({ ...c, name: "", note: "" }));
   }
 
   function update(id: string, patch: Partial<TimeOffEntry>) {
@@ -129,7 +132,10 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
 
       <div className="panel call-out-panel">
         <h2>📞 Log a call-out</h2>
-        <p className="panel-hint">Someone called in and won't be at work today — marks them out on today's board right away.</p>
+        <p className="panel-hint">
+          Someone called in and won't be at work — marks them out on the Line Assignments board for that date right away.
+          For an overnight shift, use the date the shift started (the board's date).
+        </p>
         <div className="time-off-form">
           <label className="time-off-field time-off-name">
             Employee
@@ -138,6 +144,14 @@ export default function TimeOff({ timeOff, setTimeOff, employees }: Props) {
               placeholder="Pick or type a name"
               value={callOut.name}
               onChange={(e) => setCallOut((c) => ({ ...c, name: e.target.value }))}
+            />
+          </label>
+          <label className="time-off-field">
+            Date
+            <input
+              type="date"
+              value={callOut.date}
+              onChange={(e) => setCallOut((c) => ({ ...c, date: e.target.value }))}
             />
           </label>
           <label className="time-off-field time-off-note">

@@ -577,6 +577,25 @@ tr.hl-bulk select {
   font-size: 13px;
 }
 
+.stale-board-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid #f59e0b;
+  border-left: 4px solid #d97706;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.12);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.stale-board-banner > div {
+  flex: 1 1 320px;
+}
+
 .sections-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

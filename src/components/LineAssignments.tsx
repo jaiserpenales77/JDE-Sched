@@ -9,7 +9,7 @@ import type {
   SectionStyle,
   TimeOffEntry,
 } from "../types";
-import { describeEntry, entriesOn } from "../timeOffLogic";
+import { describeEntry, entriesOn, todayIso } from "../timeOffLogic";
 import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
@@ -35,10 +35,6 @@ interface Props {
   // Scheduled time off from the Time Off tab - anyone covering the board's
   // date counts as out on that board.
   timeOff: TimeOffEntry[];
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 function blankBoard(date: string, shiftLabel: string): DailyBoard {
@@ -101,7 +97,9 @@ export default function LineAssignments({
   timeOff,
 }: Props) {
   const sorted = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
-  const board = boards.find((b) => b.id === selectedId) ?? sorted[0];
+  const today = todayIso();
+  // With nothing picked yet, open today's board if there is one.
+  const board = boards.find((b) => b.id === selectedId) ?? boards.find((b) => b.date === today) ?? sorted[0];
   const employeeNames = [...new Set(employees.map((e) => cleanEmployeeName(e.name)).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
@@ -113,6 +111,14 @@ export default function LineAssignments({
   const placements = boardPlacements(board);
   const out = boardOut(board, timeOff);
   const scheduledOff = board ? entriesOn(timeOff, board.date) : [];
+
+  // Time off only marks people out on the board for its own date - so when
+  // an older (or future) board is open, today's call-outs don't show on it.
+  const todayBoard = boards.find((b) => b.date === today);
+  const notToday = !!board && board.date !== today;
+  const outTodayHere = notToday
+    ? entriesOn(timeOff, today).filter((e) => placements.has(nameKey(e.name)) && !out.has(nameKey(e.name)))
+    : [];
 
   // Best display name for each person key - roster spelling first, then
   // however they were typed onto the board.
@@ -194,8 +200,7 @@ export default function LineAssignments({
     setBoards((bs) => bs.map((b) => (b.id === id ? { ...b, ...patch } : b)));
   }
 
-  function newDay(duplicateCurrent: boolean) {
-    const date = prompt("Date for the new board (YYYY-MM-DD):", todayIso());
+  function newDay(duplicateCurrent: boolean, date = prompt("Date for the new board (YYYY-MM-DD):", today)) {
     if (!date) return;
     if (boards.some((b) => b.date === date)) {
       alert("A board for that date already exists.");
@@ -736,6 +741,39 @@ export default function LineAssignments({
           </button>
         )}
       </div>
+
+      {board && notToday && (
+        <div className="stale-board-banner">
+          <div>
+            <strong>
+              This is the board for {board.date} — today is {today}.
+            </strong>{" "}
+            Time off and call-outs only mark people out on the board for their own date.
+            {outTodayHere.length > 0 && (
+              <>
+                {" "}
+                Out today but still shown on this board:{" "}
+                {outTodayHere.map((e, i) => (
+                  <span key={e.id}>
+                    {i > 0 && ", "}
+                    <strong>{e.name}</strong> ({describeEntry(e)})
+                  </span>
+                ))}
+                .
+              </>
+            )}
+          </div>
+          {todayBoard ? (
+            <button className="btn primary" onClick={() => setSelectedId(todayBoard.id)}>
+              Go to today's board
+            </button>
+          ) : (
+            <button className="btn primary" onClick={() => newDay(true, today)}>
+              📋 Start today's board from this one
+            </button>
+          )}
+        </div>
+      )}
 
       {!board && <div className="empty-state panel">No shift board yet — create one above.</div>}
 
