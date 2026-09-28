@@ -914,14 +914,57 @@ tr.print-hl-oil td {
 tr.print-hl-bulk td {
   background: var(--sched-bulk, #bdd7ee);
 }
-td.print-line-ready {
-  background: var(--sched-ready, #c6efce);
+/* Each production line's name is printed once, in a tall cell down the
+   left of its block, with a READY / PM / TRIAL tag under it - the tag says
+   the status in words so it still reads on a black-and-white printer. */
+.print-table td.print-line-cell {
+  vertical-align: middle;
+  text-align: center;
+  white-space: normal;
+  background: #fff;
+  border-bottom: 3px solid var(--sched-divider, #000080);
 }
-td.print-line-pm {
-  background: var(--sched-pm, #bdd7ee);
+.print-line-name {
+  display: block;
+  font-weight: 700;
+  font-size: calc(var(--sched-text-size, 7pt) * 1.1);
+  line-height: 1.2;
+  white-space: nowrap;
 }
-td.print-line-trial {
-  background: var(--sched-trial, #d9d2e9);
+.print-status-tag {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 0 4px;
+  border-radius: 2px;
+  font-weight: 700;
+  font-size: calc(var(--sched-text-size, 7pt) * 0.95);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+}
+.print-table td.print-line-ready {
+  background: color-mix(in srgb, var(--sched-ready, #15803d) 16%, #fff);
+}
+.print-line-ready .print-status-tag {
+  background: var(--sched-ready, #15803d);
+  color: var(--sched-ready-text, #fff);
+}
+.print-table td.print-line-pm {
+  background: color-mix(in srgb, var(--sched-pm, #1d4ed8) 16%, #fff);
+}
+.print-line-pm .print-status-tag {
+  background: var(--sched-pm, #1d4ed8);
+  color: var(--sched-pm-text, #fff);
+}
+.print-table td.print-line-trial {
+  background: color-mix(in srgb, var(--sched-trial, #6d28d9) 16%, #fff);
+}
+.print-line-trial .print-status-tag {
+  background: var(--sched-trial, #6d28d9);
+  color: var(--sched-trial-text, #fff);
+}
+/* Keep a line's rows together on one page when the report runs long. */
+.print-line-group {
+  break-inside: avoid;
 }
 tr.print-divider td {
   border-bottom: 3px solid var(--sched-divider, #000080);
@@ -929,7 +972,8 @@ tr.print-divider td {
 
 /* A production line checked in the "Scheduled Lines" panel - draws a
    green box around the whole line's block of rows. */
-tr.print-line-scheduled td:first-child {
+tr.print-line-scheduled:not(.print-merged) td:first-child,
+tr.print-line-scheduled td.print-line-cell {
   border-left: 6px solid var(--sched-scheduled, #00c805);
 }
 tr.print-line-scheduled td:last-child {
@@ -938,7 +982,8 @@ tr.print-line-scheduled td:last-child {
 tr.print-line-scheduled-first td {
   border-top: 6px solid var(--sched-scheduled, #00c805);
 }
-tr.print-line-scheduled-last td {
+tr.print-line-scheduled-last td,
+tr.print-line-scheduled td.print-line-cell {
   border-bottom: 6px solid var(--sched-scheduled, #00c805);
 }
 

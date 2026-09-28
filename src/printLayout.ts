@@ -309,6 +309,15 @@ export function sectionItemStyle(style: SectionStyle | undefined, roleClass: str
   };
 }
 
+// Black or white, whichever reads better on the given #rrggbb fill.
+function readableTextOn(hex: string): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return "#fff";
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? "#000" : "#fff";
+}
+
 // The Production Schedule report's look as CSS variables (see the
 // --sched-* rules in App.css), set on the report so the live preview and
 // the printout always match.
@@ -325,6 +334,9 @@ export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
     "--sched-ready": d.readyColor,
     "--sched-pm": d.pmColor,
     "--sched-trial": d.trialColor,
+    "--sched-ready-text": readableTextOn(d.readyColor),
+    "--sched-pm-text": readableTextOn(d.pmColor),
+    "--sched-trial-text": readableTextOn(d.trialColor),
     "--sched-divider": d.dividerColor,
     "--sched-scheduled": d.scheduledBorderColor,
     "--sched-count-changed": d.countChangedColor,

@@ -87,9 +87,9 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
             <ColorField label="Allergen rows" value={settings.allergenColor} onChange={(v) => set("allergenColor", v)} />
             <ColorField label="Oily product rows" value={settings.oilColor} onChange={(v) => set("oilColor", v)} />
             <ColorField label="Bulk item rows" value={settings.bulkColor} onChange={(v) => set("bulkColor", v)} />
-            <ColorField label="Ready line" value={settings.readyColor} onChange={(v) => set("readyColor", v)} />
-            <ColorField label="PM line" value={settings.pmColor} onChange={(v) => set("pmColor", v)} />
-            <ColorField label="Trial line" value={settings.trialColor} onChange={(v) => set("trialColor", v)} />
+            <ColorField label="READY tag" value={settings.readyColor} onChange={(v) => set("readyColor", v)} />
+            <ColorField label="PM tag" value={settings.pmColor} onChange={(v) => set("pmColor", v)} />
+            <ColorField label="TRIAL tag" value={settings.trialColor} onChange={(v) => set("trialColor", v)} />
             <ColorField label="Line divider" value={settings.dividerColor} onChange={(v) => set("dividerColor", v)} />
             <ColorField
               label="Scheduled line border"

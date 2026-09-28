@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
-import type { AppData, DailyBoard, PrintAssignSettings, ShiftKey, TimeOffEntry } from "./types";
+import type { AppData, DailyBoard, PrintAssignSettings, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
 
@@ -64,6 +64,19 @@ function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefin
   return merged;
 }
 
+// Ready / PM / Trial used to be pale cell fills; they're now tag colors
+// with a tint behind them. Saved settings still on the old pale defaults
+// move to the new ones - anything the user picked themselves is kept.
+const OLD_STATUS_DEFAULTS = { readyColor: "#c6efce", pmColor: "#bdd7ee", trialColor: "#d9d2e9" } as const;
+
+function normalizeSchedulePrintSettings(settings: Partial<SchedulePrintSettings> | undefined): SchedulePrintSettings {
+  const merged = { ...defaultSchedulePrintSettings, ...settings };
+  for (const key of Object.keys(OLD_STATUS_DEFAULTS) as (keyof typeof OLD_STATUS_DEFAULTS)[]) {
+    if (merged[key].toLowerCase() === OLD_STATUS_DEFAULTS[key]) merged[key] = defaultSchedulePrintSettings[key];
+  }
+  return merged;
+}
+
 export function normalizeAppData(raw: Partial<AppData>): AppData {
   return {
     workOrders: Array.isArray(raw.workOrders) ? raw.workOrders : [],
@@ -77,7 +90,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     printScheduleHiddenColumns: Array.isArray(raw.printScheduleHiddenColumns) ? raw.printScheduleHiddenColumns : [],
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
     timeOff: Array.isArray(raw.timeOff) ? raw.timeOff.map(normalizeTimeOff) : [],
-    schedulePrintSettings: { ...defaultSchedulePrintSettings, ...raw.schedulePrintSettings },
+    schedulePrintSettings: normalizeSchedulePrintSettings(raw.schedulePrintSettings),
     importColumnMap: raw.importColumnMap && typeof raw.importColumnMap === "object" ? raw.importColumnMap : {},
   };
 }

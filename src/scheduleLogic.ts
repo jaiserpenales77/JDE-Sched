@@ -111,12 +111,19 @@ export function rowHighlightClass(wo: WorkOrder): string {
   return "";
 }
 
+// A whole line takes a status when ANY of its rows carries it (Ready
+// first, then PM, then Trial).
+export function lineStatusLabel(rows: WorkOrder[]): "Ready" | "PM" | "Trial" | "" {
+  for (const status of ["Ready", "PM", "Trial"] as const) {
+    if (rows.some((r) => r.lineStatus === status)) return status;
+  }
+  return "";
+}
+
 // A line's label is colored when ANY of its rows carries that Line Status.
 export function lineStatusClass(rows: WorkOrder[]): string {
-  if (rows.some((r) => r.lineStatus === "Ready")) return "line-ready";
-  if (rows.some((r) => r.lineStatus === "PM")) return "line-pm";
-  if (rows.some((r) => r.lineStatus === "Trial")) return "line-trial";
-  return "";
+  const status = lineStatusLabel(rows);
+  return status ? `line-${status.toLowerCase()}` : "";
 }
 
 export function newBlankWorkOrder(line: string): WorkOrder {

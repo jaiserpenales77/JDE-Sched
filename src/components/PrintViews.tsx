@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import type {
   CommentBox,
@@ -19,6 +19,7 @@ import {
   isAllergenRow,
   isOilRow,
   isBulkHighlightRow,
+  lineStatusLabel,
   SCHEDULE_COLUMN_KEYS,
   SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
@@ -53,7 +54,8 @@ const FORMULA_COLUMN_KEYS = new Set<ScheduleColumnKey>(["percentActual", "bottle
 // 100 (the browser distributes fixed-layout columns proportionally
 // either way), just to reflect each column's typical content width.
 const DEFAULT_SCHEDULE_COLUMN_WIDTHS: Record<ScheduleColumnKey, number> = {
-  line: 5,
+  // Wide enough for the line name in bold plus its READY / PM tag.
+  line: 6.5,
   wo: 5,
   seq: 3,
   item: 5,
@@ -63,7 +65,7 @@ const DEFAULT_SCHEDULE_COLUMN_WIDTHS: Record<ScheduleColumnKey, number> = {
   bottleSize: 4,
   capDescription: 10,
   allergen: 3,
-  remarks: 14,
+  remarks: 12.5,
   woQuantity: 4,
   percentComplete: 4,
   desiccant: 4,
@@ -204,18 +206,24 @@ export function PrintSchedule({
             ))}
           </tr>
         </thead>
-        <tbody>
-          {groups.length === 0 && (
+        {groups.length === 0 && (
+          <tbody>
             <tr>
               <td colSpan={visibleKeys.length} style={{ textAlign: "center", padding: 20 }}>
                 No work orders scheduled.
               </td>
             </tr>
-          )}
-          {groups.map((group, groupIdx) => {
-            const isScheduled = scheduledLines.includes(group.line);
-            return (
-            <Fragment key={group.line}>
+          </tbody>
+        )}
+        {groups.map((group, groupIdx) => {
+          const isScheduled = scheduledLines.includes(group.line);
+          // The line's name is printed once, in a tall cell down the left of
+          // its block, with a READY / PM / TRIAL tag when any of its work
+          // orders has that status.
+          const status = lineStatusLabel(group.rows);
+          const showLine = !isHidden("line");
+          return (
+            <tbody key={group.line} className="print-line-group">
               {group.rows.map((row, idx) => {
                 const next = group.rows[idx + 1];
                 const chg = changeoverCode(row, next);
@@ -229,20 +237,23 @@ export function PrintSchedule({
                 if (isAllergenRow(row)) hl = "print-hl-allergen";
                 else if (isOilRow(row)) hl = "print-hl-oil";
                 else if (isBulkHighlightRow(row)) hl = "print-hl-bulk";
-                const lineCls =
-                  row.lineStatus === "Ready"
-                    ? "print-line-ready"
-                    : row.lineStatus === "PM"
-                      ? "print-line-pm"
-                      : row.lineStatus === "Trial"
-                        ? "print-line-trial"
-                        : "";
                 const scheduledCls = isScheduled
                   ? `print-line-scheduled ${isFirstOfGroup ? "print-line-scheduled-first" : ""} ${isLastOfGroup ? "print-line-scheduled-last" : ""}`
                   : "";
                 return (
-                  <tr key={row.id} className={`${hl} ${isLastOfGroup ? "print-divider" : ""} ${scheduledCls}`}>
-                    {!isHidden("line") && <td className={lineCls}>{row.line}</td>}
+                  <tr
+                    key={row.id}
+                    className={`${hl} ${isLastOfGroup ? "print-divider" : ""} ${scheduledCls} ${showLine ? "print-merged" : ""}`}
+                  >
+                    {showLine && isFirstOfGroup && (
+                      <td
+                        rowSpan={group.rows.length}
+                        className={`print-line-cell ${status ? `print-line-${status.toLowerCase()}` : ""}`}
+                      >
+                        <span className="print-line-name">{group.line}</span>
+                        {status && <span className="print-status-tag">{status.toUpperCase()}</span>}
+                      </td>
+                    )}
                     {!isHidden("wo") && <td>{row.wo}</td>}
                     {!isHidden("seq") && <td>{row.seq}</td>}
                     {!isHidden("item") && <td>{row.item}</td>}
@@ -275,10 +286,9 @@ export function PrintSchedule({
                   <td colSpan={visibleKeys.length} />
                 </tr>
               )}
-            </Fragment>
-            );
-          })}
-        </tbody>
+            </tbody>
+          );
+        })}
       </table>
     </div>
   );
