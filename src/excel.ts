@@ -98,31 +98,46 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
 // Different exports of "the same" production schedule use different column
 // names for the same field (e.g. an ERP export's "Order Number" instead of
 // the JDE template's "WO") - each field lists every header text seen in the
-// wild, tried in order, so either format (or a mix) is recognized.
+// wild, tried in order, so either format (or a mix) is recognized. Headers
+// are compared on letters and digits only, so "WO#" matches "WO" and
+// "Item #" matches "ITEM".
 const COLUMN_ALIASES = {
   line: ["LINE", "WORK CENTER"],
-  wo: ["WO", "ORDER NUMBER"],
+  wo: ["WO", "ORDER NUMBER", "WO NUMBER"],
   seq: ["SEQ", "SEQUENCE NUMBER"],
   item: ["ITEM", "2ND ITEM NUMBER"],
   desc: ["PRODUCT DESCRIPTION", "2ND ITEM NUMBER DESCRIPTION"],
   count: ["COUNT", "BOTTLE COUNT"],
   bulk: ["BULK ITEM"],
   bottle: ["BOTTLE SIZE"],
-  cap: ["CAP DESCRIPTION"],
+  cap: ["CAP DESCRIPTION", "CAP"],
   allergen: ["ALLERGEN", "ALLERGEN CODE"],
   remarks: ["REMARKS"],
   qty: ["WO QUANTITY", "BATCH QUANTITY"],
   pct: ["% COMPLETE", "WO % COMPLETED"],
   status: ["LINE STATUS"],
-  desiccant: ["DESICCANT"],
+  desiccant: ["DESICCANT", "DESICCANTS", "DESICCANT NUMBER", "DESICCANTS NUMBER", "DESSICANT", "DESSICANTS NUMBER"],
 } as const satisfies Record<string, readonly string[]>;
+
+function normalizeHeader(text: unknown): string {
+  return String(text ?? "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
 
 function findColumn(header: string[], aliases: readonly string[]): number {
   for (const alias of aliases) {
-    const i = header.indexOf(alias);
+    const i = header.indexOf(normalizeHeader(alias));
     if (i !== -1) return i;
   }
   return -1;
+}
+
+// Some exports fill empty Remarks with a lone "." or "," - treat a cell with
+// no letters or digits as blank.
+function cellText(value: unknown): string {
+  const s = String(value ?? "").trim();
+  return /[A-Za-z0-9]/.test(s) ? s : "";
 }
 
 // Best-effort import of a production schedule from an .xlsx/.xlsm file: finds
@@ -142,14 +157,14 @@ export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]>
           const grid: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true });
           const headerRowIdx = grid.findIndex((row) => {
             if (!Array.isArray(row)) return false;
-            const upper = row.map((c) => String(c ?? "").trim().toUpperCase());
-            const hasLine = COLUMN_ALIASES.line.some((alias) => upper.includes(alias));
-            const hasWo = COLUMN_ALIASES.wo.some((alias) => upper.includes(alias));
+            const normalized = row.map(normalizeHeader);
+            const hasLine = findColumn(normalized, COLUMN_ALIASES.line) !== -1;
+            const hasWo = findColumn(normalized, COLUMN_ALIASES.wo) !== -1;
             return hasLine && hasWo;
           });
           if (headerRowIdx === -1) continue;
 
-          const header = grid[headerRowIdx].map((c) => String(c ?? "").trim().toUpperCase());
+          const header = grid[headerRowIdx].map(normalizeHeader);
           const idx = {
             line: findColumn(header, COLUMN_ALIASES.line),
             wo: findColumn(header, COLUMN_ALIASES.wo),
@@ -191,7 +206,7 @@ export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]>
               bottleSize: String(row[idx.bottle] ?? "").trim(),
               capDescription: String(row[idx.cap] ?? "").trim(),
               allergen: String(row[idx.allergen] ?? "").trim(),
-              remarks: String(row[idx.remarks] ?? "").trim(),
+              remarks: cellText(row[idx.remarks]),
               woQuantity: row[idx.qty] === undefined || row[idx.qty] === "" ? "" : Number(row[idx.qty]),
               percentComplete: row[idx.pct] === undefined || row[idx.pct] === "" ? "" : Number(row[idx.pct]),
               lineStatus: idx.status >= 0 ? String(row[idx.status] ?? "").trim() : "",
