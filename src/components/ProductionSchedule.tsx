@@ -7,6 +7,7 @@ import {
   changeoverCode,
   rowHighlightClass,
   lineStatusClass,
+  lineStatusLabel,
   newBlankWorkOrder,
   SCHEDULE_COLUMN_KEYS,
   SCHEDULE_COLUMN_LABELS,
@@ -48,6 +49,40 @@ function fmtChg(code: string) {
   return code === "" ? "—" : code;
 }
 
+type LineStatus = "Ready" | "PM" | "Trial";
+const LINE_STATUSES: LineStatus[] = ["Ready", "PM", "Trial"];
+
+// READY / PM / TRIAL buttons for a whole production line - click one to
+// mark the line, click it again to clear it.
+function LineStatusToggle({
+  line,
+  status,
+  onChange,
+  onDark = false,
+}: {
+  line: string;
+  status: LineStatus | "";
+  onChange: (status: LineStatus | "") => void;
+  onDark?: boolean;
+}) {
+  return (
+    <span className={`status-toggle ${onDark ? "status-toggle-dark" : ""}`} role="group" aria-label={`${line} status`}>
+      {LINE_STATUSES.map((s) => (
+        <button
+          key={s}
+          type="button"
+          className={`status-toggle-btn status-${s.toLowerCase()} ${status === s ? "active" : ""}`}
+          aria-pressed={status === s}
+          title={status === s ? `Clear ${s.toUpperCase()} from ${line}` : `Mark ${line} as ${s.toUpperCase()}`}
+          onClick={() => onChange(status === s ? "" : s)}
+        >
+          {s.toUpperCase()}
+        </button>
+      ))}
+    </span>
+  );
+}
+
 export default function ProductionSchedule({
   workOrders,
   setWorkOrders,
@@ -69,6 +104,11 @@ export default function ProductionSchedule({
 
   function toggleScheduledLine(line: string, checked: boolean) {
     setScheduledLines((lines) => (checked ? [...lines, line] : lines.filter((l) => l !== line)));
+  }
+
+  // Marks every work order on the line - the printout tags the whole line.
+  function setLineStatus(line: string, status: LineStatus | "") {
+    setWorkOrders((wos) => wos.map((w) => (w.line.trim() === line ? { ...w, lineStatus: status } : w)));
   }
 
   function updateRow(id: string, field: keyof WorkOrder, value: string | number) {
@@ -133,19 +173,30 @@ export default function ProductionSchedule({
         <div className="panel">
           <h2>Scheduled Lines</h2>
           <p className="panel-hint">
-            Check a line to highlight its whole block with a green border on the print report.
+            Tick a line to box it in green on the print report. Click READY, PM or TRIAL to tag the line on the
+            printout — click it again to clear it.
           </p>
           <div className="scheduled-lines-grid">
-            {groups.map((group) => (
-              <label className="scheduled-line-checkbox" key={group.line}>
-                <input
-                  type="checkbox"
-                  checked={scheduledLines.includes(group.line)}
-                  onChange={(e) => toggleScheduledLine(group.line, e.target.checked)}
-                />
-                {group.line}
-              </label>
-            ))}
+            {groups.map((group) => {
+              const status = lineStatusLabel(group.rows);
+              return (
+                <div className={`scheduled-line-item ${status ? `has-${status.toLowerCase()}` : ""}`} key={group.line}>
+                  <label className="scheduled-line-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={scheduledLines.includes(group.line)}
+                      onChange={(e) => toggleScheduledLine(group.line, e.target.checked)}
+                    />
+                    {group.line}
+                  </label>
+                  <LineStatusToggle
+                    line={group.line}
+                    status={status}
+                    onChange={(s) => setLineStatus(group.line, s)}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -164,9 +215,12 @@ export default function ProductionSchedule({
                 value={group.line}
                 onChange={(e) => renameLine(group.line, e.target.value)}
               />
-              {statusCls === "line-ready" && <span className="line-status-chip">READY</span>}
-              {statusCls === "line-pm" && <span className="line-status-chip">PM</span>}
-              {statusCls === "line-trial" && <span className="line-status-chip">TRIAL</span>}
+              <LineStatusToggle
+                line={group.line}
+                status={lineStatusLabel(group.rows)}
+                onChange={(s) => setLineStatus(group.line, s)}
+                onDark
+              />
               <span style={{ flex: 1 }} />
               <button className="btn small danger" onClick={() => deleteLine(group.line)}>
                 Remove line
