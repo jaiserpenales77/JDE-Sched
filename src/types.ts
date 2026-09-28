@@ -212,6 +212,10 @@ export interface AppData {
   boards: DailyBoard[];
   timeOff: TimeOffEntry[];
   schedulePrintSettings: SchedulePrintSettings;
+  // Column choices remembered from past Excel imports: a column title
+  // (letters and digits only, upper case) -> the schedule field it goes
+  // into, or "" for a column that should be left out.
+  importColumnMap: Record<string, string>;
 }
 
 // Look of the printed Production Schedule report. Page options mirror the

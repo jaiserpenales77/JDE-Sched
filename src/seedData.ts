@@ -271,5 +271,6 @@ export function buildSeedData(shift: ShiftKey): AppData {
     boards: seedBoardsForShift(shift),
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
+    importColumnMap: {},
   };
 }

@@ -1,6 +1,7 @@
 import type { AppData, WorkOrder } from "./types";
 import { groupByLine, percentActual, bottlesRemaining, changeoverCode } from "./scheduleLogic";
 import { normalizeAppData } from "./storage";
+import type { SheetGrid } from "./importColumns";
 
 function download(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -95,130 +96,22 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
   XLSX.writeFile(workbook, `jde-production-schedule-${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
-// Different exports of "the same" production schedule use different column
-// names for the same field (e.g. an ERP export's "Order Number" instead of
-// the JDE template's "WO") - each field lists every header text seen in the
-// wild, tried in order, so either format (or a mix) is recognized. Headers
-// are compared on letters and digits only, so "WO#" matches "WO" and
-// "Item #" matches "ITEM".
-const COLUMN_ALIASES = {
-  line: ["LINE", "WORK CENTER"],
-  wo: ["WO", "ORDER NUMBER", "WO NUMBER"],
-  seq: ["SEQ", "SEQUENCE NUMBER"],
-  item: ["ITEM", "2ND ITEM NUMBER"],
-  desc: ["PRODUCT DESCRIPTION", "2ND ITEM NUMBER DESCRIPTION"],
-  count: ["COUNT", "BOTTLE COUNT"],
-  bulk: ["BULK ITEM"],
-  bottle: ["BOTTLE SIZE"],
-  cap: ["CAP DESCRIPTION", "CAP"],
-  allergen: ["ALLERGEN", "ALLERGEN CODE"],
-  remarks: ["REMARKS"],
-  qty: ["WO QUANTITY", "BATCH QUANTITY"],
-  pct: ["% COMPLETE", "WO % COMPLETED"],
-  status: ["LINE STATUS"],
-  desiccant: ["DESICCANT", "DESICCANTS", "DESICCANT NUMBER", "DESICCANTS NUMBER", "DESSICANT", "DESSICANTS NUMBER"],
-} as const satisfies Record<string, readonly string[]>;
-
-function normalizeHeader(text: unknown): string {
-  return String(text ?? "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
-}
-
-function findColumn(header: string[], aliases: readonly string[]): number {
-  for (const alias of aliases) {
-    const i = header.indexOf(normalizeHeader(alias));
-    if (i !== -1) return i;
-  }
-  return -1;
-}
-
-// Some exports fill empty Remarks with a lone "." or "," - treat a cell with
-// no letters or digits as blank.
-function cellText(value: unknown): string {
-  const s = String(value ?? "").trim();
-  return /[A-Za-z0-9]/.test(s) ? s : "";
-}
-
-// Best-effort import of a production schedule from an .xlsx/.xlsm file: finds
-// the header row containing a LINE column and a WO-like column (see
-// COLUMN_ALIASES), then reads rows below it until a blank LINE+WO pair or a
-// "LEGEND" marker ends the table.
-export function readWorkOrdersFromWorkbookFile(file: File): Promise<WorkOrder[]> {
+// Every sheet of an .xlsx/.xlsm/.xls file as a grid of cell values - the
+// Import screen (see importColumns.ts) works out which sheet, row and
+// columns hold the schedule.
+export function readWorkbookSheets(file: File): Promise<SheetGrid[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async () => {
       try {
         const XLSX = await import("xlsx");
-        const data = new Uint8Array(reader.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: "array" });
-        for (const sheetName of workbook.SheetNames) {
-          const sheet = workbook.Sheets[sheetName];
-          const grid: unknown[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true });
-          const headerRowIdx = grid.findIndex((row) => {
-            if (!Array.isArray(row)) return false;
-            const normalized = row.map(normalizeHeader);
-            const hasLine = findColumn(normalized, COLUMN_ALIASES.line) !== -1;
-            const hasWo = findColumn(normalized, COLUMN_ALIASES.wo) !== -1;
-            return hasLine && hasWo;
-          });
-          if (headerRowIdx === -1) continue;
-
-          const header = grid[headerRowIdx].map(normalizeHeader);
-          const idx = {
-            line: findColumn(header, COLUMN_ALIASES.line),
-            wo: findColumn(header, COLUMN_ALIASES.wo),
-            seq: findColumn(header, COLUMN_ALIASES.seq),
-            item: findColumn(header, COLUMN_ALIASES.item),
-            desc: findColumn(header, COLUMN_ALIASES.desc),
-            count: findColumn(header, COLUMN_ALIASES.count),
-            bulk: findColumn(header, COLUMN_ALIASES.bulk),
-            bottle: findColumn(header, COLUMN_ALIASES.bottle),
-            cap: findColumn(header, COLUMN_ALIASES.cap),
-            allergen: findColumn(header, COLUMN_ALIASES.allergen),
-            remarks: findColumn(header, COLUMN_ALIASES.remarks),
-            qty: findColumn(header, COLUMN_ALIASES.qty),
-            pct: findColumn(header, COLUMN_ALIASES.pct),
-            status: findColumn(header, COLUMN_ALIASES.status),
-            desiccant: findColumn(header, COLUMN_ALIASES.desiccant),
-          };
-
-          const result: WorkOrder[] = [];
-          // ERP exports can list the same work order row twice, identically.
-          const seen = new Set<string>();
-          for (let r = headerRowIdx + 1; r < grid.length; r++) {
-            const row = grid[r] ?? [];
-            const lineVal = String(row[idx.line] ?? "").trim();
-            if (lineVal.toUpperCase() === "LEGEND") break;
-            if (!lineVal) continue;
-            const rowKey = JSON.stringify(row.map((c) => String(c ?? "").trim()));
-            if (seen.has(rowKey)) continue;
-            seen.add(rowKey);
-            result.push({
-              id: crypto.randomUUID(),
-              line: lineVal,
-              wo: String(row[idx.wo] ?? "").trim(),
-              seq: String(row[idx.seq] ?? "").trim(),
-              item: String(row[idx.item] ?? "").trim(),
-              description: String(row[idx.desc] ?? "").trim(),
-              count: String(row[idx.count] ?? "").trim(),
-              bulkItem: String(row[idx.bulk] ?? "").trim(),
-              bottleSize: String(row[idx.bottle] ?? "").trim(),
-              capDescription: String(row[idx.cap] ?? "").trim(),
-              allergen: String(row[idx.allergen] ?? "").trim(),
-              remarks: cellText(row[idx.remarks]),
-              woQuantity: row[idx.qty] === undefined || row[idx.qty] === "" ? "" : Number(row[idx.qty]),
-              percentComplete: row[idx.pct] === undefined || row[idx.pct] === "" ? "" : Number(row[idx.pct]),
-              lineStatus: idx.status >= 0 ? String(row[idx.status] ?? "").trim() : "",
-              desiccant: idx.desiccant >= 0 ? String(row[idx.desiccant] ?? "").trim() : "",
-            });
-          }
-          if (result.length > 0) {
-            resolve(result);
-            return;
-          }
-        }
-        reject(new Error("Could not find a production schedule table (a LINE/WO header row) in that file."));
+        const workbook = XLSX.read(new Uint8Array(reader.result as ArrayBuffer), { type: "array" });
+        const sheets = workbook.SheetNames.map((name) => ({
+          name,
+          grid: XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[name], { header: 1, blankrows: true, defval: "" }),
+        })).filter((s) => s.grid.some((row) => row.some((c) => String(c ?? "").trim())));
+        if (!sheets.length) throw new Error("That file has no data in it.");
+        resolve(sheets);
       } catch (err) {
         reject(err);
       }

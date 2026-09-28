@@ -78,6 +78,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
     timeOff: Array.isArray(raw.timeOff) ? raw.timeOff.map(normalizeTimeOff) : [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings, ...raw.schedulePrintSettings },
+    importColumnMap: raw.importColumnMap && typeof raw.importColumnMap === "object" ? raw.importColumnMap : {},
   };
 }
 
@@ -258,5 +259,6 @@ export function emptyAppData(): AppData {
     boards: [],
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
+    importColumnMap: {},
   };
 }

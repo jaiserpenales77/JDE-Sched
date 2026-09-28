@@ -5,15 +5,17 @@ import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
 import TimeOff from "./components/TimeOff";
+import ImportColumnsDialog from "./components/ImportColumnsDialog";
 import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
 import {
   exportAppDataToJson,
   exportWorkOrdersToExcel,
   readAppDataFromJsonFile,
-  readWorkOrdersFromWorkbookFile,
+  readWorkbookSheets,
 } from "./excel";
 import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
+import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
 type PrintTarget = "schedule" | "assignments" | null;
@@ -51,12 +53,14 @@ function App() {
     boards,
     timeOff,
     schedulePrintSettings,
+    importColumnMap,
   } = data;
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
+  const [pendingImport, setPendingImport] = useState<{ fileName: string; sheets: SheetGrid[] } | null>(null);
 
   const sortedBoards = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
   const selectedBoard = boards.find((b) => b.id === selectedBoardId) ?? sortedBoards[0];
@@ -200,13 +204,17 @@ function App() {
 
   async function handleExcelImport(file: File) {
     try {
-      const workOrders = await readWorkOrdersFromWorkbookFile(file);
-      if (!confirm(`Found ${workOrders.length} work order row(s). Replace the current Production Schedule?`)) return;
-      setData((d) => ({ ...d, workOrders }));
-      setTab("schedule");
+      setPendingImport({ fileName: file.name, sheets: await readWorkbookSheets(file) });
     } catch (err) {
       alert(`Could not read that spreadsheet: ${(err as Error).message}`);
     }
+  }
+
+  function finishExcelImport(workOrders: WorkOrder[], importColumnMap: Record<string, string>) {
+    // One change, so a single Undo puts the old schedule back.
+    setData((d) => ({ ...d, workOrders, importColumnMap }));
+    setPendingImport(null);
+    setTab("schedule");
   }
 
   function handleResetToSample() {
@@ -310,7 +318,12 @@ function App() {
                 type="file"
                 accept=".xlsx,.xlsm,.xls"
                 style={{ display: "none" }}
-                onChange={(e) => e.target.files?.[0] && handleExcelImport(e.target.files[0])}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  // Cleared so picking the same file again still triggers an import.
+                  e.target.value = "";
+                  if (file) handleExcelImport(file);
+                }}
               />
             </>
           )}
@@ -372,6 +385,16 @@ function App() {
         {tab === "roster" && <SkillsRoles employees={employees} setEmployees={setEmployees} />}
         {tab === "timeoff" && <TimeOff timeOff={timeOff} setTimeOff={setTimeOff} employees={employees} />}
       </main>
+
+      {pendingImport && (
+        <ImportColumnsDialog
+          fileName={pendingImport.fileName}
+          sheets={pendingImport.sheets}
+          learned={importColumnMap}
+          onCancel={() => setPendingImport(null)}
+          onImport={finishExcelImport}
+        />
+      )}
 
       <footer className="toolbar-footer">
         Synced live to the cloud - this device's {SHIFT_LABELS[shift]} Production Schedule, Line Assignments boards,
