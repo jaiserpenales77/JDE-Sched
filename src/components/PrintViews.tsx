@@ -218,7 +218,7 @@ export function PrintSchedule({
         {groups.map((group, groupIdx) => {
           const isScheduled = scheduledLines.includes(group.line);
           // The line's name is printed once, in a tall cell down the left of
-          // its block, with a READY / PM / TRIAL tag when any of its work
+          // its block, with a READY / PM / OT tag when any of its work
           // orders has that status.
           const status = lineStatusLabel(group.rows);
           const showLine = !isHidden("line");

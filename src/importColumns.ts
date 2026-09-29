@@ -1,4 +1,5 @@
 import type { WorkOrder } from "./types";
+import { normalizeLineStatus } from "./scheduleLogic";
 
 // Reads a production schedule out of any spreadsheet layout. Exports from
 // different places name the same column differently ("WO", "WO#", "Order
@@ -236,7 +237,7 @@ export function buildWorkOrders(grid: unknown[][], headerRow: number, mapping: C
       remarks: idx.remarks === -1 ? "" : cellText(row[idx.remarks]),
       woQuantity: num(row, "qty"),
       percentComplete: num(row, "pct"),
-      lineStatus: get(row, "status"),
+      lineStatus: normalizeLineStatus(get(row, "status")),
       desiccant: get(row, "desiccant"),
     });
   }

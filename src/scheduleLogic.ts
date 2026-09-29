@@ -111,10 +111,22 @@ export function rowHighlightClass(wo: WorkOrder): string {
   return "";
 }
 
+// A work order's Line Status in its standard spelling. "Trial" was
+// replaced by "OT", so older data and spreadsheets that say Trial read as
+// OT; anything unrecognized is kept as typed.
+export function normalizeLineStatus(value: unknown): string {
+  const s = String(value ?? "").trim();
+  const key = s.toUpperCase();
+  if (key === "READY") return "Ready";
+  if (key === "PM") return "PM";
+  if (key === "OT" || key === "OVERTIME" || key === "TRIAL") return "OT";
+  return s;
+}
+
 // A whole line takes a status when ANY of its rows carries it (Ready
-// first, then PM, then Trial).
-export function lineStatusLabel(rows: WorkOrder[]): "Ready" | "PM" | "Trial" | "" {
-  for (const status of ["Ready", "PM", "Trial"] as const) {
+// first, then PM, then OT).
+export function lineStatusLabel(rows: WorkOrder[]): "Ready" | "PM" | "OT" | "" {
+  for (const status of ["Ready", "PM", "OT"] as const) {
     if (rows.some((r) => r.lineStatus === status)) return status;
   }
   return "";

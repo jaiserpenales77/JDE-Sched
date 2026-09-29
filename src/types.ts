@@ -22,7 +22,8 @@ export interface WorkOrder {
   desiccant: string;
 }
 
-export const LINE_STATUS_OPTIONS = ["", "Ready", "PM", "Trial"] as const;
+// "OT" replaced the original workbook's "Trial" status.
+export const LINE_STATUS_OPTIONS = ["", "Ready", "PM", "OT"] as const;
 
 export type ChangeoverCode = "" | "S1" | "S1 Count Change" | "S3" | "S4";
 
@@ -237,7 +238,7 @@ export interface SchedulePrintSettings {
   bulkColor: string;
   readyColor: string;
   pmColor: string;
-  trialColor: string;
+  otColor: string;
   dividerColor: string;
   scheduledBorderColor: string;
   countChangedColor: string;

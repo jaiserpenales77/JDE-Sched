@@ -49,10 +49,10 @@ function fmtChg(code: string) {
   return code === "" ? "—" : code;
 }
 
-type LineStatus = "Ready" | "PM" | "Trial";
-const LINE_STATUSES: LineStatus[] = ["Ready", "PM", "Trial"];
+type LineStatus = "Ready" | "PM" | "OT";
+const LINE_STATUSES: LineStatus[] = ["Ready", "PM", "OT"];
 
-// READY / PM / TRIAL buttons for a whole production line - click one to
+// READY / PM / OT buttons for a whole production line - click one to
 // mark the line, click it again to clear it.
 function LineStatusToggle({
   line,
@@ -161,7 +161,7 @@ export default function ProductionSchedule({
         <span className="swatch" style={{ background: "#bdd7ee" }} /> Bulk item A662 / A624 &nbsp;
         <span className="swatch" style={{ background: "#14532d" }} /> Line has a "Ready" WO &nbsp;
         <span className="swatch" style={{ background: "#1e3a8a" }} /> Line has a "PM" WO &nbsp;
-        <span className="swatch" style={{ background: "#4c1d95" }} /> Line has a "Trial" WO
+        <span className="swatch" style={{ background: "#4c1d95" }} /> Line marked "OT"
         <br />
         Changeover: <span className="chg-S1">S1</span> = same setup ·{" "}
         <span className="chg-S1-Count-Change">S1 Count Change</span> = count differs ·{" "}
@@ -173,7 +173,7 @@ export default function ProductionSchedule({
         <div className="panel">
           <h2>Scheduled Lines</h2>
           <p className="panel-hint">
-            Tick a line to box it in green on the print report. Click READY, PM or TRIAL to tag the line on the
+            Tick a line to box it in green on the print report. Click READY, PM or OT to tag the line on the
             printout — click it again to clear it.
           </p>
           <div className="scheduled-lines-grid">
@@ -275,7 +275,7 @@ export default function ProductionSchedule({
                             <option value="">—</option>
                             <option value="Ready">Ready</option>
                             <option value="PM">PM</option>
-                            <option value="Trial">Trial</option>
+                            <option value="OT">OT</option>
                           </select>
                         </td>
                         <td className="computed">

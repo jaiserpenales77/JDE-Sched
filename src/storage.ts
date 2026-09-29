@@ -4,6 +4,7 @@ import { db } from "./firebase";
 import type { AppData, DailyBoard, PrintAssignSettings, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
+import { normalizeLineStatus } from "./scheduleLogic";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
 const HISTORY_LIMIT = 50;
@@ -64,22 +65,31 @@ function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefin
   return merged;
 }
 
-// Ready / PM / Trial used to be pale cell fills; they're now tag colors
-// with a tint behind them. Saved settings still on the old pale defaults
-// move to the new ones - anything the user picked themselves is kept.
-const OLD_STATUS_DEFAULTS = { readyColor: "#c6efce", pmColor: "#bdd7ee", trialColor: "#d9d2e9" } as const;
+// Ready / PM used to be pale cell fills; they're now tag colors with a
+// tint behind them. Saved settings still on the old pale defaults move to
+// the new ones - anything the user picked themselves is kept.
+const OLD_STATUS_DEFAULTS = { readyColor: "#c6efce", pmColor: "#bdd7ee" } as const;
+// The OT tag replaced the Trial tag; a Trial color the user picked moves
+// over to OT (the old pale default doesn't).
+const OLD_TRIAL_DEFAULT = "#d9d2e9";
 
-function normalizeSchedulePrintSettings(settings: Partial<SchedulePrintSettings> | undefined): SchedulePrintSettings {
-  const merged = { ...defaultSchedulePrintSettings, ...settings };
+type LegacySchedulePrintSettings = Partial<SchedulePrintSettings> & { trialColor?: string };
+
+function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | undefined): SchedulePrintSettings {
+  const { trialColor, ...rest } = settings ?? {};
+  const merged: SchedulePrintSettings = { ...defaultSchedulePrintSettings, ...rest };
   for (const key of Object.keys(OLD_STATUS_DEFAULTS) as (keyof typeof OLD_STATUS_DEFAULTS)[]) {
     if (merged[key].toLowerCase() === OLD_STATUS_DEFAULTS[key]) merged[key] = defaultSchedulePrintSettings[key];
   }
+  if (!rest.otColor && trialColor && trialColor.toLowerCase() !== OLD_TRIAL_DEFAULT) merged.otColor = trialColor;
   return merged;
 }
 
 export function normalizeAppData(raw: Partial<AppData>): AppData {
   return {
-    workOrders: Array.isArray(raw.workOrders) ? raw.workOrders : [],
+    workOrders: Array.isArray(raw.workOrders)
+      ? raw.workOrders.map((w) => ({ ...w, lineStatus: normalizeLineStatus(w.lineStatus) }))
+      : [],
     employees: Array.isArray(raw.employees) ? raw.employees : [],
     printSettings: normalizePrintSettings(raw.printSettings),
     scheduledLines: Array.isArray(raw.scheduledLines) ? raw.scheduledLines : [],

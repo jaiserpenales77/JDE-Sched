@@ -251,7 +251,7 @@ export const defaultSchedulePrintSettings: SchedulePrintSettings = {
   // the Line cell behind the tag gets a light tint of the same color.
   readyColor: "#15803d",
   pmColor: "#1d4ed8",
-  trialColor: "#6d28d9",
+  otColor: "#6d28d9",
   dividerColor: "#000080",
   scheduledBorderColor: "#00c805",
   countChangedColor: "#ff0000",

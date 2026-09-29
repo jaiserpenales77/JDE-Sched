@@ -340,12 +340,12 @@ select option {
   border-color: color-mix(in srgb, #1d4ed8 55%, var(--border));
   background: color-mix(in srgb, #1d4ed8 8%, var(--panel));
 }
-.scheduled-line-item.has-trial {
+.scheduled-line-item.has-ot {
   border-color: color-mix(in srgb, #6d28d9 55%, var(--border));
   background: color-mix(in srgb, #6d28d9 8%, var(--panel));
 }
 
-/* READY / PM / TRIAL buttons for a whole production line. */
+/* READY / PM / OT buttons for a whole production line. */
 .status-toggle {
   display: inline-flex;
   gap: 3px;
@@ -381,7 +381,7 @@ select option {
   background: #1d4ed8;
   color: #fff;
 }
-.status-toggle-btn.status-trial.active {
+.status-toggle-btn.status-ot.active {
   border-color: #6d28d9;
   background: #6d28d9;
   color: #fff;
@@ -469,7 +469,7 @@ select option {
 
 .line-group-header.line-ready { background: #14532d; }
 .line-group-header.line-pm { background: #1e3a8a; }
-.line-group-header.line-trial { background: #4c1d95; }
+.line-group-header.line-ot { background: #4c1d95; }
 
 .schedule-table-wrap {
   overflow-x: auto;
@@ -984,7 +984,7 @@ tr.print-hl-bulk td {
   background: var(--sched-bulk, #bdd7ee);
 }
 /* Each production line's name is printed once, in a tall cell down the
-   left of its block, with a READY / PM / TRIAL tag under it - the tag says
+   left of its block, with a READY / PM / OT tag under it - the tag says
    the status in words so it still reads on a black-and-white printer. */
 .print-table td.print-line-cell {
   vertical-align: middle;
@@ -1024,12 +1024,12 @@ tr.print-hl-bulk td {
   background: var(--sched-pm, #1d4ed8);
   color: var(--sched-pm-text, #fff);
 }
-.print-table td.print-line-trial {
-  background: color-mix(in srgb, var(--sched-trial, #6d28d9) 16%, #fff);
+.print-table td.print-line-ot {
+  background: color-mix(in srgb, var(--sched-ot, #6d28d9) 16%, #fff);
 }
-.print-line-trial .print-status-tag {
-  background: var(--sched-trial, #6d28d9);
-  color: var(--sched-trial-text, #fff);
+.print-line-ot .print-status-tag {
+  background: var(--sched-ot, #6d28d9);
+  color: var(--sched-ot-text, #fff);
 }
 /* Keep a line's rows together on one page when the report runs long. */
 .print-line-group {
