@@ -341,8 +341,8 @@ select option {
   background: color-mix(in srgb, #1d4ed8 8%, var(--panel));
 }
 .scheduled-line-item.has-ot {
-  border-color: color-mix(in srgb, #6d28d9 55%, var(--border));
-  background: color-mix(in srgb, #6d28d9 8%, var(--panel));
+  border-color: color-mix(in srgb, #eab308 70%, var(--border));
+  background: color-mix(in srgb, #facc15 14%, var(--panel));
 }
 
 /* READY / PM / OT buttons for a whole production line. */
@@ -381,10 +381,11 @@ select option {
   background: #1d4ed8;
   color: #fff;
 }
+/* Yellow is light, so OT gets dark text. */
 .status-toggle-btn.status-ot.active {
-  border-color: #6d28d9;
-  background: #6d28d9;
-  color: #fff;
+  border-color: #ca8a04;
+  background: #facc15;
+  color: #111827;
 }
 .status-toggle-dark .status-toggle-btn {
   border-color: rgba(255, 255, 255, 0.35);
@@ -469,7 +470,17 @@ select option {
 
 .line-group-header.line-ready { background: #14532d; }
 .line-group-header.line-pm { background: #1e3a8a; }
-.line-group-header.line-ot { background: #4c1d95; }
+.line-group-header.line-ot { background: #facc15; color: #111827; }
+.line-group-header.line-ot input.line-name-input { color: #111827; }
+.line-group-header.line-ot .status-toggle-dark .status-toggle-btn {
+  border-color: rgba(17, 24, 39, 0.35);
+  color: rgba(17, 24, 39, 0.75);
+}
+.line-group-header.line-ot .status-toggle-dark .status-toggle-btn:hover,
+.line-group-header.line-ot .status-toggle-dark .status-toggle-btn.active {
+  border-color: #111827;
+  color: #111827;
+}
 
 .schedule-table-wrap {
   overflow-x: auto;
@@ -1025,11 +1036,11 @@ tr.print-hl-bulk td {
   color: var(--sched-pm-text, #fff);
 }
 .print-table td.print-line-ot {
-  background: color-mix(in srgb, var(--sched-ot, #6d28d9) 16%, #fff);
+  background: color-mix(in srgb, var(--sched-ot, #facc15) 16%, #fff);
 }
 .print-line-ot .print-status-tag {
-  background: var(--sched-ot, #6d28d9);
-  color: var(--sched-ot-text, #fff);
+  background: var(--sched-ot, #facc15);
+  color: var(--sched-ot-text, #000);
 }
 /* Keep a line's rows together on one page when the report runs long. */
 .print-line-group {

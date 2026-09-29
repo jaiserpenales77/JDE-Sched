@@ -65,23 +65,23 @@ function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefin
   return merged;
 }
 
-// Ready / PM used to be pale cell fills; they're now tag colors with a
-// tint behind them. Saved settings still on the old pale defaults move to
-// the new ones - anything the user picked themselves is kept.
-const OLD_STATUS_DEFAULTS = { readyColor: "#c6efce", pmColor: "#bdd7ee" } as const;
+// Saved settings still on an earlier default tag color move to the
+// current one - anything the user picked themselves is kept. (Ready / PM
+// used to be pale cell fills; OT, and Trial before it, used to be purple.)
+const OLD_STATUS_DEFAULTS = { readyColor: "#c6efce", pmColor: "#bdd7ee", otColor: "#6d28d9" } as const;
 // The OT tag replaced the Trial tag; a Trial color the user picked moves
-// over to OT (the old pale default doesn't).
-const OLD_TRIAL_DEFAULT = "#d9d2e9";
+// over to OT (Trial's old defaults don't).
+const OLD_TRIAL_DEFAULTS = ["#d9d2e9", "#6d28d9"];
 
 type LegacySchedulePrintSettings = Partial<SchedulePrintSettings> & { trialColor?: string };
 
 function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | undefined): SchedulePrintSettings {
   const { trialColor, ...rest } = settings ?? {};
   const merged: SchedulePrintSettings = { ...defaultSchedulePrintSettings, ...rest };
+  if (!rest.otColor && trialColor && !OLD_TRIAL_DEFAULTS.includes(trialColor.toLowerCase())) merged.otColor = trialColor;
   for (const key of Object.keys(OLD_STATUS_DEFAULTS) as (keyof typeof OLD_STATUS_DEFAULTS)[]) {
     if (merged[key].toLowerCase() === OLD_STATUS_DEFAULTS[key]) merged[key] = defaultSchedulePrintSettings[key];
   }
-  if (!rest.otColor && trialColor && trialColor.toLowerCase() !== OLD_TRIAL_DEFAULT) merged.otColor = trialColor;
   return merged;
 }
 

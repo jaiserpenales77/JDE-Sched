@@ -161,7 +161,7 @@ export default function ProductionSchedule({
         <span className="swatch" style={{ background: "#bdd7ee" }} /> Bulk item A662 / A624 &nbsp;
         <span className="swatch" style={{ background: "#14532d" }} /> Line has a "Ready" WO &nbsp;
         <span className="swatch" style={{ background: "#1e3a8a" }} /> Line has a "PM" WO &nbsp;
-        <span className="swatch" style={{ background: "#4c1d95" }} /> Line marked "OT"
+        <span className="swatch" style={{ background: "#facc15" }} /> Line marked "OT"
         <br />
         Changeover: <span className="chg-S1">S1</span> = same setup ·{" "}
         <span className="chg-S1-Count-Change">S1 Count Change</span> = count differs ·{" "}
