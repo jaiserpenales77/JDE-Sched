@@ -1,5 +1,5 @@
 import type { AppData, WorkOrder } from "./types";
-import { groupByLine, percentActual, bottlesRemaining, changeoverCode } from "./scheduleLogic";
+import { groupByLine, percentActual, bottlesRemaining, changeoverInto } from "./scheduleLogic";
 import { normalizeAppData } from "./storage";
 import type { SheetGrid } from "./importColumns";
 
@@ -64,7 +64,6 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
 
   for (const group of groups) {
     group.rows.forEach((row, idx) => {
-      const next = group.rows[idx + 1];
       rows.push([
         row.line,
         row.wo,
@@ -81,7 +80,7 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
         row.percentComplete,
         percentActual(row),
         bottlesRemaining(row),
-        changeoverCode(row, next),
+        changeoverInto(group.rows, idx),
         row.lineStatus,
         row.desiccant,
       ]);

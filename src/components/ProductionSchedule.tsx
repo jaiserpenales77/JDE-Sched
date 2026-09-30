@@ -4,7 +4,7 @@ import {
   groupByLine,
   percentActual,
   bottlesRemaining,
-  changeoverCode,
+  changeoverInto,
   rowHighlightClass,
   lineStatusClass,
   lineStatusLabel,
@@ -166,7 +166,8 @@ export default function ProductionSchedule({
         Changeover: <span className="chg-S1">S1</span> = same setup ·{" "}
         <span className="chg-S1-Count-Change">S1 Count Change</span> = count differs ·{" "}
         <span className="chg-S3">S3</span> = bulk item differs · <span className="chg-S4">S4</span> = bottle size
-        differs. % Actual Complete, Bottles Remaining and Changeover are calculated automatically.
+        differs. Each code is shown on the work order the changeover happens on. % Actual Complete, Bottles Remaining
+        and Changeover are calculated automatically.
       </div>
 
       {groups.length > 0 && (
@@ -242,13 +243,11 @@ export default function ProductionSchedule({
                 </thead>
                 <tbody>
                   {group.rows.map((row, idx) => {
-                    const next = group.rows[idx + 1];
-                    const chg = changeoverCode(row, next);
+                    const chg = changeoverInto(group.rows, idx);
                     const hl = rowHighlightClass(row);
-                    // An "S1 Count Change" is flagged on the PREVIOUS row
-                    // (it describes the changeover INTO this row) - so the
-                    // count that actually changed is this row's own Count cell.
-                    const countChanged = idx > 0 && changeoverCode(group.rows[idx - 1], row) === "S1 Count Change";
+                    // On an "S1 Count Change" the count that changed is this
+                    // row's own Count cell.
+                    const countChanged = chg === "S1 Count Change";
                     return (
                       <tr key={row.id} className={hl}>
                         {COLUMNS.map((c) => (

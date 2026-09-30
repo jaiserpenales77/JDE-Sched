@@ -77,9 +77,9 @@ export function bottlesRemaining(wo: WorkOrder): number | "" {
   return Math.round(Number(wo.woQuantity) * (1 - Number(pa)));
 }
 
-// Changeover code between a row and the NEXT row on the same production
-// line: compares Bottle Size, Bulk Item and Count to flag how much
-// changeover work is needed transitioning between the two work orders.
+// Changeover code between two consecutive work orders on the same
+// production line: compares Bottle Size, Bulk Item and Count to flag how
+// much changeover work is needed going from one to the next.
 export function changeoverCode(current: WorkOrder, next: WorkOrder | undefined): ChangeoverCode {
   if (!next) return "";
   if (!current.bottleSize || !next.bottleSize) return "";
@@ -88,6 +88,14 @@ export function changeoverCode(current: WorkOrder, next: WorkOrder | undefined):
   if (current.bulkItem !== next.bulkItem) return "S3";
   if (current.count !== next.count) return "S1 Count Change";
   return "S1";
+}
+
+// The changeover a work order starts with: the change from the work order
+// before it on the same line. That's the row the changeover actually
+// happens on, so it's the row the code is shown on; a line's first work
+// order has none.
+export function changeoverInto(rows: WorkOrder[], idx: number): ChangeoverCode {
+  return idx > 0 ? changeoverCode(rows[idx - 1], rows[idx]) : "";
 }
 
 export function isAllergenRow(wo: WorkOrder): boolean {

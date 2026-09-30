@@ -15,7 +15,7 @@ import {
   groupByLine,
   percentActual,
   bottlesRemaining,
-  changeoverCode,
+  changeoverInto,
   isAllergenRow,
   isOilRow,
   isBulkHighlightRow,
@@ -225,12 +225,10 @@ export function PrintSchedule({
           return (
             <tbody key={group.line} className="print-line-group">
               {group.rows.map((row, idx) => {
-                const next = group.rows[idx + 1];
-                const chg = changeoverCode(row, next);
-                // An "S1 Count Change" is flagged on the PREVIOUS row (it
-                // describes the changeover INTO this row) - so the count
-                // that actually changed is this row's own Count cell.
-                const countChanged = idx > 0 && changeoverCode(group.rows[idx - 1], row) === "S1 Count Change";
+                const chg = changeoverInto(group.rows, idx);
+                // On an "S1 Count Change" the count that changed is this
+                // row's own Count cell.
+                const countChanged = chg === "S1 Count Change";
                 const isFirstOfGroup = idx === 0;
                 const isLastOfGroup = idx === group.rows.length - 1;
                 let hl = "";
