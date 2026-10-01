@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { SchedulePrintSettings, WorkOrder } from "../types";
 import {
   groupByLine,
@@ -47,6 +47,34 @@ const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: 
 
 function fmtChg(code: string) {
   return code === "" ? "—" : code;
+}
+
+// Seq box that only applies the new number when you leave it (or press
+// Enter) - rows are listed in Seq order, so applying every keystroke would
+// make the row jump around while you type.
+function SeqInput({ value, onCommit }: { value: string; onCommit: (seq: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  // Escape blurs to cancel - the blur runs before the cleared draft renders.
+  const cancelled = useRef(false);
+  return (
+    <input
+      type="text"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (!cancelled.current && draft !== null && draft !== value) onCommit(draft);
+        cancelled.current = false;
+        setDraft(null);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+        if (e.key === "Escape") {
+          cancelled.current = true;
+          e.currentTarget.blur();
+        }
+      }}
+    />
+  );
 }
 
 type LineStatus = "Ready" | "PM" | "OT";
@@ -122,6 +150,18 @@ export default function ProductionSchedule({
       const blank = newBlankWorkOrder(wos[idx].line);
       const next = [...wos];
       next.splice(idx + 1, 0, blank);
+      return next;
+    });
+  }
+
+  // A new work order goes at the bottom of its line: saved right after the
+  // line's last row (in Seq order), which is where a row with no Seq shows.
+  function addToEnd(line: string, lastId: string | undefined) {
+    setWorkOrders((wos) => {
+      const idx = lastId ? wos.findIndex((w) => w.id === lastId) : -1;
+      if (idx === -1) return [...wos, newBlankWorkOrder(line)];
+      const next = [...wos];
+      next.splice(idx + 1, 0, newBlankWorkOrder(line));
       return next;
     });
   }
@@ -252,18 +292,22 @@ export default function ProductionSchedule({
                       <tr key={row.id} className={hl}>
                         {COLUMNS.map((c) => (
                           <td key={c.key}>
-                            <input
-                              className={`${c.numeric ? "num" : ""} ${c.key === "count" && countChanged ? "count-changed" : ""}`}
-                              type={c.numeric ? "number" : "text"}
-                              value={row[c.key] as string | number}
-                              onChange={(e) =>
-                                updateRow(
-                                  row.id,
-                                  c.key,
-                                  c.numeric ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
-                                )
-                              }
-                            />
+                            {c.key === "seq" ? (
+                              <SeqInput value={row.seq} onCommit={(seq) => updateRow(row.id, "seq", seq)} />
+                            ) : (
+                              <input
+                                className={`${c.numeric ? "num" : ""} ${c.key === "count" && countChanged ? "count-changed" : ""}`}
+                                type={c.numeric ? "number" : "text"}
+                                value={row[c.key] as string | number}
+                                onChange={(e) =>
+                                  updateRow(
+                                    row.id,
+                                    c.key,
+                                    c.numeric ? (e.target.value === "" ? "" : Number(e.target.value)) : e.target.value,
+                                  )
+                                }
+                              />
+                            )}
                           </td>
                         ))}
                         <td>
@@ -299,7 +343,7 @@ export default function ProductionSchedule({
             <div className="line-group-footer">
               <button
                 className="btn small"
-                onClick={() => setWorkOrders((wos) => [...wos, newBlankWorkOrder(group.line)])}
+                onClick={() => addToEnd(group.line, group.rows[group.rows.length - 1]?.id)}
               >
                 + Add work order to {group.line}
               </button>

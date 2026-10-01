@@ -45,9 +45,36 @@ export const SCHEDULE_COLUMN_LABELS: Record<ScheduleColumnKey, string> = {
   changeover: "CHANGEOVER",
 };
 
+// Seq order: numbers compare as numbers (so 6.5 sits between 6 and 7);
+// anything else compares as text, numbers-aware.
+function compareSeq(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a) return -1;
+  if (!b) return 1;
+  const na = Number(a);
+  const nb = Number(b);
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+  return a.localeCompare(b, undefined, { numeric: true });
+}
+
+// A line's work orders in Seq order, however they were imported or
+// entered. A row with no Seq yet (just added) stays right after the row
+// it was added below; rows with the same Seq keep their saved order.
+export function sortBySeq(rows: WorkOrder[]): WorkOrder[] {
+  let anchor = "";
+  return rows
+    .map((row, index) => {
+      const seq = String(row.seq ?? "").trim();
+      if (seq) anchor = seq;
+      return { row, index, key: seq || anchor };
+    })
+    .sort((a, b) => compareSeq(a.key, b.key) || a.index - b.index)
+    .map((r) => r.row);
+}
+
 // Groups work orders by production line, preserving each line's first
-// appearance order and each row's insertion order within its line -
-// replaces the manual "Add Line Dividers" macro from the spreadsheet.
+// appearance order, with each line's rows in Seq order - replaces the
+// manual "Add Line Dividers" macro from the spreadsheet.
 export function groupByLine(workOrders: WorkOrder[]): { line: string; rows: WorkOrder[] }[] {
   const order: string[] = [];
   const groups = new Map<string, WorkOrder[]>();
@@ -59,7 +86,7 @@ export function groupByLine(workOrders: WorkOrder[]): { line: string; rows: Work
     }
     groups.get(key)!.push(wo);
   }
-  return order.map((line) => ({ line, rows: groups.get(line)! }));
+  return order.map((line) => ({ line, rows: sortBySeq(groups.get(line)!) }));
 }
 
 // % Actual Complete: blank when % Complete is 0 or blank (matches the
