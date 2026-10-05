@@ -999,6 +999,24 @@ table.roster select {
   touch-action: none;
 }
 .col-resize-handle:hover,
+/* Print preview: drag a column's header to move the column. The marker
+   shows which side of the target column it will land on. */
+.print-preview-body {
+  margin-top: 12px;
+}
+.print-col-headers th.col-movable {
+  cursor: grab;
+}
+.print-col-headers th.col-movable:active {
+  cursor: grabbing;
+}
+.print-col-headers th.col-drop-before {
+  box-shadow: inset 4px 0 0 var(--accent, #2563eb);
+}
+.print-col-headers th.col-drop-after {
+  box-shadow: inset -4px 0 0 var(--accent, #2563eb);
+}
+
 .col-resize-handle:active {
   background: rgba(37, 99, 235, 0.35);
 }

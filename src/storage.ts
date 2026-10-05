@@ -98,6 +98,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
         ? raw.printScheduleColumnWidths
         : {},
     printScheduleHiddenColumns: Array.isArray(raw.printScheduleHiddenColumns) ? raw.printScheduleHiddenColumns : [],
+    printScheduleColumnOrder: Array.isArray(raw.printScheduleColumnOrder) ? raw.printScheduleColumnOrder : [],
     boards: Array.isArray(raw.boards) ? raw.boards.map(normalizeBoard) : [],
     timeOff: Array.isArray(raw.timeOff) ? raw.timeOff.map(normalizeTimeOff) : [],
     schedulePrintSettings: normalizeSchedulePrintSettings(raw.schedulePrintSettings),
@@ -279,6 +280,7 @@ export function emptyAppData(): AppData {
     scheduledLines: [],
     printScheduleColumnWidths: {},
     printScheduleHiddenColumns: [],
+    printScheduleColumnOrder: [],
     boards: [],
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },

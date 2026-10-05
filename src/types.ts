@@ -210,6 +210,10 @@ export interface AppData {
   // Column keys checked off in the print preview's "Hide columns" list -
   // omitted entirely from the printed Production Schedule report.
   printScheduleHiddenColumns: string[];
+  // Column order for the printed Production Schedule (column keys, set by
+  // dragging headers in the preview). Empty = the standard order; LINE
+  // always stays first.
+  printScheduleColumnOrder: string[];
   boards: DailyBoard[];
   timeOff: TimeOffEntry[];
   schedulePrintSettings: SchedulePrintSettings;

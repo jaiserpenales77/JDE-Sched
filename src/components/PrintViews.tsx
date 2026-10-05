@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import { Fragment, useRef, useState } from "react";
+import type { CSSProperties, DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type {
   CommentBox,
   DailyBoard,
@@ -20,7 +20,7 @@ import {
   isOilRow,
   isBulkHighlightRow,
   lineStatusLabel,
-  SCHEDULE_COLUMN_KEYS,
+  orderedScheduleColumns,
   SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
@@ -111,8 +111,13 @@ interface PrintScheduleProps {
   // print output) - pass it to get draggable column resize handles (used
   // by the live preview).
   setColumnWidths?: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
+  columnOrder?: string[];
+  // Pass to let column headers be dragged to new positions (live preview).
+  setColumnOrder?: (order: string[]) => void;
   design?: SchedulePrintSettings;
 }
+
+const COLUMN_DRAG_MIME = "application/x-jde-sched-column";
 
 export function PrintSchedule({
   workOrders,
@@ -120,6 +125,8 @@ export function PrintSchedule({
   columnWidths = {},
   hiddenColumns = [],
   setColumnWidths,
+  columnOrder = [],
+  setColumnOrder,
   design = defaultSchedulePrintSettings,
 }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
@@ -135,7 +142,12 @@ export function PrintSchedule({
   } | null>(null);
 
   const hiddenSet = new Set(hiddenColumns);
-  const visibleKeys = SCHEDULE_COLUMN_KEYS.filter((key) => !hiddenSet.has(key));
+  const orderedKeys = orderedScheduleColumns(columnOrder);
+  const visibleKeys = orderedKeys.filter((key) => !hiddenSet.has(key));
+  // Dragging a header to move its column - LINE stays put. Tracks where it
+  // would land, to draw the drop marker.
+  const [dropAt, setDropAt] = useState<{ key: ScheduleColumnKey; side: "before" | "after" } | null>(null);
+  const resizing = useRef(false);
   const isHidden = (key: ScheduleColumnKey) => hiddenSet.has(key);
 
   function widthOf(key: ScheduleColumnKey): number {
@@ -144,6 +156,7 @@ export function PrintSchedule({
 
   function beginResize(e: ReactPointerEvent, key: ScheduleColumnKey) {
     if (!setColumnWidths || !tableRef.current) return;
+    resizing.current = true;
     const idx = visibleKeys.indexOf(key);
     const nextKey = visibleKeys[idx + 1];
     if (!nextKey) return;
@@ -170,7 +183,43 @@ export function PrintSchedule({
   }
 
   function endResize() {
+    resizing.current = false;
     setDrag(null);
+  }
+
+  const canMove = (key: ScheduleColumnKey) => !!setColumnOrder && key !== "line";
+
+  function onHeaderDragStart(e: ReactDragEvent, key: ScheduleColumnKey) {
+    // A drag that starts on the resize handle resizes instead.
+    if (resizing.current || !canMove(key)) {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData(COLUMN_DRAG_MIME, key);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function onHeaderDragOver(e: ReactDragEvent, key: ScheduleColumnKey) {
+    if (!setColumnOrder || !e.dataTransfer.types.includes(COLUMN_DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    // Nothing can go in front of LINE.
+    const side = key === "line" || e.clientX > rect.left + rect.width / 2 ? "after" : "before";
+    if (dropAt?.key !== key || dropAt.side !== side) setDropAt({ key, side });
+  }
+
+  function onHeaderDrop(e: ReactDragEvent, target: ScheduleColumnKey) {
+    const moved = e.dataTransfer.getData(COLUMN_DRAG_MIME) as ScheduleColumnKey;
+    const side = dropAt?.key === target ? dropAt.side : "after";
+    setDropAt(null);
+    if (!setColumnOrder || !moved || moved === target || moved === "line") return;
+    e.preventDefault();
+    // Reorder the full list (hidden columns keep their relative place).
+    const next = orderedKeys.filter((k) => k !== moved);
+    const at = next.indexOf(target) + (side === "after" ? 1 : 0);
+    next.splice(Math.max(1, at), 0, moved);
+    setColumnOrder(next);
   }
 
   function resizeHandleProps(columnKey: ScheduleColumnKey) {
@@ -199,7 +248,21 @@ export function PrintSchedule({
           </tr>
           <tr className="print-col-headers">
             {visibleKeys.map((key) => (
-              <th key={key} className={FORMULA_COLUMN_KEYS.has(key) ? "print-formula-col" : undefined}>
+              <th
+                key={key}
+                className={[
+                  FORMULA_COLUMN_KEYS.has(key) ? "print-formula-col" : "",
+                  canMove(key) ? "col-movable" : "",
+                  dropAt?.key === key ? `col-drop-${dropAt.side}` : "",
+                ].join(" ")}
+                draggable={canMove(key)}
+                title={canMove(key) ? "Drag to move this column" : undefined}
+                onDragStart={(e) => onHeaderDragStart(e, key)}
+                onDragOver={(e) => onHeaderDragOver(e, key)}
+                onDragLeave={() => dropAt?.key === key && setDropAt(null)}
+                onDrop={(e) => onHeaderDrop(e, key)}
+                onDragEnd={() => setDropAt(null)}
+              >
                 {SCHEDULE_COLUMN_LABELS[key]}
                 <ColResizeHandle {...resizeHandleProps(key)} />
               </th>
@@ -235,6 +298,28 @@ export function PrintSchedule({
                 if (isAllergenRow(row)) hl = "print-hl-allergen";
                 else if (isOilRow(row)) hl = "print-hl-oil";
                 else if (isBulkHighlightRow(row)) hl = "print-hl-bulk";
+                const cells: Record<Exclude<ScheduleColumnKey, "line">, ReactNode> = {
+                  wo: <td>{row.wo}</td>,
+                  seq: <td>{row.seq}</td>,
+                  item: <td>{row.item}</td>,
+                  description: <td className="print-left">{row.description}</td>,
+                  count: <td className={countChanged ? "print-count-changed" : ""}>{row.count}</td>,
+                  bulkItem: <td>{row.bulkItem}</td>,
+                  bottleSize: <td>{row.bottleSize}</td>,
+                  capDescription: <td className="print-left">{row.capDescription}</td>,
+                  allergen: <td>{row.allergen}</td>,
+                  remarks: <td className="print-left">{row.remarks}</td>,
+                  woQuantity: <td className="print-num">{row.woQuantity}</td>,
+                  percentComplete: <td className="print-num">{row.percentComplete}</td>,
+                  desiccant: <td>{row.desiccant}</td>,
+                  percentActual: (
+                    <td className="print-formula-col print-progress-cell">
+                      <ProgressBar value={percentActual(row)} />
+                    </td>
+                  ),
+                  bottlesRemaining: <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>,
+                  changeover: <td className="print-formula-col">{chg}</td>,
+                };
                 const scheduledCls = isScheduled
                   ? `print-line-scheduled ${isFirstOfGroup ? "print-line-scheduled-first" : ""} ${isLastOfGroup ? "print-line-scheduled-last" : ""}`
                   : "";
@@ -243,39 +328,21 @@ export function PrintSchedule({
                     key={row.id}
                     className={`${hl} ${isLastOfGroup ? "print-divider" : ""} ${scheduledCls} ${showLine ? "print-merged" : ""}`}
                   >
-                    {showLine && isFirstOfGroup && (
-                      <td
-                        rowSpan={group.rows.length}
-                        className={`print-line-cell ${status ? `print-line-${status.toLowerCase()}` : ""}`}
-                      >
-                        <span className="print-line-name">{group.line}</span>
-                        {status && <span className="print-status-tag">{status.toUpperCase()}</span>}
-                      </td>
-                    )}
-                    {!isHidden("wo") && <td>{row.wo}</td>}
-                    {!isHidden("seq") && <td>{row.seq}</td>}
-                    {!isHidden("item") && <td>{row.item}</td>}
-                    {!isHidden("description") && <td className="print-left">{row.description}</td>}
-                    {!isHidden("count") && (
-                      <td className={countChanged ? "print-count-changed" : ""}>{row.count}</td>
-                    )}
-                    {!isHidden("bulkItem") && <td>{row.bulkItem}</td>}
-                    {!isHidden("bottleSize") && <td>{row.bottleSize}</td>}
-                    {!isHidden("capDescription") && <td className="print-left">{row.capDescription}</td>}
-                    {!isHidden("allergen") && <td>{row.allergen}</td>}
-                    {!isHidden("remarks") && <td className="print-left">{row.remarks}</td>}
-                    {!isHidden("woQuantity") && <td className="print-num">{row.woQuantity}</td>}
-                    {!isHidden("percentComplete") && <td className="print-num">{row.percentComplete}</td>}
-                    {!isHidden("desiccant") && <td>{row.desiccant}</td>}
-                    {!isHidden("percentActual") && (
-                      <td className="print-formula-col print-progress-cell">
-                        <ProgressBar value={percentActual(row)} />
-                      </td>
-                    )}
-                    {!isHidden("bottlesRemaining") && (
-                      <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>
-                    )}
-                    {!isHidden("changeover") && <td className="print-formula-col">{chg}</td>}
+                    {visibleKeys.map((key) => {
+                      if (key !== "line") return <Fragment key={key}>{cells[key]}</Fragment>;
+                      // The line's cell spans all its rows - only the first row has it.
+                      if (!isFirstOfGroup) return null;
+                      return (
+                        <td
+                          key={key}
+                          rowSpan={group.rows.length}
+                          className={`print-line-cell ${status ? `print-line-${status.toLowerCase()}` : ""}`}
+                        >
+                          <span className="print-line-name">{group.line}</span>
+                          {status && <span className="print-status-tag">{status.toUpperCase()}</span>}
+                        </td>
+                      );
+                    })}
                   </tr>
                 );
               })}

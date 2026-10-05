@@ -25,6 +25,17 @@ export const SCHEDULE_COLUMN_KEYS = [
 ] as const;
 export type ScheduleColumnKey = (typeof SCHEDULE_COLUMN_KEYS)[number];
 
+// The printed schedule's columns in the saved order. LINE always comes
+// first (it holds the line name and its READY / PM / OT tag); unknown keys
+// are dropped and any column missing from the saved order (e.g. one added
+// in a later version) goes back in its standard place at the end.
+export function orderedScheduleColumns(order: readonly string[] = []): ScheduleColumnKey[] {
+  const known = new Set<string>(SCHEDULE_COLUMN_KEYS);
+  const saved = order.filter((k, i): k is ScheduleColumnKey => known.has(k) && k !== "line" && order.indexOf(k) === i);
+  const rest = SCHEDULE_COLUMN_KEYS.filter((k) => k !== "line" && !saved.includes(k));
+  return ["line", ...saved, ...rest];
+}
+
 export const SCHEDULE_COLUMN_LABELS: Record<ScheduleColumnKey, string> = {
   line: "LINE",
   wo: "WO",

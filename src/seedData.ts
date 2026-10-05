@@ -270,6 +270,7 @@ export function buildSeedData(shift: ShiftKey): AppData {
     scheduledLines: [],
     printScheduleColumnWidths: {},
     printScheduleHiddenColumns: [],
+    printScheduleColumnOrder: [],
     boards: seedBoardsForShift(shift),
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },

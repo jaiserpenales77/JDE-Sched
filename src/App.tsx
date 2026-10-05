@@ -70,6 +70,7 @@ function App() {
     scheduledLines,
     printScheduleColumnWidths,
     printScheduleHiddenColumns,
+    printScheduleColumnOrder,
     boards,
     timeOff,
     schedulePrintSettings,
@@ -243,6 +244,9 @@ function App() {
   function setScheduleHiddenColumns(updater: (cols: string[]) => string[]) {
     setData((d) => ({ ...d, printScheduleHiddenColumns: updater(d.printScheduleHiddenColumns) }));
   }
+  function setScheduleColumnOrder(order: string[]) {
+    setData((d) => ({ ...d, printScheduleColumnOrder: order }));
+  }
 
   async function handleJsonImport(file: File) {
     try {
@@ -411,6 +415,8 @@ function App() {
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}
             setHiddenColumns={setScheduleHiddenColumns}
+            columnOrder={printScheduleColumnOrder}
+            setColumnOrder={setScheduleColumnOrder}
             design={schedulePrintSettings}
             setDesign={setSchedulePrintSettings}
           />
@@ -459,6 +465,7 @@ function App() {
             scheduledLines={scheduledLines}
             columnWidths={printScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}
+            columnOrder={printScheduleColumnOrder}
             design={schedulePrintSettings}
           />
         </div>

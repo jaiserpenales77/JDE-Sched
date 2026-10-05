@@ -9,7 +9,7 @@ import {
   lineStatusClass,
   lineStatusLabel,
   newBlankWorkOrder,
-  SCHEDULE_COLUMN_KEYS,
+  orderedScheduleColumns,
   SCHEDULE_COLUMN_LABELS,
 } from "../scheduleLogic";
 import ProgressBar from "./ProgressBar";
@@ -25,6 +25,8 @@ interface Props {
   setColumnWidths: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
   hiddenColumns: string[];
   setHiddenColumns: (updater: (cols: string[]) => string[]) => void;
+  columnOrder: string[];
+  setColumnOrder: (order: string[]) => void;
   design: SchedulePrintSettings;
   setDesign: (updater: (s: SchedulePrintSettings) => SchedulePrintSettings) => void;
 }
@@ -77,6 +79,18 @@ function SeqInput({ value, onCommit }: { value: string; onCommit: (seq: string) 
   );
 }
 
+// Whether the Print Report Preview is open - remembered per device, open
+// by default.
+const SHOW_PREVIEW_KEY = "jde-sched-show-schedule-preview";
+
+function loadShowPreview(): boolean {
+  try {
+    return localStorage.getItem(SHOW_PREVIEW_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
 type LineStatus = "Ready" | "PM" | "OT";
 const LINE_STATUSES: LineStatus[] = ["Ready", "PM", "OT"];
 
@@ -120,11 +134,23 @@ export default function ProductionSchedule({
   setColumnWidths,
   hiddenColumns,
   setHiddenColumns,
+  columnOrder,
+  setColumnOrder,
   design,
   setDesign,
 }: Props) {
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
+  const [showPreview, setShowPreview] = useState(loadShowPreview);
+
+  function togglePreview(show: boolean) {
+    setShowPreview(show);
+    try {
+      localStorage.setItem(SHOW_PREVIEW_KEY, show ? "1" : "0");
+    } catch {
+      // Not remembered on this device - the toggle still works.
+    }
+  }
 
   function toggleHiddenColumn(key: string, hidden: boolean) {
     setHiddenColumns((cols) => (hidden ? [...cols, key] : cols.filter((c) => c !== key)));
@@ -241,6 +267,56 @@ export default function ProductionSchedule({
           </div>
         </div>
       )}
+
+      <div className="panel">
+        <button
+          className="print-design-toggle"
+          aria-expanded={showPreview}
+          onClick={() => togglePreview(!showPreview)}
+        >
+          <h2 style={{ margin: 0 }}>🖨 Print Report Preview</h2>
+          <span>{showPreview ? "▲ Hide" : "▼ Show"}</span>
+        </button>
+        {showPreview && (
+          <div className="print-preview-body">
+            <p className="panel-hint">
+              Live preview of the printed Production Schedule. Drag a column's name left or right to move it, drag
+              its right edge to resize it, or tick it below to hide it — all of these apply to the printout too.
+            </p>
+            <div className="hide-columns-grid">
+              {orderedScheduleColumns(columnOrder).map((key) => (
+                <label className="hide-column-checkbox" key={key}>
+                  <input
+                    type="checkbox"
+                    checked={hiddenColumns.includes(key)}
+                    onChange={(e) => toggleHiddenColumn(key, e.target.checked)}
+                  />
+                  {SCHEDULE_COLUMN_LABELS[key]}
+                </label>
+              ))}
+              {columnOrder.length > 0 && (
+                <button className="btn small" onClick={() => setColumnOrder([])}>
+                  Reset column order
+                </button>
+              )}
+            </div>
+            <div className="print-preview-wrap">
+              <PrintSchedule
+                workOrders={workOrders}
+                scheduledLines={scheduledLines}
+                columnWidths={columnWidths}
+                setColumnWidths={setColumnWidths}
+                hiddenColumns={hiddenColumns}
+                columnOrder={columnOrder}
+                setColumnOrder={setColumnOrder}
+                design={design}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <SchedulePrintDesign settings={design} setSettings={setDesign} />
 
       {groups.length === 0 && (
         <div className="empty-state panel">No work orders yet. Add a production line below to get started.</div>
@@ -370,37 +446,6 @@ export default function ProductionSchedule({
         </div>
       </div>
 
-      <SchedulePrintDesign settings={design} setSettings={setDesign} />
-
-      <div className="panel">
-        <h2>🖨 Print Report Preview</h2>
-        <p className="panel-hint">
-          Live preview of the printed Production Schedule report. Drag a column's right edge to resize it, or check a
-          column below to hide it - both apply to the actual printed report too.
-        </p>
-        <div className="hide-columns-grid">
-          {SCHEDULE_COLUMN_KEYS.map((key) => (
-            <label className="hide-column-checkbox" key={key}>
-              <input
-                type="checkbox"
-                checked={hiddenColumns.includes(key)}
-                onChange={(e) => toggleHiddenColumn(key, e.target.checked)}
-              />
-              {SCHEDULE_COLUMN_LABELS[key]}
-            </label>
-          ))}
-        </div>
-        <div className="print-preview-wrap">
-          <PrintSchedule
-            workOrders={workOrders}
-            scheduledLines={scheduledLines}
-            columnWidths={columnWidths}
-            setColumnWidths={setColumnWidths}
-            hiddenColumns={hiddenColumns}
-            design={design}
-          />
-        </div>
-      </div>
     </div>
   );
 }
