@@ -984,21 +984,55 @@ table.roster select {
   text-align: left;
 }
 
-/* Draggable divider between two header cells - resizes the printed
-   report's columns (see PrintSchedule's resize handlers) and, since the
-   preview and the real print output share the same stored widths,
-   resizing here also resizes the actual printed report. */
+/* Draggable column edge - resizes the printed report's columns (see
+   PrintSchedule's resize handlers). The grab strip is wide and runs the
+   full height of the table (--resize-h is the table's height below the
+   header row's top), and every edge shows a faint line while the pointer
+   is over the table so they're easy to find. Since the preview and the
+   real print output share the same stored widths, resizing here also
+   resizes the printed report. */
 .col-resize-handle {
   position: absolute;
   top: 0;
-  right: -3px;
-  bottom: 0;
-  width: 6px;
+  right: -7px;
+  width: 14px;
+  height: var(--resize-h, 100%);
   cursor: col-resize;
-  z-index: 2;
+  z-index: 3;
   touch-action: none;
 }
-.col-resize-handle:hover,
+.col-resize-handle::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 2px;
+  background: var(--accent, #2563eb);
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.print-table:hover .col-resize-handle::after {
+  opacity: 0.25;
+}
+.col-resize-handle:hover::after,
+.col-resize-handle.active::after {
+  opacity: 1;
+}
+.col-resize-tip {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--accent, #2563eb);
+  color: #fff;
+  font: 600 11px/18px system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* Print preview: drag a column's header to move the column. The marker
    shows which side of the target column it will land on. */
 .print-preview-body {
@@ -1016,9 +1050,11 @@ table.roster select {
 .print-col-headers th.col-drop-after {
   box-shadow: inset -4px 0 0 var(--accent, #2563eb);
 }
-
-.col-resize-handle:active {
-  background: rgba(37, 99, 235, 0.35);
+.print-preview-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 @media print {
   .col-resize-handle {

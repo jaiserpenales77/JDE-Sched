@@ -280,8 +280,9 @@ export default function ProductionSchedule({
         {showPreview && (
           <div className="print-preview-body">
             <p className="panel-hint">
-              Live preview of the printed Production Schedule. Drag a column's name left or right to move it, drag
-              its right edge to resize it, or tick it below to hide it — all of these apply to the printout too.
+              Live preview of the printed Production Schedule. Drag a column's name to move it. To resize, drag
+              the faint line on a column's edge (anywhere down the table) — double-click it to fit the column, or use
+              Fit all columns. Tick a column below to hide it. All of these apply to the printout too.
             </p>
             <div className="hide-columns-grid">
               {orderedScheduleColumns(columnOrder).map((key) => (

@@ -1,4 +1,4 @@
-import { Fragment, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties, DragEvent as ReactDragEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type {
   CommentBox,
@@ -81,26 +81,41 @@ const MIN_COLUMN_PCT = 2;
 // a stable component identity across renders.
 function ColResizeHandle({
   show,
+  activePct,
   onPointerDown,
   onPointerMove,
   onPointerUp,
+  onDoubleClick,
 }: {
   show: boolean;
+  // The column's width while it's being dragged, shown in a small tip.
+  activePct: number | null;
   onPointerDown: (e: ReactPointerEvent) => void;
   onPointerMove: (e: ReactPointerEvent) => void;
   onPointerUp: () => void;
+  onDoubleClick: () => void;
 }) {
   if (!show) return null;
   return (
     <span
-      className="col-resize-handle"
+      className={`col-resize-handle ${activePct !== null ? "active" : ""}`}
+      title="Drag to resize · double-click to fit"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-    />
+      onDoubleClick={onDoubleClick}
+      onDragStart={(e) => e.preventDefault()}
+    >
+      {activePct !== null && <span className="col-resize-tip">{activePct.toFixed(1)}%</span>}
+    </span>
   );
 }
+
+// Widest a column can be made by dragging or fitting, as a share of the table.
+const MAX_COLUMN_SHARE = 0.6;
+// Fitting never lets one long column (e.g. Remarks) take more than this.
+const MAX_FIT_SHARE = 0.3;
 
 interface PrintScheduleProps {
   workOrders: WorkOrder[];
@@ -134,12 +149,15 @@ export function PrintSchedule({
   const tableRef = useRef<HTMLTableElement>(null);
   const [drag, setDrag] = useState<{
     key: ScheduleColumnKey;
-    nextKey: ScheduleColumnKey;
     startX: number;
-    startA: number;
-    startB: number;
+    startShare: number;
+    othersSum: number;
     tableWidthPx: number;
+    share: number;
   } | null>(null);
+  // Height of the table from the column-header row down, so the resize
+  // strips run the full height of the columns.
+  const [resizeH, setResizeH] = useState(0);
 
   const hiddenSet = new Set(hiddenColumns);
   const orderedKeys = orderedScheduleColumns(columnOrder);
@@ -154,37 +172,134 @@ export function PrintSchedule({
     return columnWidths[key] ?? DEFAULT_SCHEDULE_COLUMN_WIDTHS[key];
   }
 
+  // Columns fill the page: each one's printed share is its stored width
+  // over the total of the visible columns.
+  const visibleSum = visibleKeys.reduce((sum, key) => sum + widthOf(key), 0);
+  const shareOf = (key: ScheduleColumnKey) => widthOf(key) / visibleSum;
+
+  // The stored width that gives `key` this share of the table while every
+  // other column keeps its size relative to the rest.
+  function widthForShare(key: ScheduleColumnKey, share: number): number {
+    const others = visibleSum - widthOf(key);
+    const clamped = Math.min(MAX_COLUMN_SHARE, Math.max(MIN_COLUMN_PCT / 100, share));
+    return (clamped * others) / (1 - clamped);
+  }
+
+  useLayoutEffect(() => {
+    if (!setColumnWidths || !tableRef.current) return;
+    const table = tableRef.current;
+    const measure = () => {
+      const header = table.querySelector(".print-col-headers") as HTMLElement | null;
+      if (header) setResizeH(table.offsetHeight - header.offsetTop);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(table);
+    return () => observer.disconnect();
+  }, [setColumnWidths]);
+
   function beginResize(e: ReactPointerEvent, key: ScheduleColumnKey) {
     if (!setColumnWidths || !tableRef.current) return;
     resizing.current = true;
-    const idx = visibleKeys.indexOf(key);
-    const nextKey = visibleKeys[idx + 1];
-    if (!nextKey) return;
     e.preventDefault();
     e.stopPropagation();
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     setDrag({
       key,
-      nextKey,
       startX: e.clientX,
-      startA: widthOf(key),
-      startB: widthOf(nextKey),
+      startShare: shareOf(key),
+      othersSum: visibleSum - widthOf(key),
       tableWidthPx: tableRef.current.getBoundingClientRect().width,
+      share: shareOf(key),
     });
   }
 
   function onResizeMove(e: ReactPointerEvent) {
     if (!drag || !setColumnWidths) return;
-    const deltaPct = ((e.clientX - drag.startX) / drag.tableWidthPx) * 100;
-    const maxDelta = drag.startB - MIN_COLUMN_PCT;
-    const minDelta = -(drag.startA - MIN_COLUMN_PCT);
-    const clamped = Math.max(minDelta, Math.min(maxDelta, deltaPct));
-    setColumnWidths((w) => ({ ...w, [drag.key]: drag.startA + clamped, [drag.nextKey]: drag.startB - clamped }));
+    const share = Math.min(
+      MAX_COLUMN_SHARE,
+      Math.max(MIN_COLUMN_PCT / 100, drag.startShare + (e.clientX - drag.startX) / drag.tableWidthPx),
+    );
+    const width = (share * drag.othersSum) / (1 - share);
+    setDrag({ ...drag, share });
+    setColumnWidths((w) => ({ ...w, [drag.key]: width }));
   }
 
   function endResize() {
     resizing.current = false;
     setDrag(null);
+  }
+
+  // How wide a column's contents want to be, in px: its widest cell, or
+  // the longest word of its title (titles wrap).
+  function contentWidth(key: ScheduleColumnKey): number {
+    const table = tableRef.current;
+    if (!table) return 0;
+    let widest = 0;
+    table.querySelectorAll<HTMLElement>(`td[data-col="${key}"]`).forEach((td) => {
+      widest = Math.max(widest, td.scrollWidth + 2);
+    });
+    const th = table.querySelector<HTMLElement>(`th[data-col="${key}"]`);
+    if (th) {
+      const ctx = document.createElement("canvas").getContext("2d");
+      if (ctx) {
+        const cs = getComputedStyle(th);
+        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+        const words = SCHEDULE_COLUMN_LABELS[key].toUpperCase().split(/\s+/);
+        const longest = Math.max(...words.map((w) => ctx.measureText(w).width));
+        widest = Math.max(widest, longest + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 4);
+      }
+    }
+    return widest;
+  }
+
+  function fitColumn(key: ScheduleColumnKey) {
+    if (!setColumnWidths || !tableRef.current) return;
+    const tableW = tableRef.current.getBoundingClientRect().width;
+    const share = Math.min(MAX_FIT_SHARE, contentWidth(key) / tableW);
+    setColumnWidths((w) => ({ ...w, [key]: widthForShare(key, share) }));
+  }
+
+  // Short columns (Seq, Count, Item...) get their full width first; the
+  // long text columns (Description, Cap, Remarks) share what's left
+  // evenly. If everything fits, the spare room is spread in proportion.
+  function fitAllColumns() {
+    if (!setColumnWidths || !tableRef.current) return;
+    const tableW = tableRef.current.getBoundingClientRect().width;
+    const wanted = visibleKeys.map((key) => Math.min(contentWidth(key), tableW * MAX_FIT_SHARE));
+    const given = new Array<number>(wanted.length).fill(0);
+    let remaining = tableW;
+    let open = wanted.map((_, i) => i);
+    while (open.length) {
+      const fair = remaining / open.length;
+      const fits = open.filter((i) => wanted[i] <= fair);
+      if (!fits.length) {
+        for (const i of open) given[i] = fair;
+        break;
+      }
+      for (const i of fits) {
+        given[i] = wanted[i];
+        remaining -= wanted[i];
+      }
+      open = open.filter((i) => wanted[i] > fair);
+    }
+    const total = given.reduce((sum, v) => sum + v, 0) || 1;
+    setColumnWidths((w) => {
+      const next = { ...w };
+      visibleKeys.forEach((key, i) => (next[key] = Math.max(MIN_COLUMN_PCT, (given[i] / total) * 100)));
+      return next;
+    });
+  }
+
+  function resizeHandleProps(columnKey: ScheduleColumnKey) {
+    return {
+      show: !!setColumnWidths,
+      activePct: drag?.key === columnKey ? drag.share * 100 : null,
+      onPointerDown: (e: ReactPointerEvent) => beginResize(e, columnKey),
+      onPointerMove: onResizeMove,
+      onPointerUp: endResize,
+      onDoubleClick: () => fitColumn(columnKey),
+    };
   }
 
   const canMove = (key: ScheduleColumnKey) => !!setColumnOrder && key !== "line";
@@ -222,21 +337,29 @@ export function PrintSchedule({
     setColumnOrder(next);
   }
 
-  function resizeHandleProps(columnKey: ScheduleColumnKey) {
-    return {
-      show: !!setColumnWidths && visibleKeys.indexOf(columnKey) < visibleKeys.length - 1,
-      onPointerDown: (e: ReactPointerEvent) => beginResize(e, columnKey),
-      onPointerMove: onResizeMove,
-      onPointerUp: endResize,
-    };
-  }
 
   return (
     <div className="print-schedule" style={scheduleCssVars(design)}>
-      <table className="print-table" ref={tableRef}>
+      {setColumnWidths && (
+        <div className="print-preview-tools">
+          <button type="button" className="btn small" onClick={fitAllColumns} title="Size every column to what's in it">
+            ↔ Fit all columns
+          </button>
+          {Object.keys(columnWidths).length > 0 && (
+            <button type="button" className="btn small" onClick={() => setColumnWidths(() => ({}))}>
+              Reset column widths
+            </button>
+          )}
+        </div>
+      )}
+      <table
+        className="print-table"
+        ref={tableRef}
+        style={resizeH ? ({ "--resize-h": `${resizeH}px` } as CSSProperties) : undefined}
+      >
         <colgroup>
           {visibleKeys.map((key) => (
-            <col key={key} style={{ width: `${widthOf(key)}%` }} />
+            <col key={key} style={{ width: `${shareOf(key) * 100}%` }} />
           ))}
         </colgroup>
         <thead>
@@ -250,6 +373,7 @@ export function PrintSchedule({
             {visibleKeys.map((key) => (
               <th
                 key={key}
+                data-col={key}
                 className={[
                   FORMULA_COLUMN_KEYS.has(key) ? "print-formula-col" : "",
                   canMove(key) ? "col-movable" : "",
@@ -299,26 +423,26 @@ export function PrintSchedule({
                 else if (isOilRow(row)) hl = "print-hl-oil";
                 else if (isBulkHighlightRow(row)) hl = "print-hl-bulk";
                 const cells: Record<Exclude<ScheduleColumnKey, "line">, ReactNode> = {
-                  wo: <td>{row.wo}</td>,
-                  seq: <td>{row.seq}</td>,
-                  item: <td>{row.item}</td>,
-                  description: <td className="print-left">{row.description}</td>,
-                  count: <td className={countChanged ? "print-count-changed" : ""}>{row.count}</td>,
-                  bulkItem: <td>{row.bulkItem}</td>,
-                  bottleSize: <td>{row.bottleSize}</td>,
-                  capDescription: <td className="print-left">{row.capDescription}</td>,
-                  allergen: <td>{row.allergen}</td>,
-                  remarks: <td className="print-left">{row.remarks}</td>,
-                  woQuantity: <td className="print-num">{row.woQuantity}</td>,
-                  percentComplete: <td className="print-num">{row.percentComplete}</td>,
-                  desiccant: <td>{row.desiccant}</td>,
+                  wo: <td data-col="wo">{row.wo}</td>,
+                  seq: <td data-col="seq">{row.seq}</td>,
+                  item: <td data-col="item">{row.item}</td>,
+                  description: <td data-col="description" className="print-left">{row.description}</td>,
+                  count: <td data-col="count" className={countChanged ? "print-count-changed" : ""}>{row.count}</td>,
+                  bulkItem: <td data-col="bulkItem">{row.bulkItem}</td>,
+                  bottleSize: <td data-col="bottleSize">{row.bottleSize}</td>,
+                  capDescription: <td data-col="capDescription" className="print-left">{row.capDescription}</td>,
+                  allergen: <td data-col="allergen">{row.allergen}</td>,
+                  remarks: <td data-col="remarks" className="print-left">{row.remarks}</td>,
+                  woQuantity: <td data-col="woQuantity" className="print-num">{row.woQuantity}</td>,
+                  percentComplete: <td data-col="percentComplete" className="print-num">{row.percentComplete}</td>,
+                  desiccant: <td data-col="desiccant">{row.desiccant}</td>,
                   percentActual: (
-                    <td className="print-formula-col print-progress-cell">
+                    <td data-col="percentActual" className="print-formula-col print-progress-cell">
                       <ProgressBar value={percentActual(row)} />
                     </td>
                   ),
-                  bottlesRemaining: <td className="print-num print-formula-col">{bottlesRemaining(row)}</td>,
-                  changeover: <td className="print-formula-col">{chg}</td>,
+                  bottlesRemaining: <td data-col="bottlesRemaining" className="print-num print-formula-col">{bottlesRemaining(row)}</td>,
+                  changeover: <td data-col="changeover" className="print-formula-col">{chg}</td>,
                 };
                 const scheduledCls = isScheduled
                   ? `print-line-scheduled ${isFirstOfGroup ? "print-line-scheduled-first" : ""} ${isLastOfGroup ? "print-line-scheduled-last" : ""}`
@@ -335,6 +459,7 @@ export function PrintSchedule({
                       return (
                         <td
                           key={key}
+                          data-col="line"
                           rowSpan={group.rows.length}
                           className={`print-line-cell ${status ? `print-line-${status.toLowerCase()}` : ""}`}
                         >
