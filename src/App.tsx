@@ -24,12 +24,15 @@ type Tab = "schedule" | "assignments" | "roster" | "timeoff";
 type PrintReport = "assignments" | "schedule";
 // "both" prints Line Assignments first, then the Production Schedule.
 type PrintTarget = PrintChoice | null;
-// What the Print button prints - remembered per device.
-const PRINT_CHOICE_KEY = "jde-sched-print-choice";
+// What the Print button prints - remembered on this device separately for
+// each shift, so shifts sharing a computer don't change each other's.
+function printChoiceKey(shift: ShiftKey | null): string {
+  return `jde-sched-print-choice-${shift ?? "none"}`;
+}
 
-function loadPrintChoice(): PrintChoice {
+function loadPrintChoice(shift: ShiftKey | null): PrintChoice {
   try {
-    const saved = localStorage.getItem(PRINT_CHOICE_KEY);
+    const saved = localStorage.getItem(printChoiceKey(shift));
     if (saved === "both" || saved === "assignments" || saved === "schedule") return saved;
   } catch {
     // Storage unavailable - fall back to the default.
@@ -75,7 +78,9 @@ function App() {
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
-  const [printChoice, setPrintChoice] = useState<PrintChoice>(loadPrintChoice);
+  // Choices made since the page loaded, by shift; otherwise the saved one.
+  const [printChoices, setPrintChoices] = useState<Partial<Record<ShiftKey, PrintChoice>>>({});
+  const printChoice = (shift && printChoices[shift]) || loadPrintChoice(shift);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [pendingImport, setPendingImport] = useState<{ fileName: string; sheets: SheetGrid[] } | null>(null);
@@ -88,9 +93,9 @@ function App() {
     boards.find((b) => b.id === selectedBoardId) ?? boards.find((b) => b.date === today) ?? sortedBoards[0];
 
   function print(choice: PrintChoice) {
-    setPrintChoice(choice);
+    if (shift) setPrintChoices((c) => ({ ...c, [shift]: choice }));
     try {
-      localStorage.setItem(PRINT_CHOICE_KEY, choice);
+      localStorage.setItem(printChoiceKey(shift), choice);
     } catch {
       // Not remembered on this device - printing still works.
     }
