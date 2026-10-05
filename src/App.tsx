@@ -6,6 +6,9 @@ import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
 import TimeOff from "./components/TimeOff";
 import ImportColumnsDialog from "./components/ImportColumnsDialog";
+import PrintMenu from "./components/PrintMenu";
+import type { PrintChoice } from "./components/PrintMenu";
+import { todayIso } from "./timeOffLogic";
 import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
 import {
   exportAppDataToJson,
@@ -18,7 +21,21 @@ import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
-type PrintTarget = "schedule" | "assignments" | null;
+type PrintReport = "assignments" | "schedule";
+// "both" prints Line Assignments first, then the Production Schedule.
+type PrintTarget = PrintChoice | null;
+// What the Print button prints - remembered per device.
+const PRINT_CHOICE_KEY = "jde-sched-print-choice";
+
+function loadPrintChoice(): PrintChoice {
+  try {
+    const saved = localStorage.getItem(PRINT_CHOICE_KEY);
+    if (saved === "both" || saved === "assignments" || saved === "schedule") return saved;
+  } catch {
+    // Storage unavailable - fall back to the default.
+  }
+  return "both";
+}
 
 function App() {
   const [shift, chooseShift] = useCurrentShift();
@@ -58,38 +75,57 @@ function App() {
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
+  const [printChoice, setPrintChoice] = useState<PrintChoice>(loadPrintChoice);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const excelInputRef = useRef<HTMLInputElement>(null);
   const [pendingImport, setPendingImport] = useState<{ fileName: string; sheets: SheetGrid[] } | null>(null);
 
   const sortedBoards = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
-  const selectedBoard = boards.find((b) => b.id === selectedBoardId) ?? sortedBoards[0];
+  const today = todayIso();
+  // Same board the Line Assignments tab shows: the one picked there, else
+  // today's, else the newest.
+  const selectedBoard =
+    boards.find((b) => b.id === selectedBoardId) ?? boards.find((b) => b.date === today) ?? sortedBoards[0];
+
+  function print(choice: PrintChoice) {
+    setPrintChoice(choice);
+    try {
+      localStorage.setItem(PRINT_CHOICE_KEY, choice);
+    } catch {
+      // Not remembered on this device - printing still works.
+    }
+    setPrintTarget(choice);
+  }
 
   useEffect(() => {
     if (!printTarget) return;
-    document.body.classList.add(`printing-${printTarget}`);
+    const reports: PrintReport[] = printTarget === "both" ? ["assignments", "schedule"] : [printTarget];
+    for (const report of reports) document.body.classList.add(`printing-${report}`);
 
-    // Page options for whichever report is printing - both reports share
-    // the same orientation / size / margins settings shape.
-    const design = printTarget === "assignments" ? printSettings : schedulePrintSettings;
-    const orientation = design.orientation;
-    const marginMm = Math.min(30, Math.max(0, Number(design.printMarginMm) || 0));
-    let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
-    if (!pageStyle) {
-      pageStyle = document.createElement("style");
-      pageStyle.id = "dynamic-page-style";
-      document.head.appendChild(pageStyle);
-    }
-    pageStyle.textContent = `@media print { @page { size: ${orientation}; margin: ${marginMm}mm; } }`;
-
+    // Each report prints on its own named page (see .print-slot-* in
+    // App.css) with its own orientation / margins, so printing both keeps
+    // each one's Customize Print Design settings. The plain @page is the
+    // first report's, for browsers without named pages.
+    const pageRules: string[] = [];
+    const cleanups: (() => void)[] = [];
     // Look only inside the print area - the Production Schedule tab has a
     // live preview that also uses the .print-schedule class.
     const printRoot = document.querySelector(".print-root") as HTMLElement | null;
-    const reportEl = printRoot?.querySelector(
-      printTarget === "assignments" ? ":scope > .print-assignments" : ":scope > .print-schedule",
-    ) as HTMLElement | null;
 
-    if (printRoot && reportEl) {
+    reports.forEach((report, index) => {
+      const design = report === "assignments" ? printSettings : schedulePrintSettings;
+      const orientation = design.orientation;
+      const marginMm = Math.min(30, Math.max(0, Number(design.printMarginMm) || 0));
+      const pageRule = `size: ${orientation}; margin: ${marginMm}mm;`;
+      if (index === 0) pageRules.push(`@page { ${pageRule} }`);
+      pageRules.push(`@page ${report} { ${pageRule} }`);
+
+      const slot = printRoot?.querySelector(`:scope > .print-slot-${report}`) as HTMLElement | null;
+      const reportEl = slot?.querySelector(
+        report === "assignments" ? ":scope > .print-assignments" : ":scope > .print-schedule",
+      ) as HTMLElement | null;
+      if (!printRoot || !slot || !reportEl) return;
+
       const PX_PER_IN = 96;
       const PX_PER_MM = PX_PER_IN / 25.4;
       const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
@@ -121,7 +157,7 @@ function App() {
       // canvas that also sits below the title, so a fixed size there only
       // changes how big the text inside the boxes is, never how many
       // sheets it takes.
-      const freeForm = printTarget === "assignments" && printSettings.freeFormLayout;
+      const freeForm = report === "assignments" && printSettings.freeFormLayout;
       if (!fixed || freeForm) {
         printRoot.classList.add("measuring");
         const naturalHeight = reportEl.getBoundingClientRect().height;
@@ -134,29 +170,41 @@ function App() {
           const offsetPx = ((1 - scale) * pageContentWidthPx) / 2 / zoom;
           reportEl.style.transformOrigin = "top left";
           reportEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
-          printRoot.style.height = `${naturalHeight * scale}px`;
-          printRoot.style.overflow = "hidden";
+          // A transform doesn't shrink the space the report takes up, so
+          // clip its slot to the shrunk height - otherwise the unscaled
+          // height spills a blank page.
+          slot.style.height = `${naturalHeight * scale}px`;
+          slot.style.overflow = "hidden";
         }
       }
+
+      cleanups.push(() => {
+        reportEl.style.transform = "";
+        reportEl.style.transformOrigin = "";
+        reportEl.style.zoom = "";
+        reportEl.style.width = "";
+        slot.style.height = "";
+        slot.style.overflow = "";
+      });
+    });
+
+    let pageStyle = document.getElementById("dynamic-page-style") as HTMLStyleElement | null;
+    if (!pageStyle) {
+      pageStyle = document.createElement("style");
+      pageStyle.id = "dynamic-page-style";
+      document.head.appendChild(pageStyle);
     }
+    pageStyle.textContent = `@media print { ${pageRules.join(" ")} }`;
 
     const id = requestAnimationFrame(() => window.print());
     const reset = () => setPrintTarget(null);
     window.addEventListener("afterprint", reset);
     return () => {
       cancelAnimationFrame(id);
-      document.body.classList.remove(`printing-${printTarget}`);
+      for (const report of reports) document.body.classList.remove(`printing-${report}`);
       window.removeEventListener("afterprint", reset);
-      if (reportEl) {
-        reportEl.style.transform = "";
-        reportEl.style.zoom = "";
-        reportEl.style.width = "";
-      }
-      if (printRoot) {
-        printRoot.style.height = "";
-        printRoot.style.overflow = "";
-        printRoot.classList.remove("measuring");
-      }
+      for (const cleanup of cleanups) cleanup();
+      printRoot?.classList.remove("measuring");
     };
     // Only re-run for a new print request - the settings are read when
     // printing starts.
@@ -295,11 +343,9 @@ function App() {
           <button className="btn" onClick={history.redo} disabled={!history.canRedo} title="Redo (Ctrl+Y)">
             ↷ Redo
           </button>
+          <PrintMenu choice={printChoice} onPrint={print} boardDate={selectedBoard?.date} today={today} />
           {tab === "schedule" && (
             <>
-              <button className="btn" onClick={() => setPrintTarget("schedule")}>
-                🖨 Print Report
-              </button>
               <button
                 className="btn"
                 onClick={() =>
@@ -326,11 +372,6 @@ function App() {
                 }}
               />
             </>
-          )}
-          {tab === "assignments" && (
-            <button className="btn" onClick={() => setPrintTarget("assignments")} disabled={!selectedBoard}>
-              🖨 Print Report
-            </button>
           )}
           <button className="btn" onClick={() => exportAppDataToJson(data)}>
             ⬇ Backup (JSON)
@@ -402,15 +443,20 @@ function App() {
         regularly to keep a copy you can restore from any device.
       </footer>
 
+      {/* Line Assignments first: "Print both" prints the board, then the schedule. */}
       <div className="print-root">
-        <PrintSchedule
-          workOrders={workOrders}
-          scheduledLines={scheduledLines}
-          columnWidths={printScheduleColumnWidths}
-          hiddenColumns={printScheduleHiddenColumns}
-          design={schedulePrintSettings}
-        />
-        <PrintAssignments board={selectedBoard} employees={employees} settings={printSettings} />
+        <div className="print-slot print-slot-assignments">
+          <PrintAssignments board={selectedBoard} employees={employees} settings={printSettings} />
+        </div>
+        <div className="print-slot print-slot-schedule">
+          <PrintSchedule
+            workOrders={workOrders}
+            scheduledLines={scheduledLines}
+            columnWidths={printScheduleColumnWidths}
+            hiddenColumns={printScheduleHiddenColumns}
+            design={schedulePrintSettings}
+          />
+        </div>
       </div>
     </div>
   );

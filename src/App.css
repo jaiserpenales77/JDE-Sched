@@ -268,6 +268,74 @@ select option {
   background: #334155;
 }
 
+/* Print split button: the main part prints the last choice, the arrow
+   opens the list of what can be printed. */
+.print-menu {
+  position: relative;
+  display: inline-flex;
+}
+.print-menu .print-menu-main {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.print-menu .print-menu-caret {
+  padding: 6px 9px;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.print-menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 900;
+  min-width: 300px;
+  max-width: calc(100vw - 32px);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+.print-menu-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.print-menu-item:hover,
+.print-menu-item:focus-visible {
+  background: var(--hover);
+  outline: none;
+}
+.print-menu-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.print-menu-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.print-menu-check {
+  color: var(--accent);
+}
+.print-menu-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+.print-menu-warn {
+  color: var(--warn);
+  font-weight: 600;
+}
+
 .app-main {
   flex: 1;
   padding: 20px;
@@ -857,17 +925,26 @@ table.roster select {
     display: block;
   }
 
-  .print-root > .print-schedule,
-  .print-root > .print-assignments {
+  .print-root > .print-slot {
     display: none;
   }
 
-  body.printing-schedule .print-root > .print-schedule {
+  body.printing-schedule .print-root > .print-slot-schedule,
+  body.printing-assignments .print-root > .print-slot-assignments {
     display: block;
   }
 
-  body.printing-assignments .print-root > .print-assignments {
-    display: block;
+  /* Each report on its own named page - the @page rules for these names
+     (orientation, margins) are written by the print effect in App.tsx.
+     Different page names also start the second report on a new sheet. */
+  .print-root > .print-slot-assignments {
+    page: assignments;
+  }
+  .print-root > .print-slot-schedule {
+    page: schedule;
+  }
+  .print-root > .print-slot + .print-slot {
+    break-before: page;
   }
 }
 
