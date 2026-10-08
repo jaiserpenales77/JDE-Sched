@@ -47,8 +47,10 @@ and all defined names are documented at the top of `build_workbook.py`.
 
 - The Line and WO # columns are found by their titles only (the app also
   guessed them from the values); use the Override cells on 2. Check Columns.
-  An Override is a column letter, `-` (leave the field out) or the column's
-  title - a title keeps working when the columns move.
+  An Override is the column's title (picked from its drop-down), `-` (leave
+  the field out) or a column letter - a title keeps working when the columns
+  move. While no work order is found, the Example columns there show the first
+  filled row under the titles, so the Line column can be spotted.
 - Column titles are normalized by removing ASCII punctuation and spaces, tab /
   line breaks and the common non-ASCII ones (dashes, curly quotes, the numero
   sign, degree / ordinal signs, bullets, zero-width and special spaces).
@@ -60,20 +62,34 @@ and all defined names are documented at the top of `build_workbook.py`.
 - The status (READY / PM / OT) is in its own STATUS column; the box around a
   scheduled line is a thin green border plus a green LINE cell (Excel can't draw
   a thick border by formula). Columns can be hidden but not reordered.
-- The LINE name is on the first row of each line only; Excel can't keep a
-  line's rows together on one page or repeat the name after a page break.
+- The LINE name is bold black on the first row of each line and repeated in
+  grey on its other rows. The app prints it once per line, but it also keeps
+  each line on one page; Excel can't, so the grey repeats make sure a line
+  that runs on to the next page is still named there.
 - Long product / cap descriptions, desiccants and line names shrink to fit
   their cell; long remarks are cut at the cell edge (the app cuts all of them
   and adds "...").
+- Column widths follow the app's, except: the product and cap description
+  columns are wider (so long descriptions shrink less), REMARKS, LINE, STATUS
+  and WO a little narrower, and the narrow number columns are never narrower
+  than the longest word of their title.
 - Fonts are sized for "fit all columns on one page" (about 80 %), so the
-  printout comes out close to the app's sizes; the column titles print a
-  little smaller (about 6.2 pt against 6.5 pt) to keep columns wide enough.
+  body prints close to the app's 7 pt; the column titles print smaller (about
+  5.7 pt against 6.5 pt) so the narrow number columns can stay narrow.
 - Excel's TRIM also turns runs of spaces inside a value into one space, and a
   tab or line break inside a value becomes a space; rows that differ only in
   such inner spaces count as duplicates.
+- Numbers stored as text (Seq `6.5`, % Complete `79.34`) are read with `.` as
+  the decimal point on every computer, like the app - whatever the Windows /
+  Mac regional settings.
 - Statuses and ticks live on 3. Lines by line name, so pasting a new schedule
   doesn't clear them (the app clears statuses on import). A "checked on" date
   on 3. Lines makes stale ones show a red CHECK message until it is today's.
+  Status NONE removes a READY / PM / OT that comes from the file's Line Status
+  column (the app: click the lit button again).
+- No Customize Print Design: the report title, date, fonts and colors are
+  fixed (portrait, margins and scaling can be changed in the print window).
+  Line Assignments is not part of this file.
 - Header-row and column overrides replace the app's remembered column choices;
   they stay in the file (a Note says when one differs from what the file
   would find by itself, or when a letter gives a field the titles don't).

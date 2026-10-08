@@ -44,6 +44,10 @@ Workbook-scope defined names
   '4. Schedule'!$A$1:INDEX('4. Schedule'!$R$1:$R$702,Calc!$B$14) so the
   printout stops at the last used row, and _xlnm.Print_Titles = rows 1:2.
 
+'4. Schedule' column A has the line name on every work-order row: bold black
+on the first row of each line, grey on the others (conditional formats), so a
+line that runs on to the next printed page is still named there.
+
 No CHAR() above 127 and nothing below CHAR(32) except 9/10/13: the
 non-breaking space, the other non-ASCII characters column-title normalization
 removes (NORM1_CHARS) and the duplicate-key separator (U+241F) are typed into
@@ -51,7 +55,7 @@ the formula text (see NBSP / SEP below).
 
 Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
 ------------------------------------------------------------------------
-  A:B    scalars (label in A, value in B), rows 5-43, in SCALARS order:
+  A:B    scalars (label in A, value in B), rows 5-46, in SCALARS order:
          B5 auto header row, B6/B7 parsed header-row override + valid flag,
          B8 LEGEND row (1001 = none), B9 work orders in rows 1-1000, B10 work
          orders kept (max 600), B11 lines, B12 rows the report needs (work
@@ -68,7 +72,10 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          B37 Line column, B38/B39 first / last work order text, B40 kept
          rows whose WO # is on an earlier kept row (old rows left on the
          sheet), B41 window row of the first one, B42 its text, B43 status OK
-         apart from those
+         apart from those, B44 this computer's decimal separator (VALUE()
+         follows the regional settings; "." is swapped for it first), B45/B46
+         window row / paste row of the example row (the first work order, or
+         the first filled row under the titles when there is none)
   D:R    field table, rows 5-19 (one per import field, app order):
          D index, E key, F label, G 2^index, H override text, I override
          parsed (0 auto, -1 "-", -2 invalid, else column no. - from a letter
@@ -107,7 +114,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          CH233 EXACT mask (auto), CH236 overridden-fields mask,
          CH237 EXACT mask (with overrides)
   DA:DC  pasted rows 1-1000 (rows 5-1004): row no., trimmed Line, LEGEND flag
-  DE:EW  the window: every pasted row under the header down to row 1000
+  DE:EX  the window: every pasted row under the header down to row 1000
          (rows 5-1003), one row per pasted row HEADER_ROW+k: k, paste row,
          in range, line, row key (the 60 cells joined with U+241F, trimmed),
          duplicate, kept before the cap, running count, kept (the first 600),
@@ -119,13 +126,15 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          '3. Lines', status shown, highlight, % actual, bottles remaining,
          first kept row with the same WO # (EXACT), looks like a row of
          column titles (Line = the header's Line title, or a Line / WO #
-         title after a light normalization)
-  EY:FX  the report, 700 rows (rows 5-704): position, window row, kind
+         title after a light normalization), filled cells of the row (only
+         worked out when there is no work order - for the example row)
+  EZ:FY  the report, 700 rows (rows 5-704): position, window row, kind
          (row/spacer/""), first/last of line, then the 18 printed columns
-         A:R side by side (FD:FU), highlight, scheduled, count-change flag
-  FZ:GI  today's lines 1-100 (rows 5-104) for '3. Lines': no., window row,
+         A:R side by side (FE:FV), highlight, scheduled, count-change flag
+  GA:GK  today's lines 1-100 (rows 5-104) for '3. Lines': no., window row,
          name, work orders, status, scheduled, note, then the lines that are
-         NOT IN YOUR LIST one after the other (flag, running count, name)
+         NOT IN YOUR LIST one after the other (flag, running count, name),
+         and the line's row in the left table of '3. Lines'
 """
 
 import io
@@ -145,6 +154,7 @@ from openpyxl.utils import get_column_letter as L
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.workbook.protection import WorkbookProtection
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.pagebreak import Break
 from openpyxl.worksheet.properties import PageSetupProperties
 
 OUT = Path(__file__).resolve().parent / "JDE_Production_Schedule.xlsx"
@@ -231,6 +241,9 @@ TITLE = "PRODUCTION LINE SCHEDULE"
 C_HEADER, C_FORMULA, C_ALLERGEN, C_OIL, C_BULK = "D9D9D9", "FFF9DB", "F8CBAD", "FFF2CC", "BDD7EE"
 C_READY, C_PM, C_OT = "15803D", "1D4ED8", "FACC15"
 C_DIVIDER, C_SCHEDULED, C_COUNT_CHANGED, C_GRID = "000080", "00C805", "FF0000", "808080"
+# The line name repeated on the 2nd.. rows of a line: grey (on the green of a
+# ticked line: near black), not bold.
+C_LINE_REPEAT, C_LINE_REPEAT_ON_GREEN = "8C8C8C", "262626"
 # The app tints the LINE cell of a line with a status (color-mix 16% with white).
 C_TINT = {"READY": "DAEBE0", "PM": "DBE3F9", "OT": "FEF7DA"}
 # % ACTUAL COMPLETE on a work-order row: blank shows a dash, like the app's ProgressBar.
@@ -249,9 +262,11 @@ SCHED_COLS = [
 ]
 WIDTH_FACTOR = 1.4     # Excel width units per app width-percent point
 # Font sizes (points). "Fit all columns on one page" prints the sheet at about
-# 80 %, so these are the app's print sizes / 0.8: title 16, date 9, column
-# titles 6.5, body 7, line name 7.7 in the app.
-TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 7.5, 8.5, 9
+# 80 %, so these are the app's print sizes / 0.8: title 16, date 9, body 7,
+# line name 7.7 in the app. The column titles are a little smaller than the
+# app's 6.5 (7 here, about 5.7 printed) so the narrow number columns can stay
+# narrow and the description columns get the room.
+TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 7, 8.5, 9
 ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
 # A column is never narrower than the longest word of its title - or, for
 # CHANGEOVER, its longest code "S1 Count Change" - so nothing is broken
@@ -261,6 +276,13 @@ _MIN_7PT = {"COUNT": 4.8, "BOTTLE SIZE": 6.0, "ALLERGEN": 6.9, "WO QUANTITY": 6.
             "DESICCANT": 7.6, "BOTTLES REMAINING": 7.6, "% ACTUAL COMPLETE": 7.4}
 MIN_WIDTH = {h: round(w * HEADER_PT / 7, 2) for h, w in _MIN_7PT.items()}
 MIN_WIDTH["CHANGEOVER"] = round(10.5 * max(HEADER_PT / 7, BODY_PT / 8), 2)
+# Widths set directly (Excel units) instead of app % x WIDTH_FACTOR: the two
+# description columns get the room the narrow ones don't need, so long product
+# and cap descriptions shrink less (cap descriptions are the longest text that
+# must stay readable); REMARKS is cut at the cell edge anyway (the app cuts it
+# too), and LINE / STATUS / WO hold short codes.
+WIDTH_SET = {"LINE": 8.4, "STATUS": 5.3, "WO": 6.6, "PRODUCT DESCRIPTION": 22.4, "CAP DESCRIPTION": 19.0,
+             "REMARKS": 13.9, "DESICCANT": 8.4}
 SHRINK_COLS = {"o_line", "o_desc", "o_cap", "o_desiccant"}   # shrink long text to fit (REMARKS is cut)
 
 # ----------------------------------------------------------------------------
@@ -406,6 +428,14 @@ def numeric_text_ok(s):
             f'IFERROR(FIND(".",{u}),0)<IFERROR(FIND("E",{u}),999))')
 
 
+def num_value(s):
+    """VALUE() of number text written with a "." decimal point, whatever the
+    computer's regional settings: the "." becomes this computer's decimal
+    separator (Calc scalar "dec") first. numeric_text_ok() has already made
+    sure there is no "," and at most one "."."""
+    return f'VALUE(SUBSTITUTE({s},".",{SL["dec"]}))'
+
+
 def paste(r, c):
     return f"INDEX(PASTE_ALL,{r},{c})"
 
@@ -489,7 +519,7 @@ SCALARS = [
     "print_last", "first_k", "first_pr", "last_k", "last_pr", "overflow", "rows_over", "beyond_cols",
     "out_over", "lines_over", "miss_line", "miss_wo", "paste_empty", "no_header", "hdr_like", "hdr_like_row",
     "ov_notes", "capwarn", "status_text", "status_ok", "stale", "tamper", "short_warn", "line_col",
-    "first_text", "last_text", "wo_twice", "wo_twice_k", "wo_twice_text", "status_ok0",
+    "first_text", "last_text", "wo_twice", "wo_twice_k", "wo_twice_text", "status_ok0", "dec", "ex_k", "ex_pr",
 ]
 SC = {n: f"Calc!$B${5 + i}" for i, n in enumerate(SCALARS)}       # for other sheets
 SL = {n: f"$B${5 + i}" for i, n in enumerate(SCALARS)}            # inside Calc
@@ -525,6 +555,21 @@ def count_content(rng):
     return f'(COUNTIF({rng},"?*")+COUNTIF({rng},">=0")+COUNTIF({rng},"<0"))'
 
 
+def count_content_exact(rng, block):
+    """count_content(rng), but the cells of block (a part of rng) only count
+    when they hold more than spaces / tabs / line breaks / non-breaking
+    spaces - the app trims every cell, so such a cell is empty to it. The
+    cheap COUNTIF runs first; the cell-by-cell check only when it finds
+    something. Cells of rng outside block are counted the cheap way."""
+    whole, blk = count_content(rng), count_content(block)
+    exact = f'SUMPRODUCT(--(LEN(TRIM({clean(block + chr(38) + chr(34) * 2)}))>0))'
+    return f"IF({whole}=0,0,{whole}-{blk}+IFERROR({exact},{blk}))"
+
+
+EXACT_ROWS_TO = 3000          # whitespace-only cells are ignored in rows 1001-3000 ...
+EXACT_COLS_TO = 104           # ... and in columns BI:CZ of rows 1-1000
+
+
 def scol(c):
     return L(SCAN_C0 + c - 1)
 
@@ -535,9 +580,9 @@ FIELD_COLS = ["wo", "seq", "item", "desc", "count", "bulk", "bottle", "cap", "al
               "qty_s", "qty", "pct_s", "pct", "stat", "desiccant"]
 W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "ord0", "keep"] + FIELD_COLS +
          ["firstk", "isfirst", "cumf", "lno", "anch", "sk", "grp", "nv", "rank", "pos", "lidx", "sched",
-          "der", "ovst", "stshown", "hl", "pa", "br", "wofk", "hdrlike"])
+          "der", "ovst", "stshown", "hl", "pa", "br", "wofk", "hdrlike", "nfill"])
 O = Band(W.end + 2, ["pn", "k", "kind", "first", "last"] + [k for _, k, _ in SCHED_COLS] + ["hl", "sched", "cchg"])
-LB = Band(O.end + 2, ["n", "lk", "name", "cnt", "st", "sc", "note", "miss", "mcum", "mname"])
+LB = Band(O.end + 2, ["n", "lk", "name", "cnt", "st", "sc", "note", "miss", "mcum", "mname", "lrow"])
 W0, WN = 5, 4 + WIN                                 # window rows
 O0, ON = 5, 4 + OUT_ROWS                            # output rows
 
@@ -574,6 +619,8 @@ def build_calc(wb):
         "first_text": "First work order (text)", "last_text": "Last work order (text)",
         "wo_twice": "Kept rows whose WO # is on an earlier kept row", "wo_twice_k": "Window row of the first one",
         "wo_twice_text": "Its text", "status_ok0": "Status OK apart from WOs listed twice",
+        "dec": "Decimal separator of this computer", "ex_k": "Window row of the example row",
+        "ex_pr": "Paste row of the example row",
     }
     for i, n in enumerate(SCALARS):
         put(ws, f"A{5 + i}", labels[n])
@@ -605,10 +652,12 @@ def build_calc(wb):
         "last_k": f"IFERROR(LOOKUP(2,1/({wr('keep')}=1),{wr('kn')}),0)",
         "last_pr": f"IF({s['last_k']}=0,0,INDEX({wr('pr')},{s['last_k']}))",
         "overflow": f"MAX(0,{s['wo_found']}-{MAX_WO})",
-        "rows_over": (f'IFERROR(IF({s["legend_row"]}<={PASTE_ROWS},0,' + count_content(
-                      f'INDEX(PASTE_ALL,{PASTE_ROWS + 1},1):INDEX(PASTE_ALL,ROWS(PASTE_ALL),{PASTE_COLS})') + '),0)'),
-        "beyond_cols": ('IFERROR(' + count_content(
-                        f'INDEX(PASTE_ALL,0,{PASTE_COLS + 1}):INDEX(PASTE_ALL,0,COLUMNS(PASTE_ALL))') + ',0)'),
+        "rows_over": (f'IFERROR(IF({s["legend_row"]}<={PASTE_ROWS},0,' + count_content_exact(
+                      f'INDEX(PASTE_ALL,{PASTE_ROWS + 1},1):INDEX(PASTE_ALL,ROWS(PASTE_ALL),{PASTE_COLS})',
+                      f'INDEX(PASTE_ALL,{PASTE_ROWS + 1},1):INDEX(PASTE_ALL,{EXACT_ROWS_TO},{PASTE_COLS})') + '),0)'),
+        "beyond_cols": ('IFERROR(' + count_content_exact(
+                        f'INDEX(PASTE_ALL,0,{PASTE_COLS + 1}):INDEX(PASTE_ALL,0,COLUMNS(PASTE_ALL))',
+                        f'INDEX(PASTE_ALL,1,{PASTE_COLS + 1}):INDEX(PASTE_ALL,{PASTE_ROWS},{EXACT_COLS_TO})') + ',0)'),
         "out_over": f"MAX(0,{s['total']}-{OUT_ROWS})",
         "lines_over": f"MAX(0,{s['line_count']}-{LINE_SLOTS})",
         "miss_line": f"IF({used_line}=0,1,0)",
@@ -638,7 +687,7 @@ def build_calc(wb):
             f'Header row override (E5) - or check that today\'s file was pasted at cell A1.",'
             f'IF(OR({s["miss_line"]}=1,{s["miss_wo"]}=1),"WARNING: "&{ov_pre}&"Can\'t tell which column is the "'
             f'&IF(AND({s["miss_line"]}=1,{s["miss_wo"]}=1),"Line and the WO #",IF({s["miss_line"]}=1,"Line","WO #"))'
-            f'&". In the list Your file\'s columns below, find that column and type its title (or its letter) in the '
+            f'&". In the list Your file\'s columns below, find that column and pick its title (or type its letter) in the '
             f'yellow Override box of "&IF({s["miss_line"]}=1,"Line","WO #")&".",'
             f'IF({s["wo_count"]}=0,"WARNING: "&{ov_pre}&"No work orders found under the column titles. Check the '
             f'Line column, or the header row.",'
@@ -672,6 +721,14 @@ def build_calc(wb):
             f'&IF({s["tamper"]}=1,CHAR(10)&"Report typed on - see How To Use","")'
             f',2,999)'),
         "line_col": used_line,
+        # VALUE() reads text with the computer's decimal separator; the app's
+        # Number() always reads "." - so "." is swapped for this one first
+        "dec": 'MID(1/2&"",2,1)',
+        # the row the Example columns of 2. Check Columns show: the first work
+        # order, or (none found, e.g. the Line column isn't known yet) the first
+        # filled row under the column titles
+        "ex_k": f"IF({s['first_k']}>0,{s['first_k']},IFERROR(MATCH(1,INDEX(--({wr('nfill')}>0),0),0),0))",
+        "ex_pr": f"IF({s['ex_k']}=0,0,INDEX({wr('pr')},{s['ex_k']}))",
         "first_text": (f'IF({s["first_k"]}=0,"","Line "&{wo_at(s["first_k"], "line")}&", WO "&{wo_at(s["first_k"], "wo")}'
                        f'&" - row "&{s["first_pr"]}&" of 1. Paste Schedule")'),
         "last_text": (f'IF({s["last_k"]}=0,"","Line "&{wo_at(s["last_k"], "line")}&", WO "&{wo_at(s["last_k"], "wo")}'
@@ -728,9 +785,9 @@ def build_calc(wb):
         x_h = paste("HEADER_ROW", c("used"))
         xh_t = ttrim(x_h + '&""')
         ws[c("hdr_text")] = f'=IF({c("used")}=0,"",IFERROR({xh_t},""))'
-        x_e = paste(s["first_pr"], c("used"))
+        x_e = paste(s["ex_pr"], c("used"))
         xe_t = ttrim(x_e + '&""')
-        ws[c("example")] = (f'=IF(OR({c("used")}=0,{s["first_pr"]}=0),"",'
+        ws[c("example")] = (f'=IF(OR({c("used")}=0,{s["ex_pr"]}=0),"",'
                             f'IFERROR(IF(ISNUMBER({x_e}),{x_e},{xe_t}),""))')
         auto, used, eff, auto_l = c("auto"), c("used"), c("eff"), c("auto_letter")
         at_t = ttrim(paste("HEADER_ROW", auto) + '&""')
@@ -739,7 +796,7 @@ def build_calc(wb):
         displaced = f"AND({eff}=0,{auto}>0,COUNTIF({eff_all},{auto})>0)"
         displaced_txt = (f'"Column "&{auto_l}&" is used by "&INDEX({labels_rng},MATCH({auto},{eff_all},0))&" (Override)"'
                          f'&IF({used}>0," - using column "&{c("used_letter")}&" instead",'
-                         + ('" - REQUIRED: type its column letter or title in Override"' if i <= 2 else '" - not used"') + ")")
+                         + ('" - REQUIRED: pick its title (or type its letter) in Override"' if i <= 2 else '" - not used"') + ")")
         differs = f"AND({eff}>0,{auto}>0,{eff}<>{auto})"
         differs_txt = (f'"Override in use - this file\'s own title for it is in column "&{auto_l}&" ("&{auto_title}'
                        f'&"). Clear the Override if that is right."')
@@ -751,11 +808,13 @@ def build_calc(wb):
         ut_t = ttrim(paste("HEADER_ROW", eff) + '&""')
         used_title = f'IFERROR({ut_t},"")'
         ov_only_txt = (f'IF({by_title},"Found by the title you typed: column "&{c("used_letter")}&".",'
+                       f'IF({used_title}="","Found by the letter you typed: column "&{c("used_letter")}&" has no '
+                       f'title, so a letter is the only way - check it again when the file\'s layout changes.",'
                        f'"Column "&{c("used_letter")}&" (titled \'"&{used_title}&"\') - check it is right. If another '
                        f'day\'s file has its columns in a different order, a letter points at the wrong column: '
-                       f'type the column\'s title here instead.")')
+                       f'pick the column\'s title here instead."))')
         if i <= 2:
-            rest = (f'IF(AND({used}=0,{eff}<>-1),"REQUIRED - not found: type its column letter or title in Override",'
+            rest = (f'IF(AND({used}=0,{eff}<>-1),"REQUIRED - not found: pick its title (or type its letter) in Override",'
                     f'IF({eff}=-1,"REQUIRED - it can\'t be left out",IF({differs},{differs_txt},'
                     f'IF({ov_only},{ov_only_txt},""))))')
         else:
@@ -764,7 +823,8 @@ def build_calc(wb):
                          f'in row "&HEADER_ROW&" - ignored",'
                          f'IF(AND({parsed}>0,{eff}=0),"Column "&INDEX({LETTERS},{parsed})&" is already used by "'
                          f'&{conflict_owner}&" - ignored",IF({displaced},{displaced_txt},{rest})))')
-        ws[c("ovflag")] = f"=IF(OR({differs},{leftout},{displaced},AND({ov_only},NOT({by_title}))),1,0)"
+        ws[c("ovflag")] = (f'=IF(OR({differs},{leftout},{displaced},AND({ov_only},NOT({by_title}),{used_title}<>"")),'
+                           f'1,0)')
 
     # ---- column letters, aliases -----------------------------------------
     put(ws, f"{LET_NUM}3", "Columns", font=hdr)
@@ -928,9 +988,12 @@ def build_calc(wb):
             # JS Number() of that text: ends trimmed, "" -> blank, only spaces -> 0
             q = A[n + "_s"]
             tq = f"TRIM({q})"
+            vq = num_value(tq)
             ws[c[n]] = (f'=IF({A["keep"]}=0,"",IFERROR(IF(ISNUMBER({q}),{q},IF({q}="","",IF({tq}="",0,'
-                        f'IF(AND({numeric_text_ok(tq)},ISNUMBER(VALUE({tq}))),VALUE({tq}),"")))),""))')
-        ws[c["firstk"]] = (f'=IF({A["keep"]}=0,"",MATCH(1,INDEX(EXACT({upto("line")},{A["line"]})*{upto("keep")},0),0))')
+                        f'IF(AND({numeric_text_ok(tq)},ISNUMBER({vq})),{vq},"")))),""))')
+        # (window row 1 is its own first row; MATCH over a one-cell range is avoided)
+        ws[c["firstk"]] = (f'=IF({A["keep"]}=0,"",1)' if k == 1 else
+                           f'=IF({A["keep"]}=0,"",MATCH(1,INDEX(EXACT({upto("line")},{A["line"]})*{upto("keep")},0),0))')
         ws[c["isfirst"]] = f"=IF({A['keep']}=0,0,IF({A['firstk']}={A['kn']},1,0))"
         ws[c["cumf"]] = f"={A['isfirst']}" if k == 1 else f"={W['cumf']}{r_ - 1}+{A['isfirst']}"
         ws[c["lno"]] = f'=IF({A["keep"]}=0,"",INDEX({wr("cumf")},{A["firstk"]}))'
@@ -939,8 +1002,8 @@ def build_calc(wb):
         ws[c["sk"]] = f'=IF({A["keep"]}=0,"",IF({A["seq"]}<>"",{A["seq"]},{A["anch"]}))'
         sk = A["sk"]
         ws[c["grp"]] = (f'=IF({A["keep"]}=0,"",IF({sk}="",0,IF(OR(ISNUMBER({sk}),AND({numeric_text_ok(sk)},'
-                        f'ISNUMBER(VALUE({sk})))),1,2)))')
-        ws[c["nv"]] = (f'=IF({A["keep"]}=0,"",IF({A["grp"]}=1,IF(ISNUMBER({sk}),{sk},VALUE({sk})),'
+                        f'ISNUMBER({num_value(sk)}))),1,2)))')
+        ws[c["nv"]] = (f'=IF({A["keep"]}=0,"",IF({A["grp"]}=1,IF(ISNUMBER({sk}),{sk},{num_value(sk)}),'
                        f'IF({A["grp"]}=2,{A["kn"]},0)))')
         ws[c["rank"]] = (f'=IF({A["keep"]}=0,"",COUNTIF({wr("lno")},"<"&{A["lno"]})+SUMPRODUCT(({wr("lno")}={A["lno"]})'
                          f'*(({wr("grp")}<{A["grp"]})+({wr("grp")}={A["grp"]})*(({wr("nv")}<{A["nv"]})'
@@ -955,7 +1018,9 @@ def build_calc(wb):
                         f'IF({cnt("OT")},"OT",""))))')
         ws[c["ovst"]] = f'=IF({A["lidx"]}=0,"",UPPER(TRIM(INDEX(LINES_STATUS,{A["lidx"]})&"")))'
         ov = A["ovst"]
-        ws[c["stshown"]] = f'=IF({A["keep"]}=0,"",IF(OR({ov}="READY",{ov}="PM",{ov}="OT"),{ov},{A["der"]}))'
+        # NONE (or -) on 3. Lines: no tag, even if the file's Line Status has one
+        ws[c["stshown"]] = (f'=IF({A["keep"]}=0,"",IF(OR({ov}="READY",{ov}="PM",{ov}="OT"),{ov},'
+                            f'IF(OR({ov}="NONE",{ov}="-"),"",{A["der"]})))')
         al, de, bu = A["allergen"], A["desc"], A["bulk"]
         ws[c["hl"]] = (f'=IF({A["keep"]}=0,"",IF(AND({al}<>"",UPPER({al})<>"N"),"allergen",'
                        f'IF(ISNUMBER(SEARCH("oil",{de})),"oil",IF(OR(EXACT({bu},"A662"),EXACT({bu},"A624")),"bulk",""))))')
@@ -964,13 +1029,18 @@ def build_calc(wb):
         ws[c["br"]] = f'=IF(OR({A["pa"]}="",{A["qty"]}=""),"",INT({A["qty"]}*(1-{A["pa"]})+0.5))'
         # Old rows left on the sheet: the first kept row with the same WO #
         # (case-sensitive text) - an earlier one means the WO is listed twice...
-        ws[c["wofk"]] = (f'=IF(OR({A["keep"]}=0,{A["wo"]}=""),0,'
+        ws[c["wofk"]] = (f'=IF(OR({A["keep"]}=0,{A["wo"]}=""),0,1)' if k == 1 else
+                         f'=IF(OR({A["keep"]}=0,{A["wo"]}=""),0,'
                          f'MATCH(1,INDEX(EXACT({upto("wo")},{A["wo"]})*{upto("keep")},0),0))')
         # ...and a kept row that looks like a row of column titles (its Line is
         # the header row's Line title, or a Line / WO # title)
         ln_u, wo_u = lnorm_expr(A["line"]), lnorm_expr(A["wo"] + '&""')
         ws[c["hdrlike"]] = (f'=IF({A["keep"]}=0,0,IF(OR(AND({line_hdr}<>"",UPPER({A["line"]})=UPPER({line_hdr})),'
                             f'SUMPRODUCT(--({ln_u}={LINE_ALIASES}))>0,SUMPRODUCT(--({wo_u}={WO_ALIASES}))>0),1,0))')
+        # filled cells of the pasted row - only worked out when there is no work
+        # order to take the 2. Check Columns examples from
+        row_cells = f"INDEX(PASTE_ALL,{A['pr']},1):INDEX(PASTE_ALL,{A['pr']},{PASTE_COLS})"
+        ws[c["nfill"]] = (f'=IF(OR({s["first_k"]}>0,{A["valid"]}=0),0,IFERROR({count_content(row_cells)},0))')
 
     # ---- report rows (4. Schedule rows 3..702) ------------------------------
     put(ws, f"{O['pn']}3", f"Report: 4. Schedule rows 3-{2 + OUT_ROWS}", font=hdr)
@@ -990,10 +1060,13 @@ def build_calc(wb):
         ws[f"{O['first']}{r_}"] = f'=IF(AND({A["kind"]}="row",{prev_kind}<>"row"),1,0)'
         ws[f"{O['last']}{r_}"] = f'=IF(AND({A["kind"]}="row",{next_kind}<>"row"),1,0)'
         is_row = f'{A["kind"]}="row"'
-        # the line name (a number stays a number, like every other column)
+        # the line name on every work-order row (a number stays a number, like
+        # every other column): bold black on the first row of the line, light
+        # grey on the others (conditional formats on 4. Schedule), so a line
+        # that runs on to the next printed page is still named there
         raw_line = paste(f'INDEX({wr("pr")},{A["k"]})', s["line_col"])
         line_txt = f'INDEX({wr("line")},{A["k"]})'
-        ws[f"{O['o_line']}{r_}"] = (f'=IF({A["first"]}=1,IFERROR(IF(ISNUMBER({raw_line}),{raw_line},{line_txt}),'
+        ws[f"{O['o_line']}{r_}"] = (f'=IF({is_row},IFERROR(IF(ISNUMBER({raw_line}),{raw_line},{line_txt}),'
                                     f'{line_txt}),"")')
         for oc, wc in out_from.items():
             ws[f"{O[oc]}{r_}"] = f'=IF({is_row},INDEX({wr(wc)},{A["k"]}),"")'
@@ -1028,6 +1101,9 @@ def build_calc(wb):
         mc = f"${LB['mcum']}$5:${LB['mcum']}${4 + LINE_SLOTS}"
         nm = f"${LB['name']}$5:${LB['name']}${4 + LINE_SLOTS}"
         ws[f"{LB['mname']}{r_}"] = f'=IFERROR(INDEX({nm},MATCH({A["n"]},{mc},0)),"")'
+        # the row of the line in the left table of 3. Lines (where it is ticked)
+        ws[f"{LB['lrow']}{r_}"] = (f'=IF({A["lk"]}=0,"",IF(INDEX({wr("lidx")},{A["lk"]})>0,'
+                                   f'INDEX({wr("lidx")},{A["lk"]})+3,""))')
     protect(ws)
     return ws
 
@@ -1049,6 +1125,10 @@ def build_paste(wb):
         ws.column_dimensions[L(i)].width = w
     fit_width(ws, "landscape")
     return ws
+
+
+EXAMPLE_HEAD = (f'IF({SC["first_pr"]}>0,"Example (first work order)",IF({SC["ex_pr"]}>0,"Example (row "&{SC["ex_pr"]}'
+                f'&" of 1. Paste Schedule)","Example"))')
 
 
 def build_check(wb):
@@ -1090,8 +1170,8 @@ def build_check(wb):
         ws.merge_cells(f"G{r}:H{r}")
         put(ws, f"G{r}", f"={SC[key]}", font=font(11, True), alignment=Alignment(horizontal="left", indent=1))
 
-    heads = ["Field (bold = needed)", "Found automatically", "Header text (column used)", "Example (first work order)",
-             "Override: a column letter like C, the column's title, or - to leave the field out", "Column used", "Note"]
+    heads = ["Field (bold = needed)", "Found automatically", "Header text (column used)", "=" + EXAMPLE_HEAD,
+             "Override: pick the column's title (or type a letter like C), or - to leave the field out", "Column used", "Note"]
     for i, h in enumerate(heads):
         put(ws, f"{L(2 + i)}12", h, font=font(10, True), fill=fill(C_HEADER), border=THIN_BLACK,
             alignment=Alignment(wrap_text=True, vertical="center"))
@@ -1118,7 +1198,7 @@ def build_check(wb):
 
     put(ws, "B30", '="Your file\'s columns (header row "&HEADER_ROW&") - use this list to find the right title '
                    'or letter for an Override."', font=font(12, True))
-    for i, h in enumerate(["Column", "Header text", "Example (first work order)", "Goes into"]):
+    for i, h in enumerate(["Column", "Header text", "=" + EXAMPLE_HEAD, "Goes into"]):
         put(ws, f"{L(2 + i)}31", h, font=font(10, True), fill=fill(C_HEADER), border=THIN_BLACK)
     for c in range(1, PASTE_COLS + 1):
         r = 31 + c
@@ -1126,24 +1206,29 @@ def build_check(wb):
         xh = paste("HEADER_ROW", c)
         xh_t = ttrim(xh + '&""')
         put(ws, f"C{r}", f'=IFERROR({xh_t},"")', font=font(10), border=THIN_GRAY)
-        xe = paste(SC["first_pr"], c)
+        xe = paste(SC["ex_pr"], c)
         xe_t = ttrim(xe + '&""')
-        put(ws, f"D{r}", f'=IF({SC["first_pr"]}=0,"",IFERROR(IF(ISNUMBER({xe}),{xe},{xe_t}),""))',
+        put(ws, f"D{r}", f'=IF({SC["ex_pr"]}=0,"",IFERROR(IF(ISNUMBER({xe}),{xe},{xe_t}),""))',
             font=font(10), border=THIN_GRAY, alignment=Alignment(horizontal="left"))
         fld = f"Calc!${scol(c)}${R_FLD}"
         put(ws, f"E{r}", f'=IF({fld}=0,"",INDEX(Calc!${FT["label"]}${FT_ROW0}:${FT["label"]}${FT_ROW0 + 14},{fld}))',
             font=font(10, True), border=THIN_GRAY)
     cf(ws, f"B32:E{31 + PASTE_COLS}", '$E32<>""', "E2EFDA")
 
-    # drop-down list for the overrides: "-" and A..BH (hidden column L)
+    # drop-down list for the overrides: "-" and the titles of today's columns
+    # (hidden column L; J32:J91 count the titled columns). A letter can still
+    # be typed - the list doesn't reject other entries.
     put(ws, "L1", "Override choices")
     put(ws, "L2", "-")
     for c in range(1, PASTE_COLS + 1):
-        ws[f"L{2 + c}"] = L(c)
+        r = 31 + c
+        ws[f"J{r}"] = f'=IF(C{r}="",0,1)' if c == 1 else f'=J{r - 1}+IF(C{r}="",0,1)'
+        ws[f"L{2 + c}"] = f'=IFERROR(INDEX($C$32:$C${31 + PASTE_COLS},MATCH({c},$J$32:$J${31 + PASTE_COLS},0)),"")'
     dv = DataValidation(type="list", formula1=f"$L$2:$L${2 + PASTE_COLS}", allow_blank=True, showErrorMessage=False,
                         showInputMessage=True, promptTitle="Override",
-                        prompt="Type the column letter (like C) or the column's title (like Work Ctr) that holds "
-                               "this field, or - to leave it out. Leave empty to let the file find it.")
+                        prompt="Pick the title of the column that holds this field (or type it), or pick - to "
+                               "leave the field out. A column letter like C works too. Leave empty to let the "
+                               "file find it.")
     ws.add_data_validation(dv)
     dv.add("F13:F27")
     dv2 = DataValidation(type="whole", operator="between", formula1="1", formula2=str(PASTE_ROWS - 1), allow_blank=True,
@@ -1162,7 +1247,7 @@ def build_lines(wb):
     ws = wb.create_sheet(S_LINES)
     ws.sheet_properties.tabColor = "00C805"
     ws.sheet_view.showGridLines = False
-    for col, w in {"A": 16, "B": 12, "C": 11, "D": 11, "E": 34, "F": 3, "G": 5, "H": 18, "I": 11, "J": 14,
+    for col, w in {"A": 16, "B": 12, "C": 11, "D": 11, "E": 34, "F": 3, "G": 9, "H": 18, "I": 11, "J": 14,
                    "K": 14, "L": 46, "M": 3, "N": 22}.items():
         ws.column_dimensions[col].width = w
     put(ws, "A1", "3. Lines - Scheduled Lines", font=font(18, True))
@@ -1172,9 +1257,10 @@ def build_lines(wb):
         alignment=Alignment(horizontal="right", vertical="center"))
     put(ws, "K1", None, fill=INPUT_FILL, border=THIN_BLACK, protection=UNLOCKED, font=font(11, True),
         number_format="mmm d, yyyy", alignment=Alignment(horizontal="center", vertical="center"))
+    # (no TEXT(): its date codes differ between Excel languages)
     put(ws, "L1", (f'=IF({SC["stale"]}=0,"",IF(ISNUMBER(K1),"CHECK: the ticks and statuses below were last checked '
-                   f'on "&TEXT(K1,"mmm d, yyyy")&".","CHECK: the ticks and statuses below have no date.")&" Check '
-                   f'them, then type today\'s date in the yellow box (Ctrl+;).")'),
+                   f'on the date in the yellow box - not today.","CHECK: the ticks and statuses below have no date.")'
+                   f'&" Check them, then type today\'s date in the yellow box (Ctrl+;).")'),
         font=font(10, True, "C00000"), alignment=Alignment(wrap_text=True, vertical="center"))
     cf(ws, "L1", '$L$1<>""', "FFC7CE", font(10, True, "9C0006"))
     ws.row_dimensions[1].height = 40
@@ -1187,15 +1273,15 @@ def build_lines(wb):
     dv0.add("K1")
     ws.merge_cells("A2:E2")
     put(ws, "A2", "Pick Yes for every line running this shift (green box on the printout). Pick READY, PM or OT to "
-                  "tag a line; leave Status empty to use the Line Status column of your file.",
+                  "tag a line; leave Status empty to use the Line Status column of your file; NONE = no tag at all.",
         font=font(10, italic=True, color="595959"), alignment=Alignment(wrap_text=True, vertical="top"))
     ws.merge_cells("G2:L2")
     put(ws, "G2", f'=IF(LINE_COUNT>{LINE_SLOTS},"WARNING: "&LINE_COUNT&" lines in today\'s schedule - only the first '
                   f'{LINE_SLOTS} are listed here.","")', font=font(10, True, "C00000"),
         alignment=Alignment(wrap_text=True, vertical="top"))
-    ws.row_dimensions[2].height = 30
+    ws.row_dimensions[2].height = 42
     left = ["Line", "Scheduled", "Status", "Work orders today", "Note"]
-    right = ["#", "Lines in today's schedule", "Work orders", "Status shown (set in column C)",
+    right = ["Its row on the left", "Lines in today's schedule", "Work orders", "Status shown (set in column C)",
              "Ticked? (set in column B)", "Note"]
     for i, h in enumerate(left):
         put(ws, f"{L(1 + i)}3", h, font=font(10, True), fill=fill(C_HEADER), border=THIN_BLACK,
@@ -1237,7 +1323,9 @@ def build_lines(wb):
             font=font(9, italic=True, color="7F7F7F"), border=THIN_GRAY)
         # right-hand lists: by position (ROW()-3), so they stay whole if a row is ever inserted or deleted
         at = lambda n: f"INDEX({lb(n)},ROW()-3)"
-        put(ws, f"G{r}", f'=IF({at("name")}="","",{at("n")})', font=font(9, color="7F7F7F"), alignment=center)
+        # which row of the left table to edit for this line
+        put(ws, f"G{r}", f'=IF({at("lrow")}="","","row "&{at("lrow")})', font=font(10, color="404040"),
+            alignment=center)
         put(ws, f"H{r}", f"={at('name')}", font=font(11, True))
         put(ws, f"I{r}", f"={at('cnt')}", alignment=center, font=font(10))
         put(ws, f"J{r}", f"={at('st')}", alignment=center, font=font(10, True))
@@ -1253,13 +1341,17 @@ def build_lines(wb):
     for st, color, txt in [("READY", C_READY, "FFFFFF"), ("PM", C_PM, "FFFFFF"), ("OT", C_OT, "000000")]:
         cf(ws, f"C4:C{last}", f'UPPER(TRIM($C4&""))="{st}"', color, font(11, True, txt))
         cf(ws, f"J4:J{last}", f'$J4="{st}"', color, font(10, True, txt))
+    cf(ws, f"C4:C{last}", 'OR(UPPER(TRIM($C4&""))="NONE",TRIM($C4&"")="-")', "D9D9D9", font(11, True, "404040"))
     cf(ws, f"K4:K{last}", '$K4="Yes"', "C6EFCE", font(10, True, "006100"))
     cf(ws, f"L4:L{last}", '$L4<>""', "FFC7CE", font(10, True, "9C0006"))
     cf(ws, f"N4:N{last}", '$N4<>""', "FFC7CE", font(11, True, "9C0006"))
     dv1 = DataValidation(type="list", formula1='"Yes"', allow_blank=True, showErrorMessage=True,
                          errorTitle="Scheduled", error="Pick Yes from the list, or leave it empty.")
-    dv2 = DataValidation(type="list", formula1='"READY,PM,OT"', allow_blank=True, showErrorMessage=True,
-                         errorTitle="Status", error="Pick READY, PM or OT from the list, or leave it empty.")
+    dv2 = DataValidation(type="list", formula1='"READY,PM,OT,NONE"', allow_blank=True, showErrorMessage=True,
+                         errorTitle="Status", error="Pick READY, PM, OT or NONE from the list, or leave it empty.",
+                         showInputMessage=True, promptTitle="Status",
+                         prompt="READY, PM or OT tags the line. Empty: use the Line Status column of your file. "
+                                "NONE: no tag, even if your file has one.")
     ws.add_data_validation(dv1)
     ws.add_data_validation(dv2)
     dv1.add(f"B4:B{last}")
@@ -1279,7 +1371,7 @@ def build_schedule(wb):
     ncol = len(SCHED_COLS)                        # 18 -> A:R
     last_row = 2 + OUT_ROWS
     for i, (h, _, w) in enumerate(SCHED_COLS, start=1):
-        ws.column_dimensions[L(i)].width = round(max(w * WIDTH_FACTOR, MIN_WIDTH.get(h, 0)), 2)
+        ws.column_dimensions[L(i)].width = WIDTH_SET.get(h) or round(max(w * WIDTH_FACTOR, MIN_WIDTH.get(h, 0)), 2)
     ws.column_dimensions["S"].width = 2
     # row 1: warnings (left), title (centred on the page), date (right). A:C and
     # P:R are about as wide, so D:O is centred on the table like the app's title.
@@ -1314,7 +1406,10 @@ def build_schedule(wb):
             c = ws.cell(r, i, f"=Calc!${O[key]}${cr}")
             horiz = "center" if key in ("o_line", "o_status") else "right" if key in right else "left"
             c.alignment = Alignment(horizontal=horiz, vertical="center", shrink_to_fit=key in SHRINK_COLS)
-            c.font = font(LINE_PT if key == "o_line" else BODY_PT, key in ("o_line", "o_status"))
+            # LINE: grey and not bold, like the repeated names; the first row of
+            # each line is made bold black by a conditional format
+            c.font = (font(LINE_PT, False, C_LINE_REPEAT) if key == "o_line" else
+                      font(BODY_PT, key == "o_status"))
             if key == "o_pa":
                 c.number_format = "0.0%"
             elif key == "o_br":
@@ -1365,7 +1460,8 @@ def add_conditional_formats(ws, last_row):
               ('$W3="OT"', C_OT, "000000", C_TINT["OT"]), ('AND($W3<>"READY",$W3<>"PM",$W3<>"OT")', None, None, None)]
     # LINE column: looks like one tall cell per line (no lines inside a block).
     # A ticked line is bright green; an unticked line with a status gets the
-    # app's light status tint.
+    # app's light status tint. The name is bold black on the first row (codes
+    # 1, 2, 5, 6) and grey on the rest.
     a_borders = {
         1: Border(left=green, right=gray, top=green, bottom=green), 2: Border(left=green, right=gray, top=green),
         3: Border(left=green, right=gray, bottom=green), 4: Border(left=green, right=gray),
@@ -1373,11 +1469,13 @@ def add_conditional_formats(ws, last_row):
         7: Border(left=gray, right=gray, bottom=navy), 8: Border(left=gray, right=gray),
     }
     for c, b in a_borders.items():
+        first = c in (1, 2, 5, 6)
         if c <= 4:
-            cf(ws, R("A"), code(c), C_SCHEDULED, font(8, True, "000000"), b)
+            cf(ws, R("A"), code(c), C_SCHEDULED, font(8, True, "000000") if first else
+               font(8, False, C_LINE_REPEAT_ON_GREEN), b)
         else:
             for cond, _, _, tint in status:
-                cf(ws, R("A"), f"AND({code(c)},{cond})", tint, None, b)
+                cf(ws, R("A"), f"AND({code(c)},{cond})", tint, font(8, True, "000000") if first else None, b)
     # B..R: a grid; green top/bottom on a scheduled block; navy under each line.
     inner = [((1,), Border(left=gray, right=gray, top=green, bottom=green)),
              ((2,), Border(left=gray, right=gray, top=green, bottom=gray)),
@@ -1421,6 +1519,22 @@ HOW_ROWS = [
     ("title", "JDE Production Schedule - How To Use"),
     ("sub", "Load it, Pick the Lines, Print it. Follow the steps in order. Do one step at a time."),
     ("gap",),
+    ("head", "", "QUICK CARD - A Load, B Pick the lines, C Print (this page prints on its own: post it at the computer)"),
+    ("qc", "A1", "Open YOUR shift's copy of this file. Yellow PROTECTED VIEW bar? Click Enable Editing."),
+    ("qc", "A2", "Tab 1. Paste Schedule: click the corner triangle (above row 1), then Home > Clear > Clear All."),
+    ("qc", "A3", "Today's schedule file: Data > Clear (if it has filter arrows), click its corner triangle, Ctrl+C."),
+    ("qc", "A4", "Back in THIS file, 1. Paste Schedule: right-click A1 > Paste Options > Values (123)."),
+    ("qc", "A5", "Tab 2. Check Columns: the box is GREEN; First / Last work order = first / last row of today's file."),
+    ("qc", "B1", "Tab 3. Lines: a line marked NOT IN YOUR LIST? Type its name in an empty row of the left table."),
+    ("qc", "B2", "Scheduled: pick Yes for every line running this shift. Clear the others (Delete)."),
+    ("qc", "B3", "Status: clear yesterday's. Pick READY / PM / OT (empty = from your file, NONE = no tag)."),
+    ("qc", "B4", "Click the yellow box Ticks and statuses checked on, press Ctrl+; (today's date)."),
+    ("qc", "B5", "Press Ctrl+S."),
+    ("qc", "C1", "Tab 4. Schedule: press Ctrl+P, pick the printer, click Print."),
+    ("qc", "C2", "Check: today's date, green on the running lines, no red WARNING / CHECK at the top left."),
+    ("qc", "C3", "Post it."),
+    ("qc", "C4", "Press Ctrl+S."),
+    ("pagebreak",),
     ("kv", "For", "Anyone printing the Production Schedule (1st, 2nd or 3rd shift). About 5 minutes."),
     ("kv", "This file", "Replaces the Production Schedule tab of the JDE Sched web app. It works in Excel 2010 and "
                         "newer, Excel for Mac and Excel on the web / Teams. No macros."),
@@ -1438,13 +1552,17 @@ HOW_ROWS = [
     ("text", "", "- Today's Excel schedule file (it ends in .xlsx, .xlsm or .xls). It is usually in the Downloads folder."),
     ("text", "", "- A printer."),
     ("gap",),
+    ("head", "", "First time only (supervisor) - skip this if your shift's file already exists"),
+    ("step", "1", "Put this file in your shared folder (Teams or network drive) and rename it "
+                  "JDE Schedule - MASTER - do not edit.xlsx. It is the clean spare."),
+    ("step", "2", "Open it and click File > Save As (on the web: File > Save a Copy). Name the copy for a shift, "
+                  "for example JDE Schedule - 1st Shift.xlsx. Do this 3 times: 1st, 2nd and 3rd Shift."),
+    ("step", "3", "In each shift's copy, type your production lines on the tab 3. Lines (left table, column A) - "
+                  "in the same order as the schedule, so the two tables there line up. Press Ctrl+S."),
+    ("gap",),
     ("head", "", "3 golden rules"),
-    ("kv", "1", "ONE FILE PER SHIFT, kept in your shared folder (Teams or network drive). First time only: File > "
-                "Save As (on the web: Save a Copy), put it in the shared folder with your shift in the name, for "
-                "example JDE Schedule - 2nd Shift.xlsx. Keep this original file in the same folder too, renamed "
-                "JDE Schedule - MASTER - do not edit.xlsx: it is your clean spare. Every day: open YOUR shift's file, "
-                "not the master - your lines, ticks and column fixes are saved in it. Press Ctrl+S to save at the end "
-                "of Part B and Part C."),
+    ("kv", "1", "ONE FILE PER SHIFT. Every day open YOUR shift's file - never the MASTER. Your lines, ticks and "
+                "column fixes are saved in it. Press Ctrl+S at the end of Part B and Part C."),
     ("kv", "2", "Check the tab 2. Check Columns after every paste. The box at the top must be GREEN, and the First "
                 "and Last work order shown there must be the first and last rows of today's file."),
     ("kv", "3", "NEVER TYPE ON 4. Schedule - it fills itself in. To change, add or remove a work order, edit the "
@@ -1454,63 +1572,66 @@ HOW_ROWS = [
     ("gap",),
     ("part", "A", "Load the schedule from Excel - do this at the start of the shift, or when a new schedule comes out."),
     ("step", "1", "Check the file name at the top of the Excel window. It must say YOUR shift (for example JDE "
-                  "Schedule - 2nd Shift). Each shift has its own file. If it is wrong, close it and open your shift's "
-                  "file."),
+                  "Schedule - 2nd Shift). If it is wrong, close it and open your shift's file."),
     ("see", "", "You should see: your shift in the file name. It also prints at the bottom left of the schedule."),
-    ("step", "2", "In THIS file, click the tab 1. Paste Schedule. Click the small triangle in its top-left corner "
-                  "(left of column A, above row 1) to select the whole sheet - Ctrl+A only selects part of it. Then "
-                  "click Home > Clear (the eraser) > Clear All (no Clear All? press Delete). Clear it - do not delete "
-                  "rows or columns. (Old rows left on this sheet would mix into today's printout.)"),
-    ("step", "3", "Open today's schedule file. If a yellow bar says PROTECTED VIEW, click Enable Editing. If it has "
-                  "more than one sheet, click the one with the LINE and WO column titles. If its title row has filter "
-                  "arrows, click Data > Clear first (a copy leaves out hidden rows). Click its corner triangle to "
-                  "select the whole sheet (not Ctrl+A), then press Ctrl+C. Copy - never Cut (Ctrl+X)."),
+    ("step", "2a", "In THIS file, click the tab 1. Paste Schedule."),
+    ("step", "2b", "Click the small triangle in its top-left corner (left of column A, above row 1). It selects the "
+                   "whole sheet - Ctrl+A only selects part of it."),
+    ("step", "2c", "Click Home > Clear (the eraser) > Clear All. No Clear All? Press Delete. Clear it - do not delete "
+                   "rows or columns."),
+    ("see", "", "You should see: an empty sheet. (Old rows left on it would mix into today's printout.)"),
+    ("step", "3a", "Open today's schedule file. If a yellow bar says PROTECTED VIEW, click Enable Editing."),
+    ("step", "3b", "If it has more than one sheet, click the one with the LINE and WO column titles."),
+    ("step", "3c", "If its title row has filter arrows, click Data > Clear (a copy leaves out hidden rows)."),
+    ("step", "3d", "Click its corner triangle to select the whole sheet (not Ctrl+A), then press Ctrl+C. Copy - never "
+                   "Cut (Ctrl+X)."),
     ("see", "", "You should see: a moving dotted line around the sheet."),
-    ("step", "4", "Go back to THIS file (click it on the taskbar, or View > Switch Windows). On 1. Paste Schedule "
-                  "click cell A1. Right-click it and, under Paste Options, click Values (the clipboard with 123). "
-                  "On a Mac: Edit > Paste Special > Values. No Values button (Excel on the web)? Just press Ctrl+V."),
+    ("step", "4a", "Go back to THIS file (click it on the taskbar, or View > Switch Windows). On 1. Paste Schedule "
+                   "click cell A1."),
+    ("step", "4b", "Right-click A1 and, under Paste Options, click Values (the clipboard with 123). On a Mac: Edit > "
+                   "Paste Special > Values. Excel on the web (no Values button): press Ctrl+V."),
     ("see", "", "You should see: today's schedule, starting at cell A1."),
-    ("careful", "CAREFUL", "Paste is greyed out, or nothing is pasted? The copy was cancelled (typing or pressing "
-                           "Delete cancels it). Go back to today's file, press Ctrl+C again and come straight back "
-                           "to paste. Excel says the copy area and the paste area are not the same size? You "
-                           "clicked a cell other than A1 - click A1 and paste again."),
+    ("careful", "CAREFUL", "Paste is greyed out, or nothing is pasted? The copy was cancelled. Go back to today's "
+                           "file, press Ctrl+C again and come straight back to paste."),
+    ("careful", "", "Excel says the copy area and the paste area are not the same size? You clicked a cell other "
+                    "than A1 - click A1 and paste again."),
     ("step", "5", "Click the tab 2. Check Columns."),
-    ("see", "", "You should see: a green box that says Found ... work orders on ... lines, and First work order / "
-                "Last work order showing the first and last rows of today's file. If the last one is not today's "
-                "last row, yesterday's rows are still there: do Part A again from step 2."),
-    ("careful", "CAREFUL", "If the box is RED, read what it says. Can't tell which column is the Line (or WO #): "
-                           "look at the list Your file's columns at the bottom of that page. Find the column that "
-                           "holds the line names (like VPKL01) or the work order numbers - the Example column "
-                           "shows what is in it - and type its TITLE (like Work Ctr) in the yellow Override box of "
-                           "Line or WO #. The box turns green. The override stays in this file, and a title keeps "
-                           "working when another day's file has its columns in a different order. (A column letter "
-                           "like C works too, but only while the columns stay in the same place - check it again "
-                           "when the layout changes.) This file only goes by the column titles - unlike the web app "
-                           "it does not guess the Line or WO column from the values in it, and a title with unusual "
-                           "characters may not be recognised - so the Override box is how you tell it."),
-    ("step", "6", "If the wrong row was taken as the column titles, type the right row number in Header row "
-                  "override. Leave it empty to let the file find the titles (it looks at the first 40 rows). "
-                  "Something went into the wrong column? Type the right column's title (or letter) in that field's "
-                  "Override box, or - to leave the field out. A red Note next to an Override means today's file may "
-                  "not need it any more: read it, and clear the Override if the Note is right."),
-    ("step", "7", "Click the tab 4. Schedule. Pick 2 or 3 work order numbers and make sure they match today's file."),
+    ("see", "", "You should see: a green box that says Found ... work orders on ... lines. First work order and Last "
+                "work order must be the first and last rows of today's file - if the last one is not, yesterday's "
+                "rows are still there: do Part A again from step 2a."),
+    ("careful", "CAREFUL", "Red box that says Can't tell which column is the Line (or WO #)?"),
+    ("careful", "", "1. At the bottom of 2. Check Columns, look at the list Your file's columns. Its Example column "
+                    "shows what is in each column."),
+    ("careful", "", "2. Find the column with the line names (like VPKL01) - or the work order numbers."),
+    ("careful", "", "3. Click the yellow Override box of Line (or WO #), click its arrow and pick that column's "
+                    "title. The box turns green. (Why titles: see Tips, Override.)"),
+    ("step", "6", "Wrong row taken as the column titles? Type the right row number in Header row override (the "
+                  "yellow box E5). Leave it empty to let the file find the titles (it looks at the first 40 rows)."),
+    ("step", "7", "Something in the wrong column? In that field's yellow Override box pick the right column's title, "
+                  "or - to leave the field out. A red Note next to an Override means today's file may not need it: "
+                  "read it, and clear the Override if the Note is right."),
+    ("step", "8", "Click the tab 4. Schedule. Pick 2 or 3 work order numbers and make sure they match today's file."),
     ("see", "", "You should see: each line's work orders together, in Seq order, with a blank row between lines."),
     ("gap",),
     ("part", "B", "Pick the lines running this shift - tick the running lines, and mark any line that is READY, "
                   "down for PM, or OT."),
     ("step", "1", "Click the tab 3. Lines. The left table (yellow cells) is your list of production lines - you "
-                  "type there. The right table lists the lines in today's schedule and fills itself in."),
-    ("step", "2", "A line marked NOT IN YOUR LIST (in red, and listed again under Lines to add on the far right) "
-                  "can't be ticked yet: type its name in a row where Line, Scheduled and Status are all empty. Quick "
-                  "way: select the names under Lines to add, press Ctrl+C, right-click the first such Line cell > "
-                  "Paste Options > Values. To take a line off your list, clear all three cells of its row (Line, "
-                  "Scheduled and Status)."),
+                  "type there. The right table lists the lines in today's schedule and fills itself in; its first "
+                  "column, Its row on the left, says which row of the left table to change for that line."),
+    ("step", "2a", "A line marked NOT IN YOUR LIST (in red) can't be ticked yet: type its name in a row of the left "
+                   "table where Line, Scheduled and Status are all empty. (The names are also listed under Lines to "
+                   "add, on the far right.)"),
+    ("careful", "CAREFUL", "Copying names from Lines to add? Paste them with right-click > Paste Options > Values "
+                           "(123) - NOT Ctrl+V. Ctrl+V pastes formulas and Excel warns about a circular reference: "
+                           "press Ctrl+Z and paste as Values, or type the names."),
+    ("step", "2b", "To take a line off your list, clear all three cells of its row (Line, Scheduled and Status)."),
     ("step", "3", "In the Scheduled column, pick Yes for every line running this shift (click the cell, then the "
                   "small arrow). Clear the lines that are not running this shift: click the cell and press Delete."),
-    ("step", "4", "Clear yesterday's statuses: click C4, hold Shift, click the last Status cell of your list, and "
-                  "press Delete. Then pick READY for a line that is set up and ready to run, PM for a line down "
-                  "for maintenance, or OT. Leave the rest empty - an empty Status uses the Line Status column of "
-                  "your file (Ready, PM, or OT / Overtime / Trial)."),
+    ("step", "4a", "Clear yesterday's statuses: click C4, hold Shift, click the last Status cell of your list, and "
+                   "press Delete."),
+    ("step", "4b", "Pick READY for a line that is set up and ready to run, PM for a line down for maintenance, or "
+                   "OT. Leave the rest empty - an empty Status uses the Line Status column of your file (Ready, PM, "
+                   "or OT / Overtime / Trial). NONE removes a READY / PM / OT that comes from your file."),
     ("step", "5", "Click the yellow box Ticks and statuses checked on (top right) and press Ctrl+; (semicolon) to "
                   "put in today's date."),
     ("see", "", "You should see: today's date in the yellow box, and no red CHECK message next to it."),
@@ -1523,8 +1644,8 @@ HOW_ROWS = [
     ("gap",),
     ("part", "C", "Print the schedule - make sure Parts A and B are done first."),
     ("step", "1", "Click the tab 4. Schedule. Press Ctrl+P (or File > Print)."),
-    ("step", "2", "Pick your printer and click Print. Do not change the layout - it is already set: Landscape, "
-                  "Letter, all columns on one page wide, column titles on every page, page numbers at the bottom."),
+    ("step", "2", "Pick your printer and click Print. The layout is already set: Landscape, Letter, all columns on "
+                  "one page wide, column titles on every page, page numbers at the bottom."),
     ("step", "3", "Check the printout and post it: today's date top right, your shift's file name bottom left, every "
                   "line, green on the running lines, a READY / PM / OT tag on the lines that have one, and no red "
                   "WARNING or CHECK at the top left."),
@@ -1543,6 +1664,8 @@ HOW_ROWS = [
     ("swatch", C_TINT["READY"], "Light green, blue or yellow LINE cell: the line has a READY, PM or OT status but "
                                 "is not ticked."),
     ("swatch", C_SCHEDULED, "A ticked (Scheduled) line: green LINE cell and a thin green box around its rows."),
+    ("swatch", C_LINE_REPEAT, "LINE name in bold black: the first work order of that line. In grey: more work "
+                              "orders of the same line (so every printed page names its lines)."),
     ("swatch", C_COUNT_CHANGED, "Red bold Count = the count changed from the work order before it (S1 Count Change)."),
     ("swatch", C_DIVIDER, "Navy line under the last work order of each line."),
     ("gap",),
@@ -1557,47 +1680,52 @@ HOW_ROWS = [
                  "WO Quantity x (1 - % Actual Complete), rounded."),
     ("gap",),
     ("head", "", "Something went wrong?"),
-    ("kv", "The box on 2. Check Columns is red", "Read what it says. Line / WO # not found: Part A, CAREFUL box. "
-                                                 "Empty sheet: Part A, steps 2 to 4. Capacity warning: see Limits "
-                                                 "below."),
+    ("kv", "The box on 2. Check Columns is red", "Read what it says. Line / WO # not found: Part A, the CAREFUL box "
+                                                 "after step 5. Empty sheet: Part A, steps 2a to 4b. Capacity "
+                                                 "warning: see Limits below."),
     ("kv", "The sheets look empty", "Click Enable Editing on the yellow bar at the top."),
     ("kv", "Nothing changes after pasting", "Formulas > Calculation Options > Automatic, or press F9. (Excel takes "
                                             "this setting from the first file you open.)"),
     ("kv", "Paste is greyed out", "The copy was cancelled. Go back to today's file, press Ctrl+C again and paste "
-                                  "right away (Part A, step 4)."),
+                                  "right away (Part A, step 4b)."),
     ("kv", "Excel says it can't do that to a merged cell", "Old formatting is still on 1. Paste Schedule. Do Part A "
-                                                           "again from step 2 (Home > Clear > Clear All), then paste "
-                                                           "again."),
+                                                           "again from step 2a (Home > Clear > Clear All), then "
+                                                           "paste again."),
     ("kv", "Yesterday's work orders are still there", "1. Paste Schedule was not cleared before pasting. Do Part A "
-                                                      "again from step 2."),
+                                                      "again from step 2a."),
     ("kv", "Red box: a WO is on two rows", "The same WO # is on two rows of 1. Paste Schedule - usually yesterday's "
-                                           "rows left under today's. Do Part A again from step 2. If today's file "
+                                           "rows left under today's. Do Part A again from step 2a. If today's file "
                                            "really lists that work order twice, you can ignore it (the printout "
                                            "says CHECK: WO twice at the top left)."),
     ("kv", "Red box: a row looks like column titles", "Yesterday's schedule is probably still on 1. Paste Schedule, "
                                                       "or today's file was pasted lower down than A1. Do Part A "
-                                                      "again from step 2."),
+                                                      "again from step 2a."),
     ("kv", "A work order is missing", "On 1. Paste Schedule its Line must be filled in. Rows below a Line cell "
                                       "that says LEGEND are ignored. Exact duplicate rows are counted once."),
-    ("kv", "Something is in the wrong column", "On 2. Check Columns type the right column's title (or letter) in "
-                                               "that field's Override box (or - to leave it out)."),
-    ("kv", "I can't type on a sheet", "Only the yellow cells take typing (on 2. Check Columns and 3. Lines), plus "
-                                      "all of 1. Paste Schedule. 4. Schedule fills itself in - to change it, edit "
-                                      "1. Paste Schedule. Never click Review > Unprotect Sheet."),
+    ("kv", "Something is in the wrong column", "On 2. Check Columns pick the right column's title in that field's "
+                                               "Override box (or - to leave it out)."),
+    ("kv", "Excel says the cell is on a protected sheet", "Only the yellow cells take typing (on 2. Check Columns "
+                                                          "and 3. Lines), plus all of 1. Paste Schedule. 4. Schedule "
+                                                          "fills itself in - to change it, edit 1. Paste Schedule. "
+                                                          "Never click Review > Unprotect Sheet."),
+    ("kv", "Excel warns about a circular reference", "Names were pasted on 3. Lines with Ctrl+V. Press Ctrl+Z, then "
+                                                     "paste them with Paste Options > Values (123), or type them."),
     ("kv", "Report typed on", "Something was typed over 4. Schedule, so it no longer fills itself in. Press Ctrl+Z "
                               "right away. If that does not fix it: close the file and click Don't Save, then open "
                               "it again. If it was already saved: File > Info > Version History (Teams / OneDrive / "
-                              "SharePoint) and restore an earlier version - or copy the MASTER file again (golden "
-                              "rule 1) and type your lines on 3. Lines again."),
+                              "SharePoint) and restore an earlier version - or copy the MASTER file again (First "
+                              "time only) and type your lines on 3. Lines again."),
     ("kv", "The file says Read-Only or locked for editing", "Someone else has your shift's file open (on a network "
                                                             "drive only one person at a time can change it - your "
                                                             "ticks could not be saved). Close it, ask them to close "
                                                             "it, then open it again. On Teams / OneDrive several "
                                                             "people can edit it together."),
-    ("kv", "A line can't be ticked", "Type its name in the left table of 3. Lines (Part B, step 2)."),
+    ("kv", "A line can't be ticked", "Type its name in the left table of 3. Lines (Part B, step 2a)."),
     ("kv", "A line is ticked that nobody ticked", "On 3. Lines look for a red Note: a Scheduled or Status left in a "
                                                   "row whose Line was cleared is taken over by the next line typed "
                                                   "there. Clear Line, Scheduled and Status together."),
+    ("kv", "A READY / PM / OT nobody picked", "It comes from the Line Status column of today's file. To remove it, "
+                                              "pick NONE in that line's Status on 3. Lines."),
     ("kv", "CHECK: 3. Lines not dated today", "Check the ticks and statuses on 3. Lines (Part B), then put "
                                               "today's date in the yellow box there (Ctrl+;)."),
     ("kv", "WARNING: see 2. Check Columns", "The box on 2. Check Columns says what is wrong (see the first row of "
@@ -1615,14 +1743,34 @@ HOW_ROWS = [
                         "top of 4. Schedule (double-click it to fit the text)."),
     ("gap",),
     ("head", "", "Tips"),
+    ("kv", "Override: title or letter", "Pick the column's title in an Override box: the Override stays in this "
+                                        "file, and a title keeps working when another day's file has its columns in "
+                                        "a different order. A column letter like C works too, but only while the "
+                                        "columns stay in the same place. A column with no title can only be given "
+                                        "by its letter."),
+    ("kv", "Why an Override is needed", "This file goes by the column titles only. Unlike the web app it does not "
+                                        "guess the Line or WO column from the values in it, and a title with unusual "
+                                        "characters may not be recognised - the Override box is how you tell it."),
     ("kv", "Fit on one page", "In the print window, under Settings, change Fit All Columns on One Page to Fit Sheet "
                               "on One Page (the text gets smaller)."),
+    ("kv", "Portrait or margins", "Portrait, margins and scaling can be changed in the print window for one "
+                                  "printout. Keep Fit All Columns on One Page."),
     ("kv", "Hide a column", "On 4. Schedule right-click the column letter (for example L for REMARKS) > Hide. "
                             "To bring it back, select the columns on both sides (K to M), right-click > Unhide."),
     ("kv", "Make a column wider", "On 4. Schedule drag the line between two column letters. Double-click it to fit."),
-    ("kv", "Change a work order", "Edit 1. Paste Schedule. Add a row anywhere under the column titles (Line must be "
-                                  "filled in). To remove one, clear its cells. You can also type a whole schedule "
-                                  "there by hand, under the titles in row 1."),
+    ("kv", "Find a work order", "On 1. Paste Schedule press Ctrl+F and type its WO number."),
+    ("kv", "Change a work order", "Find it (above) and change its cells on 1. Paste Schedule. To remove it, clear "
+                                  "its cells."),
+    ("kv", "Add a work order", "On 1. Paste Schedule type a new row under the last row, with the Line and a Seq. "
+                               "Give it a Seq bigger than the line's last one to put it last, or for example 6.5 "
+                               "to put it between 6 and 7. (With no Seq it goes right after the row above it of the "
+                               "same line.)"),
+    ("kv", "Add a new line", "Type a row with the new line name in the Line column of 1. Paste Schedule, then add "
+                             "the name on 3. Lines (Part B, step 2a)."),
+    ("kv", "Type a schedule by hand", "Row 1 of 1. Paste Schedule needs the column titles: LINE, WO, SEQ, ITEM, "
+                                      "PRODUCT DESCRIPTION, Count, Bulk Item, Bottle Size, CAP DESCRIPTION, "
+                                      "Allergen, REMARKS, WO Quantity, % Complete, Line Status, Desiccant (or copy "
+                                      "row 1 from the MASTER file). Then type one work order per row under it."),
     ("kv", "Rename a line", "On 1. Paste Schedule press Ctrl+H. Find what: the old name. Replace with: the new "
                             "name. Click Options, tick Match entire cell contents, then Replace All. Change the "
                             "name on 3. Lines too."),
@@ -1631,24 +1779,31 @@ HOW_ROWS = [
                                      "(click the row numbers) and press Delete. Then click Data > Filter again to "
                                      "turn the filter off. (Rows on 4. Schedule can't be hidden: its rows change "
                                      "every day, so a hidden row would hide another line's work order later.)"),
-    ("kv", "Send the schedule", "With 4. Schedule open: File > Save As (on the web: Save a Copy / Export) and pick "
-                                "PDF. Email or post the PDF."),
+    ("kv", "Send the schedule as PDF", "With 4. Schedule open: File > Save As (on the web: Save a Copy / Export) "
+                                       "and pick PDF. Email or post the PDF."),
+    ("kv", "Send it as Excel", "Send this file (or File > Save a Copy). To send only the schedule: on 4. Schedule "
+                               "select from A1 to column R of the last row, press Ctrl+C, open a new workbook, "
+                               "right-click A1 > Paste Options > Values."),
     ("kv", "Seq order", "Numbers sort as numbers (6.5 goes between 6 and 7). A row with no Seq stays right after "
                         "the row above it of the same line. Seq values that are not numbers go after the numbered "
                         "ones, in the order they were pasted."),
-    ("kv", "Long schedules", "The LINE name is printed on the first row of each line only. When a line runs on to "
-                             "the next page, the rows at the top of that page have no LINE name (Excel can't repeat "
-                             "it by itself) - write it on by hand, or use Fit Sheet on One Page."),
+    ("kv", "Long schedules", "The LINE name is bold on the first row of each line and grey on its other rows, so a "
+                             "line that runs on to the next page is still named at the top of that page. Excel "
+                             "can't keep a line's rows together on one page like the web app - use Fit Sheet on One "
+                             "Page if that matters."),
     ("kv", "Limits", f"Up to {MAX_WO} work orders (the first {MAX_WO} under the column titles, in paste order), "
                      f"pasted rows 1 to {PASTE_ROWS}, columns A to BH, {LINE_SLOTS} lines on 3. Lines, {OUT_ROWS} "
                      f"rows on 4. Schedule. Past a limit, a red WARNING shows on 2. Check Columns and on "
                      f"4. Schedule."),
     ("kv", "Not like the web app", "The status is in its own STATUS column; the green box around a ticked line is "
-                                   "thin (Excel can't draw a thick one by formula); a line split over two pages "
-                                   "shows its name on the first page only; long text shrinks to fit or (remarks) "
-                                   "is cut at the cell edge with no ...; columns can be hidden but not moved; the "
-                                   "Line and WO columns are found by their titles only; pasting a new schedule does "
-                                   "not clear the statuses (Part B, step 4 does)."),
+                                   "thin (Excel can't draw a thick one by formula); the line name repeats in grey "
+                                   "on a line's other rows (Excel can't keep a line on one page); long text shrinks "
+                                   "to fit or (remarks) is cut at the cell edge with no ...; columns can be hidden "
+                                   "but not moved; the Line and WO columns are found by their titles only; pasting "
+                                   "a new schedule does not clear the statuses (Part B, step 4a does)."),
+    ("kv", "Also not in this file", "The web app's Customize Print Design: the report title, the date, the fonts "
+                                    "and the colors are fixed here. Line Assignments (and the app's Print > Both) "
+                                    "is not part of this file. Export Excel: see Send it as Excel."),
 ]
 
 
@@ -1667,6 +1822,9 @@ def build_how(wb):
         if kind == "gap":
             ws.row_dimensions[r].height = 8
             r += 1
+            continue
+        if kind == "pagebreak":          # the quick card prints on a page of its own
+            ws.row_breaks.append(Break(id=r - 1))
             continue
         b, c = (row[1], row[2]) if len(row) > 2 else ("", row[1])
         lines = max(1, len(textwrap.wrap(c, 100)))     # column C: about 100 characters a line
@@ -1687,6 +1845,11 @@ def build_how(wb):
             put(ws, f"C{r}", c, font=font(13, True, "1F3864"), fill=fill("D9E2F3"),
                 alignment=Alignment(wrap_text=True, vertical="center", indent=1))
             height = max(34, height + 6)
+        elif kind == "qc":                # bigger, to read it posted next to the computer
+            put(ws, f"B{r}", b, font=font(14, True, "2F5597"), alignment=Alignment(horizontal="center", vertical="top"),
+                fill=fill("EDF2FA"), border=THIN_GRAY)
+            put(ws, f"C{r}", c, font=font(13), alignment=wrap, fill=fill("EDF2FA"), border=THIN_GRAY)
+            height = 19 * max(1, len(textwrap.wrap(c, 84))) + 5
         elif kind == "step":
             put(ws, f"B{r}", b, font=font(14, True, "2F5597"), alignment=Alignment(horizontal="center", vertical="top"))
             put(ws, f"C{r}", c, font=font(11), alignment=wrap)
