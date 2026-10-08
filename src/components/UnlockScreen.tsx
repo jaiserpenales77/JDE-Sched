@@ -104,7 +104,8 @@ export default function UnlockScreen({ lastShift, onUnlocked }: Props) {
 
         <p className="shift-chooser-hint">
           Each shift has its own password, and it only opens that shift's Production Schedule, Line Assignments,
-          Skills &amp; Roles and Time Off. This computer stays unlocked until someone clicks 🔒 Lock.
+          Skills &amp; Roles and Time Off. You'll need it every time you open the app. Refreshing the page doesn't lock
+          it.
         </p>
       </form>
     </div>

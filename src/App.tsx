@@ -45,8 +45,8 @@ function loadPrintChoice(shift: ShiftKey | null): PrintChoice {
 function App() {
   // The shift this computer used last - picked first on the unlock screen.
   const [lastShift, rememberShift] = useCurrentShift();
-  // Which shift's password this computer is unlocked with; nothing loads
-  // until it is.
+  // Which shift's password this tab is unlocked with; nothing loads until
+  // it is.
   const shiftAuth = useShiftAuth();
   const shift = shiftAuth.shift;
   const [data, setData, history, sync] = useShiftData(shift);
