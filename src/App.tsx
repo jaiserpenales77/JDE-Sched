@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from "./storage";
+import { lockApp, useShiftAuth } from "./auth";
+import UnlockScreen from "./components/UnlockScreen";
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
@@ -17,7 +19,7 @@ import {
   readWorkbookSheets,
 } from "./excel";
 import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
-import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
+import { SHIFT_LABELS } from "./types";
 import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
@@ -41,8 +43,34 @@ function loadPrintChoice(shift: ShiftKey | null): PrintChoice {
 }
 
 function App() {
-  const [shift, chooseShift] = useCurrentShift();
-  const [data, setData, history] = useShiftData(shift);
+  // The shift this computer used last - picked first on the unlock screen.
+  const [lastShift, rememberShift] = useCurrentShift();
+  // Which shift's password this computer is unlocked with; nothing loads
+  // until it is.
+  const shiftAuth = useShiftAuth();
+  const shift = shiftAuth.shift;
+  const [data, setData, history, sync] = useShiftData(shift);
+  const [locking, setLocking] = useState(false);
+
+  async function lock() {
+    setLocking(true);
+    try {
+      // Send the last change before signing out, so it isn't left unsaved.
+      await sync.saveNow();
+    } catch (err) {
+      console.error("Couldn't save before locking.", err);
+      if (
+        !confirm(
+          "Your last change hasn't reached the cloud yet (no connection?). If you lock now it may be lost. Lock anyway?",
+        )
+      ) {
+        setLocking(false);
+        return;
+      }
+    }
+    await lockApp();
+    setLocking(false);
+  }
 
   // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo - except while typing
   // in a field, where the browser's own text undo should win.
@@ -289,7 +317,7 @@ function App() {
     setData(emptyAppData());
   }
 
-  if (!shift) {
+  if (shiftAuth.status === "loading") {
     return (
       <div className="shift-chooser">
         <div className="shift-chooser-card">
@@ -297,21 +325,14 @@ function App() {
             JDE Sched
             <small>Production Line Schedule &amp; Crew Board</small>
           </div>
-          <h1>Which shift is this device showing?</h1>
-          <div className="shift-chooser-options">
-            {SHIFT_KEYS.map((key) => (
-              <button key={key} className="btn primary" onClick={() => chooseShift(key)}>
-                {SHIFT_LABELS[key]}
-              </button>
-            ))}
-          </div>
-          <p className="shift-chooser-hint">
-            You can change this anytime from the header. Each shift has its own completely separate Production
-            Schedule, Line Assignments boards, Skills &amp; Roles roster and Time Off schedule - nothing here is shared between shifts.
-          </p>
+          <p className="shift-chooser-hint">Loading…</p>
         </div>
       </div>
     );
+  }
+
+  if (!shift) {
+    return <UnlockScreen lastShift={lastShift} onUnlocked={rememberShift} />;
   }
 
   return (
@@ -335,16 +356,19 @@ function App() {
             Time Off
           </button>
         </nav>
-        <label className="shift-picker">
-          Shift
-          <select value={shift} onChange={(e) => chooseShift(e.target.value as ShiftKey)}>
-            {SHIFT_KEYS.map((key) => (
-              <option key={key} value={key}>
-                {SHIFT_LABELS[key]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="shift-picker">
+          <span className="shift-current" title="This computer is unlocked for this shift">
+            {SHIFT_LABELS[shift]}
+          </span>
+          <button
+            className="btn lock-btn"
+            onClick={lock}
+            disabled={locking}
+            title="Lock the app - the next person needs a shift password. Lock, then unlock with another shift's password to switch shifts."
+          >
+            {locking ? "Locking…" : "🔒 Lock"}
+          </button>
+        </div>
         <div className="toolbar toolbar-dark">
           <button className="btn" onClick={history.undo} disabled={!history.canUndo} title="Undo your last change (Ctrl+Z)">
             ↶ Undo
@@ -403,6 +427,12 @@ function App() {
           </button>
         </div>
       </header>
+
+      {sync.problem && (
+        <div className="sync-banner" role="alert">
+          ⚠ Changes aren't reaching the cloud: {sync.problem}. They're saved on this computer for now.
+        </div>
+      )}
 
       <main className="app-main">
         {tab === "schedule" && (

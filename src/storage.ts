@@ -146,6 +146,9 @@ export function useShiftData(shift: ShiftKey | null) {
   const [data, setData] = useState<AppData>(() => (shift ? loadLocal(shift) : emptyAppData()));
   const lastSyncedJson = useRef<string>("");
   const [syncReady, setSyncReady] = useState(false);
+  // Why changes aren't reaching the cloud right now (shown on screen), or
+  // null when syncing is working.
+  const [syncProblem, setSyncProblem] = useState<string | null>(null);
 
   // ---- Undo / redo of this device's own edits ----
   // Every committed change to `data` is recorded unless it's flagged as
@@ -213,6 +216,7 @@ export function useShiftData(shift: ShiftKey | null) {
   useEffect(() => {
     lastSyncedJson.current = "";
     setSyncReady(false);
+    setSyncProblem(null);
     external.current = true;
     setData(shift ? loadLocal(shift) : emptyAppData());
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -241,10 +245,12 @@ export function useShiftData(shift: ShiftKey | null) {
             setData(remote);
           }
         }
+        setSyncProblem(null);
         setSyncReady(true);
       },
       (err) => {
         console.error("Firestore sync unavailable - working from this device's local copy only.", err);
+        setSyncProblem(describeSyncError(err));
         setSyncReady(true);
       },
     );
@@ -257,15 +263,40 @@ export function useShiftData(shift: ShiftKey | null) {
     if (json === lastSyncedJson.current) return;
     const timer = window.setTimeout(() => {
       lastSyncedJson.current = json;
-      setDoc(shiftDoc(shift), data).catch((err) => {
-        console.error("Failed to sync to Firestore - this device's changes are only saved locally for now.", err);
-      });
+      setDoc(shiftDoc(shift), data).then(
+        () => setSyncProblem(null),
+        (err) => {
+          console.error("Failed to sync to Firestore - this device's changes are only saved locally for now.", err);
+          setSyncProblem(describeSyncError(err));
+        },
+      );
     }, 800);
     return () => window.clearTimeout(timer);
   }, [data, shift, syncReady]);
 
+  // Sends any change still waiting on the 0.8s delay right away - used
+  // before locking the app, so the last edit isn't left unsaved.
+  const latest = useRef({ shift, data, syncReady });
+  latest.current = { shift, data, syncReady };
+  async function saveNow(): Promise<void> {
+    const { shift: s, data: d, syncReady: ready } = latest.current;
+    if (!s || !ready) return;
+    const json = JSON.stringify(d);
+    if (json === lastSyncedJson.current) return;
+    lastSyncedJson.current = json;
+    await setDoc(shiftDoc(s), d);
+  }
+
   const history = { undo, redo, canUndo: historySize.undo > 0, canRedo: historySize.redo > 0 };
-  return [data, setData, history] as const;
+  const sync = { problem: syncProblem, saveNow };
+  return [data, setData, history, sync] as const;
+}
+
+function describeSyncError(err: unknown): string {
+  const code = (err as { code?: string })?.code ?? "";
+  if (code === "permission-denied") return "this computer isn't allowed to open this shift's data - try Lock, then unlock again";
+  if (code === "unavailable") return "can't reach the cloud right now";
+  return "the cloud didn't accept the last save";
 }
 
 export function seedDataForShift(shift: ShiftKey): AppData {

@@ -155,8 +155,8 @@ select option {
   cursor: pointer;
 }
 
-/* First-run "which shift is this device" screen - blocks the rest of the
-   app until answered, since every synced read/write depends on it. */
+/* Full-screen card shown while the app is loading or locked - nothing
+   else shows until a shift is unlocked. */
 .shift-chooser {
   min-height: 100vh;
   display: flex;
@@ -197,6 +197,90 @@ select option {
   color: var(--muted);
   line-height: 1.5;
   margin: 0;
+}
+
+/* Unlock screen: pick a shift, type its password. */
+.unlock-card {
+  text-align: left;
+}
+.unlock-card .app-title,
+.unlock-card h1 {
+  text-align: center;
+}
+.unlock-step {
+  display: block;
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.unlock-card .shift-chooser-options .btn.unlock-shift:not(.primary) {
+  background: var(--panel-2);
+}
+.unlock-password-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.unlock-password-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 16px;
+}
+.unlock-password-row input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.unlock-error {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-left: 4px solid var(--danger);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--danger) 12%, var(--panel));
+  color: var(--text);
+  font-size: 13px;
+}
+.unlock-submit {
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Header: which shift this computer is unlocked for, and Lock. */
+.shift-current {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+}
+.app-header .lock-btn {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+.app-header .lock-btn:hover {
+  background: #334155;
+}
+
+/* Shown while changes can't reach the cloud (e.g. not allowed, offline). */
+.sync-banner {
+  padding: 8px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 14%, var(--panel));
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+@media print {
+  .sync-banner {
+    display: none !important;
+  }
 }
 
 .toolbar {

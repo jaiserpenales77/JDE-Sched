@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore } from "firebase/firestore";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, initializeFirestore } from "firebase/firestore";
 
 // This apiKey is meant to be public - Firebase's actual access control
 // comes from the Firestore security rules (see project README/setup
@@ -19,3 +20,12 @@ export const firebaseApp = initializeApp(firebaseConfig);
 // block outright. Auto-detecting long-polling falls back to plain
 // repeated HTTPS requests on those networks instead of failing silently.
 export const db = initializeFirestore(firebaseApp, { experimentalAutoDetectLongPolling: true });
+// Each shift unlocks the app with its own password - see auth.ts.
+export const auth = getAuth(firebaseApp);
+
+// Local testing only: a build made with VITE_FIREBASE_EMULATORS=1 talks to
+// the Firebase emulators on this computer instead of the live database.
+if (import.meta.env.VITE_FIREBASE_EMULATORS === "1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+}
