@@ -66,16 +66,20 @@ and all defined names are documented at the top of `build_workbook.py`.
   grey on its other rows. The app prints it once per line, but it also keeps
   each line on one page; Excel can't, so the grey repeats make sure a line
   that runs on to the next page is still named there.
-- Long product / cap descriptions, desiccants and line names shrink to fit
-  their cell; long remarks are cut at the cell edge (the app cuts all of them
-  and adds "...").
-- Column widths follow the app's, except: the product and cap description
-  columns are wider (so long descriptions shrink less), REMARKS, LINE, STATUS
-  and WO a little narrower, and the narrow number columns are never narrower
-  than the longest word of their title.
-- Fonts are sized for "fit all columns on one page" (about 80 %), so the
-  body prints close to the app's 7 pt; the column titles print smaller (about
-  5.7 pt against 6.5 pt) so the narrow number columns can stay narrow.
+- A value too long for its column shrinks to fit (so nothing is cut off and
+  no number turns into ####); only long remarks are cut at the cell edge (the
+  app cuts all of them and adds "...").
+- Column widths are sized for real Excel, which gives text fewer pixels than
+  LibreOffice: every column fits the longest word of its title in 9 pt bold and
+  a typical value (an 8-character item or bulk code, a 6-digit quantity) in
+  8.5 pt. The description columns take the room that's left.
+- Fonts are sized for "fit all columns on one page" (about 80 %), so the body
+  prints close to the app's 7 pt. Nothing on the report is smaller than
+  8.5 pt: Excel drew smaller column titles larger than asked and broke them
+  mid-word.
+- No conditional format changes a number format (Excel applied one meant for
+  % ACTUAL COMPLETE to BOTTLES REMAINING); a blank % ACTUAL COMPLETE on a
+  work-order row holds the text "—" instead.
 - Excel's TRIM also turns runs of spaces inside a value into one space, and a
   tab or line break inside a value becomes a space; rows that differ only in
   such inner spaces count as duplicates.

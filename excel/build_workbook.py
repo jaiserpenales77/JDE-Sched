@@ -149,7 +149,6 @@ from openpyxl import Workbook
 from openpyxl.formatting.rule import Rule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.styles.differential import DifferentialStyle
-from openpyxl.styles.numbers import NumberFormat
 from openpyxl.utils import get_column_letter as L
 from openpyxl.workbook.defined_name import DefinedName
 from openpyxl.workbook.protection import WorkbookProtection
@@ -246,9 +245,12 @@ C_DIVIDER, C_SCHEDULED, C_COUNT_CHANGED, C_GRID = "000080", "00C805", "FF0000", 
 C_LINE_REPEAT, C_LINE_REPEAT_ON_GREEN = "8C8C8C", "262626"
 # The app tints the LINE cell of a line with a status (color-mix 16% with white).
 C_TINT = {"READY": "DAEBE0", "PM": "DBE3F9", "OT": "FEF7DA"}
-# % ACTUAL COMPLETE on a work-order row: blank shows a dash, like the app's ProgressBar.
-PA_FORMAT = '0.0%;-0.0%;0.0%;"\u2014"'
-CF_NUMFMT_ID = 200
+# % ACTUAL COMPLETE on a work-order row: blank shows a dash, like the app's
+# ProgressBar. The dash is the cell's value (text), not a number format: a
+# number format inside a conditional format leaked into the next column
+# (BOTTLES REMAINING showed 459300.0%) in real Excel, so conditional formats
+# here never carry one.
+PA_DASH = "\u2014"
 
 # 4. Schedule columns: (header, Calc output key, width % from PrintViews.tsx
 # DEFAULT_SCHEDULE_COLUMN_WIDTHS; STATUS is this workbook's own column).
@@ -260,30 +262,29 @@ SCHED_COLS = [
     ("% COMPLETE", "o_pct", 4), ("DESICCANT", "o_desiccant", 4), ("% ACTUAL COMPLETE", "o_pa", 5),
     ("BOTTLES REMAINING", "o_br", 4), ("CHANGEOVER", "o_chg", 6),
 ]
-WIDTH_FACTOR = 1.4     # Excel width units per app width-percent point
 # Font sizes (points). "Fit all columns on one page" prints the sheet at about
 # 80 %, so these are the app's print sizes / 0.8: title 16, date 9, body 7,
-# line name 7.7 in the app. The column titles are a little smaller than the
-# app's 6.5 (7 here, about 5.7 printed) so the narrow number columns can stay
-# narrow and the description columns get the room.
-TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 7, 8.5, 9
+# line name 7.7 in the app. Nothing is smaller than the 8.5 pt body text: real
+# Excel drew 7 pt column titles at about 9.5 pt, so they broke mid-word.
+TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 8.5, 8.5, 9
 ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
-# A column is never narrower than the longest word of its title - or, for
-# CHANGEOVER, its longest code "S1 Count Change" - so nothing is broken
-# mid-word; the app's widths are too narrow for those words (its titles
-# overflow). Widths measured at 7 pt bold titles / 8 pt body, then scaled.
-_MIN_7PT = {"COUNT": 4.8, "BOTTLE SIZE": 6.0, "ALLERGEN": 6.9, "WO QUANTITY": 6.9, "% COMPLETE": 6.9,
-            "DESICCANT": 7.6, "BOTTLES REMAINING": 7.6, "% ACTUAL COMPLETE": 7.4}
-MIN_WIDTH = {h: round(w * HEADER_PT / 7, 2) for h, w in _MIN_7PT.items()}
-MIN_WIDTH["CHANGEOVER"] = round(10.5 * max(HEADER_PT / 7, BODY_PT / 8), 2)
-# Widths set directly (Excel units) instead of app % x WIDTH_FACTOR: the two
-# description columns get the room the narrow ones don't need, so long product
-# and cap descriptions shrink less (cap descriptions are the longest text that
-# must stay readable); REMARKS is cut at the cell edge anyway (the app cuts it
-# too), and LINE / STATUS / WO hold short codes.
-WIDTH_SET = {"LINE": 8.4, "STATUS": 5.3, "WO": 6.6, "PRODUCT DESCRIPTION": 22.4, "CAP DESCRIPTION": 19.0,
-             "REMARKS": 13.9, "DESICCANT": 8.4}
-SHRINK_COLS = {"o_line", "o_desc", "o_cap", "o_desiccant"}   # shrink long text to fit (REMARKS is cut)
+# Column widths (Excel units). Excel gives a column of width w trunc(7w+0.49)
+# pixels, 5 of them padding, and draws Calibri with every letter rounded to
+# whole pixels - tighter than LibreOffice. Each column fits the longest word
+# of its title in 9 pt bold (a margin over the 8.5 pt used) and a typical value
+# in 8.5 pt: WO 2682056, ITEM HL000430, BULK ITEM BU001565, a 6-digit
+# quantity. Longer values shrink to fit (SHRINK_COLS); the two description
+# columns take the room that's left.
+SCHED_WIDTHS = {
+    "LINE": 7.5, "STATUS": 6.8, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
+    "COUNT": 6.4, "BULK ITEM": 8.3, "BOTTLE SIZE": 6.7, "CAP DESCRIPTION": 17.5, "ALLERGEN": 8.7,
+    "REMARKS": 12.5, "WO QUANTITY": 8.7, "% COMPLETE": 8.9, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 8.9,
+    "BOTTLES REMAINING": 9.9, "CHANGEOVER": 11.6,
+}
+# Every report column shrinks a value that's too long for it, so nothing is
+# cut off and no number turns into ####; only REMARKS is cut at the cell edge
+# (shrinking a long remark makes it unreadably small; the app cuts it too).
+SHRINK_COLS = {key for _, key, _ in SCHED_COLS} - {"o_remarks"}
 
 # ----------------------------------------------------------------------------
 # Formula helpers
@@ -478,12 +479,12 @@ def protect(ws, **allow):
         setattr(ws.protection, k, v)
 
 
-def cf(ws, rng, formula, fill_color=None, font_=None, border=None, num_fmt=None):
-    # Conditional formats can only change bold/italic/colour, not the font or size.
+def cf(ws, rng, formula, fill_color=None, font_=None, border=None):
+    # Conditional formats can only change bold/italic/colour, not the font or
+    # size - and never the number format (see PA_DASH).
     if font_ is not None:
         font_ = Font(bold=font_.bold, italic=font_.italic, color=font_.color)
-    dxf = DifferentialStyle(font=font_, fill=fill(fill_color) if fill_color else None, border=border,
-                            numFmt=NumberFormat(numFmtId=CF_NUMFMT_ID, formatCode=num_fmt) if num_fmt else None)
+    dxf = DifferentialStyle(font=font_, fill=fill(fill_color) if fill_color else None, border=border)
     ws.conditional_formatting.add(rng, Rule(type="expression", dxf=dxf, formula=[formula], stopIfTrue=True))
 
 
@@ -1070,6 +1071,8 @@ def build_calc(wb):
                                     f'{line_txt}),"")')
         for oc, wc in out_from.items():
             ws[f"{O[oc]}{r_}"] = f'=IF({is_row},INDEX({wr(wc)},{A["k"]}),"")'
+        pa_v = f'INDEX({wr("pa")},{A["k"]})'
+        ws[f"{O['o_pa']}{r_}"] = f'=IF({is_row},IF({pa_v}="","{PA_DASH}",{pa_v}),"")'
         g = lambda n, k_: f"INDEX({wr(n)},{k_})"
         b1, b2 = g("bottle", prev_k), g("bottle", A["k"])
         code = (f'IF(OR({b1}="",{b2}=""),"",IF(NOT(EXACT({b1},{b2})),"S4",'
@@ -1120,7 +1123,9 @@ def build_paste(wb):
         for i, v in enumerate(row, start=1):
             if v != "":
                 ws.cell(r, i, v)
-    widths = [9, 10, 6, 10, 32, 7, 11, 10, 27, 9, 40, 12, 11, 11, 11, 13, 11, 11]
+    # wide enough in real Excel (tighter than LibreOffice) for the sample's titles
+    # and values in 11 pt
+    widths = [9, 10, 6, 10, 36, 7, 11, 11, 30, 9, 40, 13, 12, 18, 18, 14, 12, 11]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[L(i)].width = w
     fit_width(ws, "landscape")
@@ -1205,11 +1210,12 @@ def build_check(wb):
         put(ws, f"B{r}", L(c), font=font(10, True), border=THIN_GRAY, alignment=Alignment(horizontal="center"))
         xh = paste("HEADER_ROW", c)
         xh_t = ttrim(xh + '&""')
-        put(ws, f"C{r}", f'=IFERROR({xh_t},"")', font=font(10), border=THIN_GRAY)
+        put(ws, f"C{r}", f'=IFERROR({xh_t},"")', font=font(10), border=THIN_GRAY,
+            alignment=Alignment(shrink_to_fit=True))
         xe = paste(SC["ex_pr"], c)
         xe_t = ttrim(xe + '&""')
         put(ws, f"D{r}", f'=IF({SC["ex_pr"]}=0,"",IFERROR(IF(ISNUMBER({xe}),{xe},{xe_t}),""))',
-            font=font(10), border=THIN_GRAY, alignment=Alignment(horizontal="left"))
+            font=font(10), border=THIN_GRAY, alignment=Alignment(horizontal="left", shrink_to_fit=True))
         fld = f"Calc!${scol(c)}${R_FLD}"
         put(ws, f"E{r}", f'=IF({fld}=0,"",INDEX(Calc!${FT["label"]}${FT_ROW0}:${FT["label"]}${FT_ROW0 + 14},{fld}))',
             font=font(10, True), border=THIN_GRAY)
@@ -1370,24 +1376,25 @@ def build_schedule(wb):
     ws.sheet_view.showGridLines = False
     ncol = len(SCHED_COLS)                        # 18 -> A:R
     last_row = 2 + OUT_ROWS
-    for i, (h, _, w) in enumerate(SCHED_COLS, start=1):
-        ws.column_dimensions[L(i)].width = WIDTH_SET.get(h) or round(max(w * WIDTH_FACTOR, MIN_WIDTH.get(h, 0)), 2)
+    for i, (h, _, _) in enumerate(SCHED_COLS, start=1):
+        ws.column_dimensions[L(i)].width = SCHED_WIDTHS[h]
     ws.column_dimensions["S"].width = 2
-    # row 1: warnings (left), title (centred on the page), date (right). A:C and
-    # P:R are about as wide, so D:O is centred on the table like the app's title.
-    ws.merge_cells("A1:C1")
-    put(ws, "A1", f"={SC['short_warn']}", font=font(7, True, "C00000"),
+    # row 1: warnings (left), title (centred on the page), date (right). A:E
+    # holds each warning on one line; A:E and O:R are about as wide, so F:N is
+    # close to centred on the table like the app's title.
+    ws.merge_cells("A1:E1")
+    put(ws, "A1", f"={SC['short_warn']}", font=font(BODY_PT, True, "C00000"),
         alignment=Alignment(horizontal="left", vertical="center", wrap_text=True))
-    ws.merge_cells("D1:O1")
-    put(ws, "D1", TITLE, font=font(TITLE_PT, True), alignment=Alignment(horizontal="center", vertical="center"))
-    ws.merge_cells("P1:R1")
-    put(ws, "P1", "=TODAY()", number_format="mmmm d, yyyy", font=font(DATE_PT, color="444444"),
+    ws.merge_cells("F1:N1")
+    put(ws, "F1", TITLE, font=font(TITLE_PT, True), alignment=Alignment(horizontal="center", vertical="center"))
+    ws.merge_cells("O1:R1")
+    put(ws, "O1", "=TODAY()", number_format="mmmm d, yyyy", font=font(DATE_PT, color="444444"),
         alignment=Alignment(horizontal="right", vertical="center"))
-    ws.row_dimensions[1].height = 33
+    ws.row_dimensions[1].height = 36
     for i, (h, _, _) in enumerate(SCHED_COLS, start=1):
         put(ws, f"{L(i)}2", h, font=font(HEADER_PT, True), fill=fill(C_HEADER), border=THIN_BLACK,
             alignment=Alignment(wrap_text=True, vertical="center", horizontal="left"))
-    ws.row_dimensions[2].height = 30
+    ws.row_dimensions[2].height = 32
     helpers = [("T", "KIND", "kind"), ("U", "HL", "hl"), ("V", "SCHEDULED", "sched"), ("W", "STATUS", "o_status"),
                ("X", "FIRST", "first"), ("Y", "LAST", "last"), ("Z", "COUNT CHG", "cchg")]
     for col, h, _ in helpers + [("AA", "BORDER", None)]:
@@ -1504,12 +1511,11 @@ def add_conditional_formats(ws, last_row):
         for cond, color in hl + [(hl_none, None)]:
             cf(ws, R("G"), f"AND({code(*codes)},{cond},$Z3=1)", color, font(8, True, C_COUNT_CHANGED), b)
             cf(ws, R("G"), f"AND({code(*codes)},{cond},$Z3<>1)", color, None, b)
-    # calculated columns P:R - pale yellow unless the row is highlighted;
-    # % ACTUAL COMPLETE shows a dash when blank (work-order rows only)
-    for rng, sets, nf in [(R("P"), inner, PA_FORMAT), (R("Q"), inner, None), (R("R"), last_col, None)]:
+    # calculated columns P:R - pale yellow unless the row is highlighted
+    for rng, sets in [(R("P"), inner), (R("Q"), inner), (R("R"), last_col)]:
         for codes, b in sets:
             for cond, color in hl + [(hl_none, C_FORMULA)]:
-                cf(ws, rng, f"AND({code(*codes)},{cond})", color, None, b, nf)
+                cf(ws, rng, f"AND({code(*codes)},{cond})", color, None, b)
 
 
 # ----------------------------------------------------------------------------
@@ -1844,7 +1850,7 @@ def build_how(wb):
                 alignment=Alignment(horizontal="center", vertical="center"))
             put(ws, f"C{r}", c, font=font(13, True, "1F3864"), fill=fill("D9E2F3"),
                 alignment=Alignment(wrap_text=True, vertical="center", indent=1))
-            height = max(34, height + 6)
+            height = max(38, height + 6)
         elif kind == "qc":                # bigger, to read it posted next to the computer
             put(ws, f"B{r}", b, font=font(14, True, "2F5597"), alignment=Alignment(horizontal="center", vertical="top"),
                 fill=fill("EDF2FA"), border=THIN_GRAY)
@@ -1865,7 +1871,7 @@ def build_how(wb):
                 alignment=Alignment(wrap_text=True, vertical="top", horizontal="center" if len(b) <= 2 else "left"))
             put(ws, f"C{r}", c, font=font(11), alignment=wrap)
             lines = max(lines, len(textwrap.wrap(b, 19)))   # bold labels in column B
-            height = 15 * lines + 3
+            height = max(15 * lines + 3, 21 if len(b) <= 2 else 0)   # a 14 pt letter needs 21
         elif kind == "swatch":
             put(ws, f"B{r}", None, fill=fill(b), border=THIN_GRAY)
             put(ws, f"C{r}", c, font=font(11), alignment=wrap)
