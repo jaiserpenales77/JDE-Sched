@@ -264,21 +264,23 @@ SCHED_COLS = [
 ]
 # Font sizes (points). "Fit all columns on one page" prints the sheet at about
 # 80 %, so these are the app's print sizes / 0.8: title 16, date 9, body 7,
-# line name 7.7 in the app. Nothing is smaller than the 8.5 pt body text: real
-# Excel drew 7 pt column titles at about 9.5 pt, so they broke mid-word.
-TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 8.5, 8.5, 9
+# line name 7.7 in the app. Nothing is smaller than the 8.5 pt body text:
+# real Excel draws Calibri below about 8 pt without ClearType and with much
+# wider glyphs, so 7 pt column titles broke mid-word. Titles and warnings are
+# 9 pt bold, a size Excel was seen to draw normally.
+TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 9, 8.5, 9
 ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
 # Column widths (Excel units). Excel gives a column of width w trunc(7w+0.49)
 # pixels, 5 of them padding, and draws Calibri with every letter rounded to
 # whole pixels - tighter than LibreOffice. Each column fits the longest word
-# of its title in 9 pt bold (a margin over the 8.5 pt used) and a typical value
+# of its title in 9 pt bold and a typical value
 # in 8.5 pt: WO 2682056, ITEM HL000430, BULK ITEM BU001565, a 6-digit
 # quantity. Longer values shrink to fit (SHRINK_COLS); the two description
 # columns take the room that's left.
 SCHED_WIDTHS = {
     "LINE": 7.5, "STATUS": 6.8, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
-    "COUNT": 6.4, "BULK ITEM": 8.3, "BOTTLE SIZE": 6.7, "CAP DESCRIPTION": 17.5, "ALLERGEN": 8.7,
-    "REMARKS": 12.5, "WO QUANTITY": 8.7, "% COMPLETE": 8.9, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 8.9,
+    "COUNT": 6.4, "BULK ITEM": 8.3, "BOTTLE SIZE": 6.7, "CAP DESCRIPTION": 19.6, "ALLERGEN": 8.7,
+    "REMARKS": 10.4, "WO QUANTITY": 8.7, "% COMPLETE": 9.2, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 9.2,
     "BOTTLES REMAINING": 9.9, "CHANGEOVER": 11.6,
 }
 # Every report column shrinks a value that's too long for it, so nothing is
@@ -1140,7 +1142,7 @@ def build_check(wb):
     ws = wb.create_sheet(S_CHECK)
     ws.sheet_properties.tabColor = "70AD47"
     ws.sheet_view.showGridLines = False
-    for col, w in {"A": 2, "B": 30, "C": 16, "D": 30, "E": 30, "F": 22, "G": 14, "H": 52, "I": 2}.items():
+    for col, w in {"A": 2, "B": 30, "C": 16, "D": 30, "E": 30, "F": 22, "G": 14, "H": 64, "I": 2}.items():
         ws.column_dimensions[col].width = w
     put(ws, "B1", "2. Check Columns", font=font(18, True))
     put(ws, "B2", "Check this page every time you paste a new schedule. Only the yellow cells can be changed - "
@@ -1195,7 +1197,9 @@ def build_check(wb):
         put(ws, f"G{r}", f"=Calc!${FT['used_letter']}${cr}", border=THIN_GRAY, font=font(10, True),
             alignment=Alignment(horizontal="center"))
         put(ws, f"H{r}", f"=Calc!${FT['note']}${cr}", border=THIN_GRAY, font=font(10, True, "C00000"),
-            alignment=Alignment(wrap_text=True))
+            alignment=Alignment(wrap_text=True, vertical="top"))
+        # two lines for a note: Excel doesn't grow a row to fit a formula's text
+        ws.row_dimensions[r].height = 27
         put(ws, f"J{r}", f"=IF(Calc!${FT['used']}${cr}=0,1,0)")
         put(ws, f"K{r}", f'=IF(LEFT(H{r},5)="Found",1,0)')     # 1 = the Note is only information
     cf(ws, "G13:G14", "$J13=1", "FFC7CE", font(10, True, "9C0006"))
@@ -1215,7 +1219,7 @@ def build_check(wb):
         xe = paste(SC["ex_pr"], c)
         xe_t = ttrim(xe + '&""')
         put(ws, f"D{r}", f'=IF({SC["ex_pr"]}=0,"",IFERROR(IF(ISNUMBER({xe}),{xe},{xe_t}),""))',
-            font=font(10), border=THIN_GRAY, alignment=Alignment(horizontal="left", shrink_to_fit=True))
+            font=font(10), border=THIN_GRAY, alignment=Alignment(horizontal="left"))
         fld = f"Calc!${scol(c)}${R_FLD}"
         put(ws, f"E{r}", f'=IF({fld}=0,"",INDEX(Calc!${FT["label"]}${FT_ROW0}:${FT["label"]}${FT_ROW0 + 14},{fld}))',
             font=font(10, True), border=THIN_GRAY)
@@ -1269,7 +1273,7 @@ def build_lines(wb):
                    f'&" Check them, then type today\'s date in the yellow box (Ctrl+;).")'),
         font=font(10, True, "C00000"), alignment=Alignment(wrap_text=True, vertical="center"))
     cf(ws, "L1", '$L$1<>""', "FFC7CE", font(10, True, "9C0006"))
-    ws.row_dimensions[1].height = 40
+    ws.row_dimensions[1].height = 54
     dv0 = DataValidation(type="date", operator="greaterThan", formula1="36526", allow_blank=True,
                          showErrorMessage=True, errorTitle="Date", error="Type a date, like 10/7/2026 - or press Ctrl+; "
                                                                          "for today's date.",
@@ -1323,7 +1327,7 @@ def build_lines(wb):
         # a Scheduled / Status left behind when only the name was cleared would
         # be taken over by the next line typed in that row
         put(ws, f"E{r}", f'=IF({a}="",IF(OR(TRIM(B{r}&"")<>"",TRIM(C{r}&"")<>""),"No line name - clear Scheduled '
-                         f'and Status in this row",""),IF(SUMPRODUCT(--({above}={a}))>0,'
+                         f'and Status",""),IF(SUMPRODUCT(--({above}={a}))>0,'
                          f'"Listed twice - only the first one is used",IF(SUMPRODUCT(--({all_names}={a}))>1,'
                          f'"Listed twice - this row is the one used",IF(D{r}=0,"Not in today\'s schedule",""))))',
             font=font(9, italic=True, color="7F7F7F"), border=THIN_GRAY)
@@ -1383,7 +1387,7 @@ def build_schedule(wb):
     # holds each warning on one line; A:E and O:R are about as wide, so F:N is
     # close to centred on the table like the app's title.
     ws.merge_cells("A1:E1")
-    put(ws, "A1", f"={SC['short_warn']}", font=font(BODY_PT, True, "C00000"),
+    put(ws, "A1", f"={SC['short_warn']}", font=font(HEADER_PT, True, "C00000"),
         alignment=Alignment(horizontal="left", vertical="center", wrap_text=True))
     ws.merge_cells("F1:N1")
     put(ws, "F1", TITLE, font=font(TITLE_PT, True), alignment=Alignment(horizontal="center", vertical="center"))

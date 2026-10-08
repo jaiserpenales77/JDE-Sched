@@ -72,11 +72,14 @@ and all defined names are documented at the top of `build_workbook.py`.
 - Column widths are sized for real Excel, which gives text fewer pixels than
   LibreOffice: every column fits the longest word of its title in 9 pt bold and
   a typical value (an 8-character item or bulk code, a 6-digit quantity) in
-  8.5 pt. The description columns take the room that's left.
+  8.5 pt. The cap description column fits a usual cap description without
+  shrinking; REMARKS gives up the room (it is cut at the edge anyway).
 - Fonts are sized for "fit all columns on one page" (about 80 %), so the body
   prints close to the app's 7 pt. Nothing on the report is smaller than
-  8.5 pt: Excel drew smaller column titles larger than asked and broke them
-  mid-word.
+  8.5 pt (titles are 9 pt bold): Excel draws Calibri below about 8 pt without
+  ClearType and with much wider letters, which broke 7 pt titles mid-word.
+  The widths are sized for 100 % zoom; a value too long for its column can
+  still shrink below 8.5 pt to fit.
 - No conditional format changes a number format (Excel applied one meant for
   % ACTUAL COMPLETE to BOTTLES REMAINING); a blank % ACTUAL COMPLETE on a
   work-order row holds the text "—" instead.
