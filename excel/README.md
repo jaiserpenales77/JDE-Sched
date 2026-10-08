@@ -27,7 +27,9 @@ top of 4. Schedule says so). To change the workbook, edit the script below.
 
 Keep **one copy per shift** in a shared folder and reopen that copy every day:
 the 3. Lines list, the ticks and statuses (with the date they were checked)
-and the column overrides are saved in it.
+and the column overrides are saved in it. Keep the original next to them as a
+clean master. The printout's footer shows the file name, so it says which
+shift's copy was printed.
 
 ## Regenerate
 
@@ -45,6 +47,13 @@ and all defined names are documented at the top of `build_workbook.py`.
 
 - The Line and WO # columns are found by their titles only (the app also
   guessed them from the values); use the Override cells on 2. Check Columns.
+  An Override is a column letter, `-` (leave the field out) or the column's
+  title - a title keeps working when the columns move.
+- Column titles are normalized by removing ASCII punctuation and spaces, tab /
+  line breaks and the common non-ASCII ones (dashes, curly quotes, the numero
+  sign, degree / ordinal signs, bullets, zero-width and special spaces).
+  Accented letters and rarer symbols stay in (the app drops them), so such a
+  title may need an Override.
 - Seq values that are not numbers sort after the numbered ones, in paste order
   (the app compares them as text). Hex text such as `0x10` is not read as a
   number (JS `Number()` reads it as 16).
@@ -53,7 +62,12 @@ and all defined names are documented at the top of `build_workbook.py`.
   a thick border by formula). Columns can be hidden but not reordered.
 - The LINE name is on the first row of each line only; Excel can't keep a
   line's rows together on one page or repeat the name after a page break.
-- Long text is cut at the cell edge (the app adds "...").
+- Long product / cap descriptions, desiccants and line names shrink to fit
+  their cell; long remarks are cut at the cell edge (the app cuts all of them
+  and adds "...").
+- Fonts are sized for "fit all columns on one page" (about 80 %), so the
+  printout comes out close to the app's sizes; the column titles print a
+  little smaller (about 6.2 pt against 6.5 pt) to keep columns wide enough.
 - Excel's TRIM also turns runs of spaces inside a value into one space, and a
   tab or line break inside a value becomes a space; rows that differ only in
   such inner spaces count as duplicates.
@@ -62,7 +76,12 @@ and all defined names are documented at the top of `build_workbook.py`.
   on 3. Lines makes stale ones show a red CHECK message until it is today's.
 - Header-row and column overrides replace the app's remembered column choices;
   they stay in the file (a Note says when one differs from what the file
-  would find by itself).
+  would find by itself, or when a letter gives a field the titles don't).
+- Checks the app doesn't need (its Import replaces the whole schedule; here a
+  paste can leave old rows behind): 2. Check Columns turns red when a WO # is
+  on two kept rows, or when a kept row looks like a row of column titles, and
+  the top left of 4. Schedule says so too. Rows of 4. Schedule can't be hidden
+  (they hold other work orders on another day); columns can.
 - Limits (a red warning shows when exceeded): 600 work orders (the first 600
   rows with a Line, in paste order), pasted rows 1-1000, columns A-BH, 100
   lines on 3. Lines, 700 rows on 4. Schedule.
