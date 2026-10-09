@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  onAuthStateChanged,
+  setPersistence,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 import { auth } from "./firebase";
+import { forgetDevice, rememberDevice, rememberedUntil } from "./rememberDevice";
 import type { ShiftKey } from "./types";
 import { SHIFT_KEYS } from "./types";
 
@@ -19,11 +27,16 @@ function shiftOfEmail(email: string | null | undefined): ShiftKey | null {
   return domain === ACCOUNT_DOMAIN && (SHIFT_KEYS as readonly string[]).includes(name) ? (name as ShiftKey) : null;
 }
 
-// The sign-in lasts until the app is closed (see firebase.ts). But browsers
-// that reopen closed tabs ("Continue where you left off", Ctrl+Shift+T)
-// bring the tab's sign-in back with it. So the tab notes the moment it is
-// left - closed, refreshed or navigated away - and if it comes back later
-// than a refresh would take, it was closed, and it starts locked.
+// A remembered computer stays unlocked until its time runs out; the next
+// time the app is opened after that, it starts locked.
+const savedUntil = rememberedUntil();
+const rememberExpired = savedUntil > 0 && Date.now() > savedUntil;
+
+// Otherwise the sign-in lasts until the app is closed (see firebase.ts).
+// But browsers that reopen closed tabs ("Continue where you left off",
+// Ctrl+Shift+T) bring the tab's sign-in back with it. So the tab notes the
+// moment it is left - closed, refreshed or navigated away - and if it comes
+// back later than a refresh would take, it was closed, and it starts locked.
 const LEFT_AT_KEY = "jde-sched-left-at";
 const REFRESH_GRACE_MS = 30_000;
 
@@ -43,11 +56,14 @@ function leftAt(): number {
   }
 }
 
-const reopenedAfterClose = Date.now() - leftAt() > REFRESH_GRACE_MS;
+const reopenedAfterClose = savedUntil === 0 && Date.now() - leftAt() > REFRESH_GRACE_MS;
 // Settles once the sign-in this tab came back with has been checked.
 const startup: Promise<void> = auth
   .authStateReady()
-  .then(() => (reopenedAfterClose && auth.currentUser ? signOut(auth) : undefined))
+  .then(async () => {
+    if ((rememberExpired || reopenedAfterClose) && auth.currentUser) await signOut(auth);
+    if (rememberExpired) forgetDevice();
+  })
   .catch((err) => console.error("Couldn't check the saved sign-in.", err));
 
 export type ShiftAuth =
@@ -56,7 +72,8 @@ export type ShiftAuth =
   | { status: "unlocked"; shift: ShiftKey };
 
 // Which shift this tab is unlocked for. It stays unlocked through
-// refreshes, until the app is closed or someone clicks Lock.
+// refreshes, until the app is closed (or a remembered computer's time runs
+// out) or someone clicks Lock.
 export function useShiftAuth(): ShiftAuth {
   const [state, setState] = useState<ShiftAuth>({ status: "loading", shift: null });
   useEffect(() => {
@@ -93,11 +110,24 @@ export function unlockErrorMessage(err: unknown, shiftLabel: string): string {
   return `That password isn't right for ${shiftLabel}. Check it and try again.`;
 }
 
-export async function unlockShift(shift: ShiftKey, password: string): Promise<void> {
+// remember: keep the sign-in on this computer for REMEMBER_HOURS, even when
+// the app is closed, instead of only until it's closed.
+export async function unlockShift(shift: ShiftKey, password: string, remember: boolean): Promise<void> {
   if (auth.currentUser) await signOut(auth);
-  await signInWithEmailAndPassword(auth, shiftAccountEmail(shift), password);
+  await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+  // Saved before signing in, so the header shows it as soon as the app opens.
+  if (remember) rememberDevice();
+  else forgetDevice();
+  try {
+    await signInWithEmailAndPassword(auth, shiftAccountEmail(shift), password);
+  } catch (err) {
+    forgetDevice();
+    throw err;
+  }
 }
 
+// Lock always forgets the computer too.
 export async function lockApp(): Promise<void> {
   await signOut(auth);
+  forgetDevice();
 }

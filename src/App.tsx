@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from "./storage";
 import { lockApp, useShiftAuth } from "./auth";
+import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import UnlockScreen from "./components/UnlockScreen";
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
@@ -335,6 +336,10 @@ function App() {
     return <UnlockScreen lastShift={lastShift} onUnlocked={rememberShift} />;
   }
 
+  // When a remembered computer locks again (0 if it isn't remembered).
+  const until = rememberedUntil();
+  const remembered = until > Date.now() ? until : 0;
+
   return (
     <div className="app">
       <header className="app-header">
@@ -357,8 +362,16 @@ function App() {
           </button>
         </nav>
         <div className="shift-picker">
-          <span className="shift-current" title="This computer is unlocked for this shift">
+          <span
+            className="shift-current"
+            title={
+              remembered
+                ? `This computer stays unlocked for ${SHIFT_LABELS[shift]} until ${rememberedUntilLabel(remembered)}, even if the app is closed`
+                : "This computer is unlocked for this shift until the app is closed"
+            }
+          >
             {SHIFT_LABELS[shift]}
+            {remembered > 0 && <small>Remembered until {rememberedUntilLabel(remembered)}</small>}
           </span>
           <button
             className="btn lock-btn"

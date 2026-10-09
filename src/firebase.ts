@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
-import { browserSessionPersistence, connectAuthEmulator, initializeAuth } from "firebase/auth";
+import { browserLocalPersistence, browserSessionPersistence, connectAuthEmulator, initializeAuth } from "firebase/auth";
 import { connectFirestoreEmulator, initializeFirestore } from "firebase/firestore";
+import { rememberedUntil } from "./rememberDevice";
 
 // This apiKey is meant to be public - Firebase's actual access control
 // comes from the Firestore security rules (see project README/setup
@@ -23,7 +24,10 @@ export const db = initializeFirestore(firebaseApp, { experimentalAutoDetectLongP
 // Each shift unlocks the app with its own password - see auth.ts. The
 // sign-in is kept only for this browser tab: refreshing keeps it, closing
 // the app throws it away, so the password is needed every time it's opened.
-export const auth = initializeAuth(firebaseApp, { persistence: browserSessionPersistence });
+// A remembered computer keeps it on the computer instead (rememberDevice.ts).
+export const auth = initializeAuth(firebaseApp, {
+  persistence: rememberedUntil() > 0 ? browserLocalPersistence : browserSessionPersistence,
+});
 
 // Local testing only: a build made with VITE_FIREBASE_EMULATORS=1 talks to
 // the Firebase emulators on this computer instead of the live database.

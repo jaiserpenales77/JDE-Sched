@@ -15,6 +15,10 @@ the `claude/file-to-application-l25bre` branch deploys to the live app.
   password.
 - Closing the app always locks it, even if the browser is set to reopen
   the tabs it had open.
+- Except on a **remembered** computer: ticking **Remember this computer**
+  on the Unlock screen keeps that computer unlocked for **12 hours**, even
+  when the app is closed. The header then shows "Remembered until …".
+  Clicking Lock ends it right away.
 - Without a password, the data can't be opened at all, not even by someone
   who has the app's address.
 - The Packaging Lead Hub is not affected. Its accounts can't open JDE
@@ -108,8 +112,9 @@ are locked (step 5). Locking first would cut off the current app.
 
 > **JDE Sched is back.** Refresh the app (or close and reopen it), pick your
 > shift and enter your shift's password. You'll need it every time you open
-> the app; refreshing the page doesn't lock it. To switch shifts, click
-> 🔒 Lock (top right) and unlock with the other shift's password.
+> the app; refreshing the page doesn't lock it. To skip the password on a
+> computer for 12 hours, tick Remember this computer. To switch shifts,
+> click 🔒 Lock (top right) and unlock with the other shift's password.
 
 ---
 
@@ -138,7 +143,8 @@ there as well.
   3. Click **Add user** with the **same email** and the new password.
 
   From then on, opening the app needs the new password. An app that's
-  already open on that shift locks within about an hour.
+  already open on that shift, or a remembered computer, locks within about
+  an hour.
 - **Forgot a password:** same steps as changing it.
 - **Turning a shift off for a while:** Authentication → Users → ⋮ →
   **Disable account**.
