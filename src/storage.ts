@@ -12,7 +12,7 @@ import type {
 } from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
-import { SHIFT_HOURS, normalizeLineStatus } from "./scheduleLogic";
+import { SHIFT_HOURS, defaultChangeoverClock, normalizeLineStatus } from "./scheduleLogic";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
 const HISTORY_LIMIT = 50;
@@ -312,6 +312,7 @@ function describeSyncError(err: unknown): string {
 }
 
 function normalizeChangeoverClock(raw: Partial<ChangeoverClock> | undefined): ChangeoverClock {
+  if (!raw || typeof raw !== "object") return defaultChangeoverClock();
   const hour = (n: unknown) => (Number.isInteger(n) && (n as number) >= 1 && (n as number) <= SHIFT_HOURS ? (n as number) : 0);
   return {
     start: typeof raw?.start === "string" && /^\d{2}:\d{2}$/.test(raw.start) ? raw.start : "",
@@ -337,6 +338,6 @@ export function emptyAppData(): AppData {
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
     importColumnMap: {},
-    changeoverClock: { start: "", breakHours: [], lunchHour: 0 },
+    changeoverClock: defaultChangeoverClock(),
   };
 }

@@ -1,5 +1,6 @@
 import type { AppData, DailyBoard, Employee, PrintAssignSettings, SchedulePrintSettings, ShiftKey, WorkOrder } from "./types";
 import { SHIFT_LABELS } from "./types";
+import { defaultChangeoverClock } from "./scheduleLogic";
 
 // Seed data carried over from JDE_Sched_FINAL_v1.8.xlsm so the app opens
 // with the same production schedule / roster the spreadsheet had, instead
@@ -275,6 +276,6 @@ export function buildSeedData(shift: ShiftKey): AppData {
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
     importColumnMap: {},
-    changeoverClock: { start: "", breakHours: [], lunchHour: 0 },
+    changeoverClock: defaultChangeoverClock(),
   };
 }

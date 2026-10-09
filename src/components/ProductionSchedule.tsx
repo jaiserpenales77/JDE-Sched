@@ -167,7 +167,8 @@ function ChangeoverClockSettings({
       <p className="panel-hint">
         Shown in the Changeover column of each line's running work order: when its bottles remaining will be done, at
         the line's rate for that FG item from the Packaging Lead Hub's Line Rates. It counts from the shift's start and
-        uses the Break and Lunch rates in those hours.
+        uses the Break and Lunch rates in those hours. Lines that run through breaks and lunch (no Break or Lunch rate
+        in the Hub) use the Full Hour rate all shift.
       </p>
       <div className="estimate-fields">
         <label className="estimate-field" htmlFor="co-start">

@@ -215,6 +215,12 @@ export function newBlankWorkOrder(line: string): WorkOrder {
 export const SHIFT_HOURS = 8;
 // Used until a shift sets its own start time.
 export const DEFAULT_SHIFT_START: Record<ShiftKey, string> = { "1st": "07:15", "2nd": "15:15", "3rd": "23:15" };
+// The standard breaks (hours 2 and 6) and lunch (hour 4) of every shift,
+// until a shift changes them. Lines that run through them have no Lunch or
+// Break rate in the Hub, so they aren't affected.
+export function defaultChangeoverClock(): ChangeoverClock {
+  return { start: "", breakHours: [2, 6], lunchHour: 4 };
+}
 
 // Bottles made in a full hour, an hour with lunch and an hour with a break.
 // Lunch / break are null for a line that runs through them.
