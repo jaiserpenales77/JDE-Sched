@@ -275,5 +275,6 @@ export function buildSeedData(shift: ShiftKey): AppData {
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
     importColumnMap: {},
+    changeoverClock: { start: "", breakHours: [], lunchHour: 0 },
   };
 }

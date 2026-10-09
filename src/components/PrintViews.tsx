@@ -130,6 +130,9 @@ interface PrintScheduleProps {
   // Pass to let column headers be dragged to new positions (live preview).
   setColumnOrder?: (order: string[]) => void;
   design?: SchedulePrintSettings;
+  // Estimated changeover time by line, shown on each line's running work
+  // order (its first), whose Changeover cell is otherwise empty.
+  changeoverTimes?: Record<string, string>;
 }
 
 const COLUMN_DRAG_MIME = "application/x-jde-sched-column";
@@ -143,6 +146,7 @@ export function PrintSchedule({
   columnOrder = [],
   setColumnOrder,
   design = defaultSchedulePrintSettings,
+  changeoverTimes = {},
 }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
@@ -442,7 +446,18 @@ export function PrintSchedule({
                     </td>
                   ),
                   bottlesRemaining: <td data-col="bottlesRemaining" className="print-num print-formula-col">{bottlesRemaining(row)}</td>,
-                  changeover: <td data-col="changeover" className="print-formula-col">{chg}</td>,
+                  changeover: (
+                    <td data-col="changeover" className="print-formula-col">
+                      {chg ||
+                        (isFirstOfGroup && changeoverTimes[group.line] ? (
+                          <span className="co-estimate" title="Estimated changeover">
+                            Est. {changeoverTimes[group.line]}
+                          </span>
+                        ) : (
+                          ""
+                        ))}
+                    </td>
+                  ),
                 };
                 const scheduledCls = isScheduled
                   ? `print-line-scheduled ${isFirstOfGroup ? "print-line-scheduled-first" : ""} ${isLastOfGroup ? "print-line-scheduled-last" : ""}`

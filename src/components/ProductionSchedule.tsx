@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import type { SchedulePrintSettings, WorkOrder } from "../types";
+import type { ChangeoverClock, SchedulePrintSettings, WorkOrder } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -11,6 +11,9 @@ import {
   newBlankWorkOrder,
   orderedScheduleColumns,
   SCHEDULE_COLUMN_LABELS,
+  SHIFT_HOURS,
+  formatClock,
+  parseClock,
 } from "../scheduleLogic";
 import ProgressBar from "./ProgressBar";
 import { PrintSchedule } from "./PrintViews";
@@ -29,6 +32,10 @@ interface Props {
   setColumnOrder: (order: string[]) => void;
   design: SchedulePrintSettings;
   setDesign: (updater: (s: SchedulePrintSettings) => SchedulePrintSettings) => void;
+  // Estimated changeover time by line, and the shift clock it counts from.
+  changeoverTimes: Record<string, string>;
+  changeoverClock: ChangeoverClock;
+  setChangeoverClock: (clock: ChangeoverClock) => void;
 }
 
 const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: boolean }[] = [
@@ -125,6 +132,61 @@ function LineStatusToggle({
   );
 }
 
+// When the shift starts and which of its hours have breaks and lunch - what
+// the estimated changeover times count from.
+function ChangeoverClockSettings({
+  clock,
+  setClock,
+}: {
+  clock: ChangeoverClock;
+  setClock: (clock: ChangeoverClock) => void;
+}) {
+  const start = parseClock(clock.start);
+  const hours = Array.from({ length: SHIFT_HOURS }, (_, i) => i + 1);
+  const setBreak = (i: number, hour: number) => {
+    const next = [clock.breakHours[0] ?? 0, clock.breakHours[1] ?? 0];
+    next[i] = hour;
+    setClock({ ...clock, breakHours: next.filter(Boolean) });
+  };
+  const hourSelect = (id: string, label: string, value: number, onChange: (hour: number) => void) => (
+    <label className="estimate-field" htmlFor={id}>
+      {label}
+      <select id={id} value={value} onChange={(e) => onChange(Number(e.target.value))}>
+        <option value={0}>None</option>
+        {hours.map((h) => (
+          <option key={h} value={h}>
+            Hour {h} ({formatClock(start + (h - 1) * 60)})
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <div className="panel estimate-settings">
+      <h2>Estimated changeover</h2>
+      <p className="panel-hint">
+        Shown in the Changeover column of each line's running work order: when its bottles remaining will be done, at
+        the line's rate for that FG item from the Packaging Lead Hub's Line Rates. It counts from the shift's start and
+        uses the Break and Lunch rates in those hours.
+      </p>
+      <div className="estimate-fields">
+        <label className="estimate-field" htmlFor="co-start">
+          Shift starts
+          <input
+            id="co-start"
+            type="time"
+            value={clock.start}
+            onChange={(e) => e.target.value && setClock({ ...clock, start: e.target.value })}
+          />
+        </label>
+        {hourSelect("co-break-1", "Break", clock.breakHours[0] ?? 0, (h) => setBreak(0, h))}
+        {hourSelect("co-break-2", "Second break", clock.breakHours[1] ?? 0, (h) => setBreak(1, h))}
+        {hourSelect("co-lunch", "Lunch", clock.lunchHour, (h) => setClock({ ...clock, lunchHour: h }))}
+      </div>
+    </div>
+  );
+}
+
 export default function ProductionSchedule({
   workOrders,
   setWorkOrders,
@@ -138,6 +200,9 @@ export default function ProductionSchedule({
   setColumnOrder,
   design,
   setDesign,
+  changeoverTimes,
+  changeoverClock,
+  setChangeoverClock,
 }: Props) {
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
@@ -311,11 +376,14 @@ export default function ProductionSchedule({
                 columnOrder={columnOrder}
                 setColumnOrder={setColumnOrder}
                 design={design}
+                changeoverTimes={changeoverTimes}
               />
             </div>
           </div>
         )}
       </div>
+
+      {groups.length > 0 && <ChangeoverClockSettings clock={changeoverClock} setClock={setChangeoverClock} />}
 
       <SchedulePrintDesign settings={design} setSettings={setDesign} />
 
@@ -402,7 +470,15 @@ export default function ProductionSchedule({
                           <ProgressBar value={percentActual(row)} />
                         </td>
                         <td className="computed">{bottlesRemaining(row)}</td>
-                        <td className={`changeover chg-${chg.replace(/ /g, "-")}`}>{fmtChg(chg)}</td>
+                        <td className={`changeover chg-${chg.replace(/ /g, "-")}`}>
+                          {!chg && idx === 0 && changeoverTimes[group.line] ? (
+                            <span className="co-estimate" title="Estimated changeover">
+                              Est. {changeoverTimes[group.line]}
+                            </span>
+                          ) : (
+                            fmtChg(chg)
+                          )}
+                        </td>
                         <td className="row-actions">
                           <button className="btn small" title="Insert row below" onClick={() => insertAfter(row.id)}>
                             + Row

@@ -1,4 +1,4 @@
-import type { ChangeoverCode, WorkOrder } from "./types";
+import type { ChangeoverClock, ChangeoverCode, ShiftKey, WorkOrder } from "./types";
 
 // Print-table column keys, in on-screen order - drives the resizable
 // <colgroup>, which column a resize handle borrows width from/gives
@@ -203,4 +203,106 @@ export function newBlankWorkOrder(line: string): WorkOrder {
     lineStatus: "",
     desiccant: "",
   };
+}
+
+// ---- Estimated changeover time ----
+// A line's running work order (its first, in Seq order) finishes when its
+// bottles remaining have been made, hour by hour from the shift's start at
+// the line's rate for that FG item: the Full Hour rate, or the Lunch or
+// Break rate in the hours that have them (from the Packaging Lead Hub's
+// Line Rates). That's when the line changes over to its next work order.
+
+export const SHIFT_HOURS = 8;
+// Used until a shift sets its own start time.
+export const DEFAULT_SHIFT_START: Record<ShiftKey, string> = { "1st": "07:15", "2nd": "15:15", "3rd": "23:15" };
+
+// Bottles made in a full hour, an hour with lunch and an hour with a break.
+// Lunch / break are null for a line that runs through them.
+export interface LineRate {
+  fullHour: number;
+  lunch: number | null;
+  break: number | null;
+}
+// Keyed "LINE|FG ITEM", as the Hub stores them.
+export type LineRates = Record<string, LineRate>;
+
+const normLine = (s: string) => s.trim().replace(/\s+/g, " ").toUpperCase();
+// VPKL12 -> 12.
+const lineNumber = (s: string) => {
+  const digits = s.match(/\d+/g);
+  return digits ? Number(digits[digits.length - 1]) : null;
+};
+// A Hub line written as just a number: "12" or "Line 12" -> 12.
+const bareLineNumber = (s: string) => {
+  const t = s.replace(/^LINE\s*/i, "").trim();
+  return /^\d+$/.test(t) ? Number(t) : null;
+};
+
+// The rate for a line and FG item. The Hub's line may be written as the
+// line's full name ("VPKL12") or just its number ("12", "Line 12").
+export function findLineRate(rates: LineRates, line: string, item: string): LineRate | null {
+  const fg = item.trim().toUpperCase();
+  if (!fg) return null;
+  const exact = rates[`${normLine(line)}|${fg}`];
+  if (exact) return exact;
+  const num = lineNumber(line);
+  if (num === null) return null;
+  for (const [key, rate] of Object.entries(rates)) {
+    const [rateLine, rateItem] = key.split("|");
+    if (rateItem === fg && bareLineNumber(rateLine) === num) return rate;
+  }
+  return null;
+}
+
+export function parseClock(hhmm: string): number {
+  const [h, m] = hhmm.split(":").map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+// "8:29 AM" for a time in minutes after midnight (may run into the next day).
+export function formatClock(minutes: number): string {
+  const m = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(m / 60);
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m % 60).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
+}
+
+// Minutes after midnight when `remaining` bottles are done. Past the end of
+// the shift it carries on in full hours.
+export function estimateFinish(remaining: number, rate: LineRate, clock: ChangeoverClock): number | null {
+  if (!(rate.fullHour > 0) || !(remaining >= 0)) return null;
+  let left = remaining;
+  let t = parseClock(clock.start);
+  for (let hour = 1; hour <= 24 * 7; hour++) {
+    const inShift = hour <= SHIFT_HOURS;
+    const perHour =
+      inShift && hour === clock.lunchHour
+        ? (rate.lunch ?? rate.fullHour)
+        : inShift && clock.breakHours.includes(hour)
+          ? (rate.break ?? rate.fullHour)
+          : rate.fullHour;
+    if (left <= perHour) return perHour > 0 ? t + (left / perHour) * 60 : t;
+    left -= perHour;
+    t += 60;
+  }
+  return null;
+}
+
+// "8:29 AM" for each line whose running work order has a % Complete and a
+// stored rate; lines without one are left out.
+export function changeoverEstimates(
+  workOrders: WorkOrder[],
+  rates: LineRates,
+  clock: ChangeoverClock,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const { line, rows } of groupByLine(workOrders)) {
+    const first = rows[0];
+    const remaining = first ? bottlesRemaining(first) : "";
+    if (remaining === "") continue;
+    const rate = findLineRate(rates, line, first.item);
+    const at = rate ? estimateFinish(remaining, rate, clock) : null;
+    if (at !== null) out[line] = formatClock(at);
+  }
+  return out;
 }

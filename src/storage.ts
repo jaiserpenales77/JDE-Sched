@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { doc, onSnapshot, setDoc, waitForPendingWrites } from "firebase/firestore";
 import { db } from "./firebase";
-import type { AppData, DailyBoard, PrintAssignSettings, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
+import type {
+  AppData,
+  ChangeoverClock,
+  DailyBoard,
+  PrintAssignSettings,
+  SchedulePrintSettings,
+  ShiftKey,
+  TimeOffEntry,
+} from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
-import { normalizeLineStatus } from "./scheduleLogic";
+import { SHIFT_HOURS, normalizeLineStatus } from "./scheduleLogic";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
 const HISTORY_LIMIT = 50;
@@ -103,6 +111,7 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     timeOff: Array.isArray(raw.timeOff) ? raw.timeOff.map(normalizeTimeOff) : [],
     schedulePrintSettings: normalizeSchedulePrintSettings(raw.schedulePrintSettings),
     importColumnMap: raw.importColumnMap && typeof raw.importColumnMap === "object" ? raw.importColumnMap : {},
+    changeoverClock: normalizeChangeoverClock(raw.changeoverClock),
   };
 }
 
@@ -302,6 +311,15 @@ function describeSyncError(err: unknown): string {
   return "the cloud didn't accept the last save";
 }
 
+function normalizeChangeoverClock(raw: Partial<ChangeoverClock> | undefined): ChangeoverClock {
+  const hour = (n: unknown) => (Number.isInteger(n) && (n as number) >= 1 && (n as number) <= SHIFT_HOURS ? (n as number) : 0);
+  return {
+    start: typeof raw?.start === "string" && /^\d{2}:\d{2}$/.test(raw.start) ? raw.start : "",
+    breakHours: Array.isArray(raw?.breakHours) ? raw.breakHours.map(hour).filter(Boolean) : [],
+    lunchHour: hour(raw?.lunchHour),
+  };
+}
+
 export function seedDataForShift(shift: ShiftKey): AppData {
   return buildSeedData(shift);
 }
@@ -319,5 +337,6 @@ export function emptyAppData(): AppData {
     timeOff: [],
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
     importColumnMap: {},
+    changeoverClock: { start: "", breakHours: [], lunchHour: 0 },
   };
 }

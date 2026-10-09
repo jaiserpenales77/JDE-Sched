@@ -2558,6 +2558,42 @@ td.time-off-is-today {
   line-height: 1.5;
 }
 
+/* Estimated changeover: on each line's running work order, and the shift
+   start / break / lunch settings it counts from. */
+.co-estimate {
+  font-style: italic;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--accent-dark);
+}
+.print-schedule .co-estimate {
+  color: #1d4ed8;
+}
+.estimate-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.estimate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.estimate-field input,
+.estimate-field select {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-weight: 400;
+  font-size: 14px;
+}
+
 /* Type WIPE to confirm: Reset to sample data / Wipe all data. */
 .confirm-dialog {
   width: min(480px, 100%);

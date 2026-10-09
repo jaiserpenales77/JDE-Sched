@@ -4,6 +4,8 @@ import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from ".
 import { lockApp, useShiftAuth } from "./auth";
 import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
+import { useLineRates } from "./lineRates";
+import { DEFAULT_SHIFT_START, changeoverEstimates } from "./scheduleLogic";
 import UnlockScreen from "./components/UnlockScreen";
 import { Brand } from "./components/LogoMark";
 import ProductionSchedule from "./components/ProductionSchedule";
@@ -126,6 +128,14 @@ function App() {
     schedulePrintSettings,
     importColumnMap,
   } = data;
+  // Estimated changeover time on each line's running work order, from the
+  // Hub's Line Rates and when this shift starts.
+  const lineRates = useLineRates(!!shift);
+  const changeoverClock = {
+    ...data.changeoverClock,
+    start: data.changeoverClock.start || DEFAULT_SHIFT_START[shift ?? "1st"],
+  };
+  const changeoverTimes = changeoverEstimates(workOrders, lineRates, changeoverClock);
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
@@ -468,6 +478,9 @@ function App() {
             setColumnOrder={setScheduleColumnOrder}
             design={schedulePrintSettings}
             setDesign={setSchedulePrintSettings}
+            changeoverTimes={changeoverTimes}
+            changeoverClock={changeoverClock}
+            setChangeoverClock={(clock) => setData((d) => ({ ...d, changeoverClock: clock }))}
           />
         )}
         {tab === "assignments" && (
@@ -576,6 +589,7 @@ function App() {
             hiddenColumns={printScheduleHiddenColumns}
             columnOrder={printScheduleColumnOrder}
             design={schedulePrintSettings}
+            changeoverTimes={changeoverTimes}
           />
         </div>
       </div>

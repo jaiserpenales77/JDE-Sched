@@ -221,6 +221,17 @@ export interface AppData {
   // (letters and digits only, upper case) -> the schedule field it goes
   // into, or "" for a column that should be left out.
   importColumnMap: Record<string, string>;
+  // When the shift starts and which of its hours have a break or lunch -
+  // for the estimated changeover time on each line's running work order.
+  changeoverClock: ChangeoverClock;
+}
+
+export interface ChangeoverClock {
+  // "HH:MM" (24-hour); "" = the shift's usual start.
+  start: string;
+  // Hours of the shift (1 = the first hour) that have a break / lunch.
+  breakHours: number[];
+  lunchHour: number; // 0 = none
 }
 
 // Look of the printed Production Schedule report. Page options mirror the
