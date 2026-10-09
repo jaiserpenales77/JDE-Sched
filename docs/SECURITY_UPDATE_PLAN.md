@@ -9,7 +9,8 @@ the `claude/file-to-application-l25bre` branch deploys to the live app.
 - **New name: LineUp.** JDE Sched is renamed LineUp. Same web address,
   same data.
 
-- Opening the app shows an **Unlock** screen: pick your shift, type that
+- Opening the app plays a short intro (about 3 seconds; a click or any
+  key skips it), then shows an **Unlock** screen: pick your shift, type that
   shift's password. Each password opens only its own shift's data.
 - The password is needed **every time the app is opened**. It stays
   unlocked while it's open (refreshing the page is fine) until it's closed

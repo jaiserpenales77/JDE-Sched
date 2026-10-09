@@ -2730,3 +2730,249 @@ td.time-off-is-today {
     display: none !important;
   }
 }
+
+/* ---------- Intro: plays when the app is opened ---------- */
+/* Timeline (seconds): 0.00 belt draws in · 0.10-1.00 bottles ride in ·
+   0.95-1.35 cap drops · 1.15 "Welcome to" · 1.30 name and ready ring ·
+   2.60 fades into the app. */
+.intro-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  background: radial-gradient(circle at 50% 58%, #1e3a8a 0%, #0f172a min(75vw, 520px));
+  color: #f8fafc;
+  cursor: pointer;
+  overflow: hidden;
+}
+.intro-stage {
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.intro-welcome {
+  font-size: clamp(18px, 5vw, 26px);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #fde047;
+}
+.intro-name {
+  font-family: "Barlow Semi Condensed", "Segoe UI", system-ui, sans-serif;
+  font-size: clamp(42px, 11vw, 64px);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+.intro-up {
+  color: #facc15;
+}
+.intro-tag {
+  font-size: clamp(13px, 3.6vw, 16px);
+  color: #94a3b8;
+  text-align: center;
+}
+.intro-scene {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin-top: 6px;
+}
+.intro-skip {
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+.intro-belt {
+  fill: #1e293b;
+  stroke: #334155;
+  stroke-width: 1.5;
+}
+.intro-track {
+  fill: none;
+  stroke: #334155;
+  stroke-width: 2;
+  stroke-dasharray: 10 12;
+}
+.intro-leg {
+  fill: #475569;
+}
+.intro-roller {
+  fill: #475569;
+  stroke: #334155;
+  stroke-width: 1.5;
+}
+.intro-spoke {
+  stroke: #1e293b;
+  stroke-width: 2;
+}
+.intro-glass {
+  fill: url(#intro-glass);
+  stroke: #c98142;
+  stroke-opacity: 0.5;
+  stroke-width: 1;
+}
+.intro-shine {
+  fill: #ffffff;
+  opacity: 0.5;
+}
+.intro-spec {
+  fill: #ffffff;
+  opacity: 0.75;
+}
+.intro-label {
+  fill: #fde047;
+  stroke: #ca8a04;
+  stroke-opacity: 0.35;
+  stroke-width: 0.75;
+}
+.intro-cap {
+  fill: #facc15;
+}
+.intro-ridge {
+  stroke: #ca8a04;
+  stroke-width: 1.5;
+}
+.intro-ring {
+  fill: none;
+  stroke: #4ade80;
+  stroke-width: 2.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.intro-roller-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.intro-splash .intro-belt-group {
+  animation: intro-belt-in 0.3s ease-out both;
+  transform-origin: 240px 198px;
+}
+.intro-splash .intro-slide {
+  animation: intro-slide-in 0.9s cubic-bezier(0.16, 0.84, 0.3, 1) 0.1s both;
+}
+.intro-splash .intro-track {
+  animation: intro-belt-run 0.9s cubic-bezier(0.16, 0.84, 0.3, 1) 0.1s both;
+}
+.intro-splash .intro-roller-spin {
+  animation: intro-spin 0.9s cubic-bezier(0.16, 0.84, 0.3, 1) 0.1s both;
+}
+.intro-splash .intro-cap-drop {
+  animation: intro-cap-drop 0.4s 0.95s both;
+}
+.intro-splash .intro-ring {
+  animation: intro-ring 0.6s ease-out 1.3s;
+}
+.intro-splash .intro-welcome {
+  animation: intro-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 1.15s both;
+}
+.intro-splash .intro-name {
+  animation: intro-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 1.3s both;
+}
+.intro-splash .intro-tag {
+  animation: intro-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 1.45s both;
+}
+.intro-splash .intro-skip {
+  animation: intro-fade-in 0.4s ease 0.5s both;
+}
+.intro-splash.leaving {
+  animation: intro-out 0.45s ease forwards;
+}
+.intro-splash.leaving .intro-stage {
+  animation: intro-grow 0.45s ease forwards;
+}
+.intro-splash.skipping {
+  animation: intro-out 0.2s ease forwards;
+}
+@keyframes intro-belt-in {
+  from {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+}
+@keyframes intro-slide-in {
+  from {
+    transform: translateX(-340px);
+  }
+}
+@keyframes intro-belt-run {
+  from {
+    stroke-dashoffset: 340;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes intro-spin {
+  from {
+    transform: rotate(-2435deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+@keyframes intro-cap-drop {
+  0% {
+    transform: translateY(-120px);
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.5, 0, 1, 1);
+  }
+  20% {
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(0);
+    animation-timing-function: ease-out;
+  }
+  80% {
+    transform: translateY(-7px);
+    animation-timing-function: ease-in;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes intro-ring {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+@keyframes intro-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes intro-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes intro-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes intro-grow {
+  to {
+    transform: scale(1.04);
+  }
+}
+@media print {
+  .intro-splash {
+    display: none;
+  }
+}
