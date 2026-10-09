@@ -274,17 +274,18 @@ export function formatClock(minutes: number): string {
 }
 
 // Minutes after midnight when `remaining` bottles are done. Past the end of
-// the shift it carries on in full hours.
+// the shift it carries on into the next shifts, with their breaks and lunch
+// in the same hours of each shift.
 export function estimateFinish(remaining: number, rate: LineRate, clock: ChangeoverClock): number | null {
   if (!(rate.fullHour > 0) || !(remaining >= 0)) return null;
   let left = remaining;
   let t = parseClock(clock.start);
   for (let hour = 1; hour <= 24 * 7; hour++) {
-    const inShift = hour <= SHIFT_HOURS;
+    const hourOfShift = ((hour - 1) % SHIFT_HOURS) + 1;
     const perHour =
-      inShift && hour === clock.lunchHour
+      hourOfShift === clock.lunchHour
         ? (rate.lunch ?? rate.fullHour)
-        : inShift && clock.breakHours.includes(hour)
+        : clock.breakHours.includes(hourOfShift)
           ? (rate.break ?? rate.fullHour)
           : rate.fullHour;
     if (left <= perHour) return perHour > 0 ? t + (left / perHour) * 60 : t;
