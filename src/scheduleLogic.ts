@@ -295,7 +295,8 @@ export function estimateFinish(remaining: number, rate: LineRate, clock: Changeo
 }
 
 // "8:29 AM" for each of `lines` (the ticked Scheduled Lines) whose running
-// work order has a % Complete and a stored rate; other lines are left out.
+// work order has a stored rate; other lines are left out. A work order with
+// no Bottles Remaining yet (no % Complete) counts its whole WO Quantity.
 export function changeoverEstimates(
   workOrders: WorkOrder[],
   rates: LineRates,
@@ -306,8 +307,10 @@ export function changeoverEstimates(
   for (const { line, rows } of groupByLine(workOrders)) {
     if (!lines.includes(line)) continue;
     const first = rows[0];
-    const remaining = first ? bottlesRemaining(first) : "";
-    if (remaining === "") continue;
+    if (!first) continue;
+    const left = bottlesRemaining(first);
+    const remaining = left !== "" ? left : first.woQuantity !== "" ? Number(first.woQuantity) : null;
+    if (remaining === null || !Number.isFinite(remaining)) continue;
     const rate = findLineRate(rates, line, first.item);
     const at = rate ? estimateFinish(remaining, rate, clock) : null;
     if (at !== null) out[line] = formatClock(at);
