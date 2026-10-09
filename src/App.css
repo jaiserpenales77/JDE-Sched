@@ -106,6 +106,43 @@ select option {
   color: #94a3b8;
 }
 
+/* The logo and the name: in the header, and on the unlock and loading cards. */
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  flex: none;
+  /* The conveyor belt under the bottles. */
+  color: #334155;
+}
+.brand-name {
+  display: block;
+  font-family: "Barlow Semi Condensed", "Segoe UI", system-ui, sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  /* Room for the "p" in Up above the line under it. */
+  padding-bottom: 0.16em;
+}
+.brand-up {
+  color: #facc15;
+}
+.shift-chooser-card .app-brand {
+  flex-direction: column;
+  gap: 8px;
+}
+.shift-chooser-card .brand-mark {
+  color: var(--text);
+}
+.shift-chooser-card .brand-name {
+  font-size: 34px;
+}
+.shift-chooser-card .brand-up {
+  color: var(--warn);
+}
+
 .tabs {
   display: flex;
   gap: 4px;

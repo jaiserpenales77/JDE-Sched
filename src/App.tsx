@@ -5,6 +5,7 @@ import { lockApp, useShiftAuth } from "./auth";
 import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import UnlockScreen from "./components/UnlockScreen";
+import { Brand } from "./components/LogoMark";
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
 import SkillsRoles from "./components/SkillsRoles";
@@ -333,10 +334,7 @@ function App() {
     return (
       <div className="shift-chooser">
         <div className="shift-chooser-card">
-          <div className="app-title">
-            LineUp
-            <small>Production Line Schedule &amp; Crew Board</small>
-          </div>
+          <Brand markSize={56} />
           <p className="shift-chooser-hint">Loading…</p>
         </div>
       </div>
@@ -354,10 +352,7 @@ function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title">
-          LineUp
-          <small>Production Line Schedule &amp; Crew Board</small>
-        </div>
+        <Brand markSize={34} />
         <nav className="tabs">
           <button className={`tab-btn ${tab === "schedule" ? "active" : ""}`} onClick={() => setTab("schedule")}>
             Production Schedule

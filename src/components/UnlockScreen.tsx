@@ -4,6 +4,7 @@ import type { ShiftKey } from "../types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "../types";
 import { unlockErrorMessage, unlockShift } from "../auth";
 import { REMEMBER_HOURS } from "../rememberDevice";
+import { Brand } from "./LogoMark";
 
 interface Props {
   // The shift this computer used last, picked to start with.
@@ -47,10 +48,7 @@ export default function UnlockScreen({ lastShift, onUnlocked }: Props) {
   return (
     <div className="shift-chooser">
       <form className="shift-chooser-card unlock-card" onSubmit={submit}>
-        <div className="app-title">
-          LineUp
-          <small>Production Line Schedule &amp; Crew Board</small>
-        </div>
+        <Brand markSize={56} />
         <h1>🔒 Unlock LineUp</h1>
 
         <p className="unlock-step">1. Pick your shift</p>
