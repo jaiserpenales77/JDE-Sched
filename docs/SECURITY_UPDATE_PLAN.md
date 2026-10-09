@@ -21,6 +21,11 @@ the `claude/file-to-application-l25bre` branch deploys to the live app.
   Clicking Lock ends it right away.
 - Without a password, the data can't be opened at all, not even by someone
   who has the app's address.
+- **Auto-lock:** after 60 minutes with no click or key press, a "Still
+  there?" box gives one minute's warning, then the app saves and locks.
+  This also ends a remembered computer's 12 hours. If the last change
+  can't reach the cloud (no connection), it stays unlocked rather than
+  lose it, and tries again every minute.
 - **Reset to sample data** and **Wipe all data** open a box where WIPE
   has to be typed before they run, so a stray click can't erase a shift.
 - The Packaging Lead Hub is not affected. Its accounts can't open JDE
@@ -115,8 +120,9 @@ are locked (step 5). Locking first would cut off the current app.
 > **JDE Sched is back.** Refresh the app (or close and reopen it), pick your
 > shift and enter your shift's password. You'll need it every time you open
 > the app; refreshing the page doesn't lock it. To skip the password on a
-> computer for 12 hours, tick Remember this computer. To switch shifts,
-> click 🔒 Lock (top right) and unlock with the other shift's password.
+> computer for 12 hours, tick Remember this computer. It also locks by
+> itself after an hour without use. To switch shifts, click 🔒 Lock (top
+> right) and unlock with the other shift's password.
 
 ---
 

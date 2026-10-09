@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot, setDoc, waitForPendingWrites } from "firebase/firestore";
 import { db } from "./firebase";
 import type { AppData, DailyBoard, PrintAssignSettings, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
@@ -274,17 +274,20 @@ export function useShiftData(shift: ShiftKey | null) {
     return () => window.clearTimeout(timer);
   }, [data, shift, syncReady]);
 
-  // Sends any change still waiting on the 0.8s delay right away - used
-  // before locking the app, so the last edit isn't left unsaved.
+  // Sends any change still waiting on the 0.8s delay right away, then waits
+  // until every change has reached the cloud (including ones sent earlier
+  // while offline) - used before locking, so no edit is left unsaved.
   const latest = useRef({ shift, data, syncReady });
   latest.current = { shift, data, syncReady };
   async function saveNow(): Promise<void> {
     const { shift: s, data: d, syncReady: ready } = latest.current;
     if (!s || !ready) return;
     const json = JSON.stringify(d);
-    if (json === lastSyncedJson.current) return;
-    lastSyncedJson.current = json;
-    await setDoc(shiftDoc(s), d);
+    if (json !== lastSyncedJson.current) {
+      lastSyncedJson.current = json;
+      await setDoc(shiftDoc(s), d);
+    }
+    await waitForPendingWrites(db);
   }
 
   const history = { undo, redo, canUndo: historySize.undo > 0, canRedo: historySize.redo > 0 };

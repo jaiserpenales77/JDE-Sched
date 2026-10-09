@@ -3,6 +3,7 @@ import "./App.css";
 import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from "./storage";
 import { lockApp, useShiftAuth } from "./auth";
 import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
+import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import UnlockScreen from "./components/UnlockScreen";
 import ProductionSchedule from "./components/ProductionSchedule";
 import LineAssignments from "./components/LineAssignments";
@@ -44,6 +45,9 @@ function loadPrintChoice(shift: ShiftKey | null): PrintChoice {
   return "both";
 }
 
+// How long Lock waits for the last change to reach the cloud.
+const SAVE_BEFORE_LOCK_MS = 10_000;
+
 function App() {
   // The shift this computer used last - picked first on the unlock screen.
   const [lastShift, rememberShift] = useCurrentShift();
@@ -56,25 +60,38 @@ function App() {
   // "Reset to sample data" / "Wipe all data" waiting for WIPE to be typed.
   const [eraseAction, setEraseAction] = useState<"reset" | "wipe" | null>(null);
 
-  async function lock() {
+  // auto: locking because nobody has used it for a while. Then a change
+  // that can't be saved keeps it unlocked (it tries again) instead of
+  // asking. Resolves whether it locked.
+  async function lock(auto = false): Promise<boolean> {
     setLocking(true);
     try {
       // Send the last change before signing out, so it isn't left unsaved.
-      await sync.saveNow();
+      // Offline, the save never finishes, so give up after a while.
+      await Promise.race([
+        sync.saveNow(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("No answer from the cloud")), SAVE_BEFORE_LOCK_MS)),
+      ]);
     } catch (err) {
       console.error("Couldn't save before locking.", err);
       if (
+        auto ||
         !confirm(
           "Your last change hasn't reached the cloud yet (no connection?). If you lock now it may be lost. Lock anyway?",
         )
       ) {
         setLocking(false);
-        return;
+        return false;
       }
     }
     await lockApp();
     setLocking(false);
+    return true;
   }
+
+  // Locks by itself after an hour without a click or key press, with a
+  // one-minute "Still there?" warning first.
+  const { idle, stayUnlocked } = useIdleLock(!!shift, () => lock(true));
 
   // Ctrl/Cmd+Z undo, Ctrl/Cmd+Shift+Z or Ctrl+Y redo - except while typing
   // in a field, where the browser's own text undo should win.
@@ -369,7 +386,7 @@ function App() {
           </span>
           <button
             className="btn lock-btn"
-            onClick={lock}
+            onClick={() => lock()}
             disabled={locking}
             title="Lock the app - the next person needs a shift password. Lock, then unlock with another shift's password to switch shifts."
           >
@@ -483,6 +500,50 @@ function App() {
           onCancel={() => setPendingImport(null)}
           onImport={finishExcelImport}
         />
+      )}
+
+      {idle.kind !== "active" && (
+        <div className="modal-backdrop idle-backdrop">
+          <div
+            className="modal idle-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="idle-title"
+            aria-describedby="idle-text"
+          >
+            {idle.kind === "warning" ? (
+              <>
+                <h2 id="idle-title">Still there?</h2>
+                <p id="idle-text">
+                  To keep {SHIFT_LABELS[shift]}'s data safe, JDE Sched locks after {IDLE_LOCK_MINUTES} minutes without
+                  a click or key press. Locking in <strong>{idle.secondsLeft}</strong> second
+                  {idle.secondsLeft === 1 ? "" : "s"}.
+                </p>
+                <div className="modal-actions">
+                  <button className="btn" onClick={() => lock()} disabled={locking}>
+                    🔒 Lock now
+                  </button>
+                  <button className="btn primary" onClick={stayUnlocked}>
+                    Stay unlocked
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 id="idle-title">Couldn't lock yet</h2>
+                <p id="idle-text">
+                  Nobody has used JDE Sched for {IDLE_LOCK_MINUTES} minutes, but the last change hasn't reached the cloud
+                  (no connection?). So it stays unlocked and doesn't lose that change. It tries again every minute.
+                </p>
+                <div className="modal-actions">
+                  <button className="btn primary" onClick={stayUnlocked}>
+                    OK
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
 
       {eraseAction && (

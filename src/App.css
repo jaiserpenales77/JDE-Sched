@@ -2504,6 +2504,23 @@ td.time-off-is-today {
   margin-top: 16px;
   flex-wrap: wrap;
 }
+/* Auto-lock: "Still there?" one minute before locking. */
+.idle-backdrop {
+  z-index: 1100;
+}
+.idle-dialog {
+  width: min(440px, 100%);
+  margin-top: 12vh;
+}
+.idle-dialog h2 {
+  font-size: 20px;
+}
+.idle-dialog p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 /* Type WIPE to confirm: Reset to sample data / Wipe all data. */
 .confirm-dialog {
   width: min(480px, 100%);
