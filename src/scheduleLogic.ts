@@ -294,15 +294,17 @@ export function estimateFinish(remaining: number, rate: LineRate, clock: Changeo
   return null;
 }
 
-// "8:29 AM" for each line whose running work order has a % Complete and a
-// stored rate; lines without one are left out.
+// "8:29 AM" for each of `lines` (the ticked Scheduled Lines) whose running
+// work order has a % Complete and a stored rate; other lines are left out.
 export function changeoverEstimates(
   workOrders: WorkOrder[],
   rates: LineRates,
   clock: ChangeoverClock,
+  lines: readonly string[],
 ): Record<string, string> {
   const out: Record<string, string> = {};
   for (const { line, rows } of groupByLine(workOrders)) {
+    if (!lines.includes(line)) continue;
     const first = rows[0];
     const remaining = first ? bottlesRemaining(first) : "";
     if (remaining === "") continue;

@@ -135,7 +135,8 @@ function App() {
     ...data.changeoverClock,
     start: data.changeoverClock.start || DEFAULT_SHIFT_START[shift ?? "1st"],
   };
-  const changeoverTimes = changeoverEstimates(workOrders, lineRates, changeoverClock);
+  // Only for the lines ticked in Scheduled Lines.
+  const changeoverTimes = changeoverEstimates(workOrders, lineRates, changeoverClock, scheduledLines);
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);

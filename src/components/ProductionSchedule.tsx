@@ -165,10 +165,10 @@ function ChangeoverClockSettings({
     <div className="panel estimate-settings">
       <h2>Estimated changeover</h2>
       <p className="panel-hint">
-        Shown in the Changeover column of each line's running work order: when its bottles remaining will be done, at
-        the line's rate for that FG item from the Packaging Lead Hub's Line Rates. It counts from the shift's start and
-        uses the Break and Lunch rates in those hours. Lines that run through breaks and lunch (no Break or Lunch rate
-        in the Hub) use the Full Hour rate all shift.
+        Shown for each ticked Scheduled Line, in the Changeover column of its running work order: when its bottles
+        remaining will be done, at the line's rate for that FG item from the Packaging Lead Hub's Line Rates. It counts
+        from the shift's start and uses the Break and Lunch rates in those hours. Lines that run through breaks and
+        lunch (no Break or Lunch rate in the Hub) use the Full Hour rate all shift.
       </p>
       <div className="estimate-fields">
         <label className="estimate-field" htmlFor="co-start">
@@ -306,8 +306,8 @@ export default function ProductionSchedule({
         <div className="panel">
           <h2>Scheduled Lines</h2>
           <p className="panel-hint">
-            Tick a line to box it in green on the print report. Click READY, PM or OT to tag the line on the
-            printout — click it again to clear it.
+            Tick a line to box it in green on the print report and show its estimated changeover time. Click READY,
+            PM or OT to tag the line on the printout — click it again to clear it.
           </p>
           <div className="scheduled-lines-grid">
             {groups.map((group) => {
