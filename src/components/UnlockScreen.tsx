@@ -49,7 +49,6 @@ export default function UnlockScreen({ lastShift, onUnlocked }: Props) {
     <div className="shift-chooser">
       <form className="shift-chooser-card unlock-card" onSubmit={submit}>
         <Brand markSize={56} />
-        <h1>🔒 Unlock LineUp</h1>
 
         <p className="unlock-step">1. Pick your shift</p>
         <div className="shift-chooser-options" role="radiogroup" aria-label="Shift">
