@@ -25,7 +25,7 @@ export function readAppDataFromJsonFile(file: File): Promise<AppData> {
     reader.onload = () => {
       try {
         const parsed = JSON.parse(reader.result as string);
-        if (!parsed || typeof parsed !== "object") throw new Error("Not a valid JDE Sched backup file.");
+        if (!parsed || typeof parsed !== "object") throw new Error("Not a valid LineUp backup file.");
         resolve(normalizeAppData(parsed as Partial<AppData>));
       } catch (err) {
         reject(err);

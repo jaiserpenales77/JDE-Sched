@@ -334,7 +334,7 @@ function App() {
       <div className="shift-chooser">
         <div className="shift-chooser-card">
           <div className="app-title">
-            JDE Sched
+            LineUp
             <small>Production Line Schedule &amp; Crew Board</small>
           </div>
           <p className="shift-chooser-hint">Loading…</p>
@@ -355,7 +355,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="app-title">
-          JDE Sched
+          LineUp
           <small>Production Line Schedule &amp; Crew Board</small>
         </div>
         <nav className="tabs">
@@ -515,7 +515,7 @@ function App() {
               <>
                 <h2 id="idle-title">Still there?</h2>
                 <p id="idle-text">
-                  To keep {SHIFT_LABELS[shift]}'s data safe, JDE Sched locks after {IDLE_LOCK_MINUTES} minutes without
+                  To keep {SHIFT_LABELS[shift]}'s data safe, LineUp locks after {IDLE_LOCK_MINUTES} minutes without
                   a click or key press. Locking in <strong>{idle.secondsLeft}</strong> second
                   {idle.secondsLeft === 1 ? "" : "s"}.
                 </p>
@@ -532,7 +532,7 @@ function App() {
               <>
                 <h2 id="idle-title">Couldn't lock yet</h2>
                 <p id="idle-text">
-                  Nobody has used JDE Sched for {IDLE_LOCK_MINUTES} minutes, but the last change hasn't reached the cloud
+                  Nobody has used LineUp for {IDLE_LOCK_MINUTES} minutes, but the last change hasn't reached the cloud
                   (no connection?). So it stays unlocked and doesn't lose that change. It tries again every minute.
                 </p>
                 <div className="modal-actions">

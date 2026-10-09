@@ -1,10 +1,13 @@
-# JDE Sched security update: maintenance plan
+# LineUp (formerly JDE Sched) security update: maintenance plan
 
 The update adds **one password per shift**. Until the maintenance window,
 it lives on the `claude/security-update` branch and nobody sees it: only
 the `claude/file-to-application-l25bre` branch deploys to the live app.
 
 ## What changes for people using the app
+
+- **New name: LineUp.** JDE Sched is renamed LineUp. Same web address,
+  same data.
 
 - Opening the app shows an **Unlock** screen: pick your shift, type that
   shift's password. Each password opens only its own shift's data.
@@ -28,8 +31,8 @@ the `claude/file-to-application-l25bre` branch deploys to the live app.
   lose it, and tries again every minute.
 - **Reset to sample data** and **Wipe all data** open a box where WIPE
   has to be typed before they run, so a stray click can't erase a shift.
-- The Packaging Lead Hub is not affected. Its accounts can't open JDE
-  Sched, and the JDE Sched passwords can't open the Hub.
+- The Packaging Lead Hub is not affected. Its accounts can't open LineUp,
+  and the LineUp passwords can't open the Hub.
 
 ---
 
@@ -72,7 +75,8 @@ These logins do nothing until the new version is live.
 **Announcement (send ahead of time):**
 
 > **JDE Sched maintenance: [day, date] from [start] to [end].**
-> We're adding a password to JDE Sched so only our team can open it.
+> We're adding a password to JDE Sched so only our team can open it, and
+> giving it a new name: **LineUp**. Same web address, same data.
 > Please finish your edits and close the app before [start]. Don't use it
 > during the maintenance. Afterward, open it again (or refresh it), pick
 > your shift, and enter your shift's password. You'll need it every time
@@ -117,8 +121,9 @@ are locked (step 5). Locking first would cut off the current app.
 
 **Announcement (all-clear):**
 
-> **JDE Sched is back.** Refresh the app (or close and reopen it), pick your
-> shift and enter your shift's password. You'll need it every time you open
+> **JDE Sched is back, now called LineUp.** Same web address, same data.
+> Refresh the app (or close and reopen it), pick your shift and enter your
+> shift's password. You'll need it every time you open
 > the app; refreshing the page doesn't lock it. To skip the password on a
 > computer for 12 hours, tick Remember this computer. It also locks by
 > itself after an hour without use. To switch shifts, click 🔒 Lock (top

@@ -1,4 +1,6 @@
-# JDE Sched
+# LineUp
+
+Formerly JDE Sched.
 
 A web app version of the "JDE Sched" production scheduling spreadsheet
 (`JDE_Sched_FINAL_v1.8.xlsm`), rebuilt as a React single-page app so the
