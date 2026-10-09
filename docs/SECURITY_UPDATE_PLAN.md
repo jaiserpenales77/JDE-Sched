@@ -21,6 +21,8 @@ the `claude/file-to-application-l25bre` branch deploys to the live app.
   Clicking Lock ends it right away.
 - Without a password, the data can't be opened at all, not even by someone
   who has the app's address.
+- **Reset to sample data** and **Wipe all data** open a box where WIPE
+  has to be typed before they run, so a stray click can't erase a shift.
 - The Packaging Lead Hub is not affected. Its accounts can't open JDE
   Sched, and the JDE Sched passwords can't open the Hub.
 

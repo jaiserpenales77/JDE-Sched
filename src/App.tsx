@@ -10,6 +10,7 @@ import SkillsRoles from "./components/SkillsRoles";
 import TimeOff from "./components/TimeOff";
 import ImportColumnsDialog from "./components/ImportColumnsDialog";
 import PrintMenu from "./components/PrintMenu";
+import TypeToConfirmDialog from "./components/TypeToConfirmDialog";
 import type { PrintChoice } from "./components/PrintMenu";
 import { todayIso } from "./timeOffLogic";
 import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
@@ -52,6 +53,8 @@ function App() {
   const shift = shiftAuth.shift;
   const [data, setData, history, sync] = useShiftData(shift);
   const [locking, setLocking] = useState(false);
+  // "Reset to sample data" / "Wipe all data" waiting for WIPE to be typed.
+  const [eraseAction, setEraseAction] = useState<"reset" | "wipe" | null>(null);
 
   async function lock() {
     setLocking(true);
@@ -303,19 +306,10 @@ function App() {
     setTab("schedule");
   }
 
-  function handleResetToSample() {
-    if (
-      !confirm(
-        `Replace this shift's (${shift ? SHIFT_LABELS[shift] : ""}) Production Schedule, roster and boards with the original sample data from the spreadsheet?`,
-      )
-    )
-      return;
-    if (shift) setData(seedDataForShift(shift));
-  }
-
-  function handleWipe() {
-    if (!confirm(`This will erase all of this shift's (${shift ? SHIFT_LABELS[shift] : ""}) data. Continue?`)) return;
-    setData(emptyAppData());
+  function confirmErase() {
+    if (eraseAction === "reset" && shift) setData(seedDataForShift(shift));
+    if (eraseAction === "wipe") setData(emptyAppData());
+    setEraseAction(null);
   }
 
   if (shiftAuth.status === "loading") {
@@ -432,10 +426,10 @@ function App() {
             style={{ display: "none" }}
             onChange={(e) => e.target.files?.[0] && handleJsonImport(e.target.files[0])}
           />
-          <button className="btn" onClick={handleResetToSample}>
+          <button className="btn" onClick={() => setEraseAction("reset")}>
             Reset to sample data
           </button>
-          <button className="btn danger" onClick={handleWipe}>
+          <button className="btn danger" onClick={() => setEraseAction("wipe")}>
             Wipe all data
           </button>
         </div>
@@ -489,6 +483,22 @@ function App() {
           onCancel={() => setPendingImport(null)}
           onImport={finishExcelImport}
         />
+      )}
+
+      {eraseAction && (
+        <TypeToConfirmDialog
+          title={eraseAction === "wipe" ? `Wipe all of ${SHIFT_LABELS[shift]}'s data?` : `Reset ${SHIFT_LABELS[shift]} to sample data?`}
+          actionLabel={eraseAction === "wipe" ? "Wipe all data" : "Reset to sample data"}
+          onConfirm={confirmErase}
+          onCancel={() => setEraseAction(null)}
+        >
+          <p>
+            {eraseAction === "wipe" ? "This erases" : "This replaces"} everything in <strong>{SHIFT_LABELS[shift]}</strong>
+            : the Production Schedule, Line Assignments, Skills &amp; Roles and Time Off
+            {eraseAction === "reset" && ", with the original sample data"}. The other shifts aren't affected.
+          </p>
+          <p>Undo (top left) can only bring it back until the page is refreshed.</p>
+        </TypeToConfirmDialog>
       )}
 
       <footer className="toolbar-footer">
