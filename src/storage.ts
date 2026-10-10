@@ -12,7 +12,14 @@ import type {
 } from "./types";
 import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
-import { SHIFT_HOURS, defaultChangeoverClock, normalizeLineStatus } from "./scheduleLogic";
+import {
+  DEFAULT_PRINT_COLUMN_TITLES,
+  MAX_PRINT_COLUMN_TITLE_LENGTH,
+  SCHEDULE_COLUMN_LABELS,
+  SHIFT_HOURS,
+  defaultChangeoverClock,
+  normalizeLineStatus,
+} from "./scheduleLogic";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
 const HISTORY_LIMIT = 50;
@@ -90,7 +97,21 @@ function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | 
   for (const key of Object.keys(OLD_STATUS_DEFAULTS) as (keyof typeof OLD_STATUS_DEFAULTS)[]) {
     if (merged[key].toLowerCase() === OLD_STATUS_DEFAULTS[key]) merged[key] = defaultSchedulePrintSettings[key];
   }
+  merged.columnTitles = normalizeColumnTitles(rest.columnTitles);
   return merged;
+}
+
+// Printed column titles: text, for known columns only. Settings saved
+// before the titles could be changed get the short defaults.
+function normalizeColumnTitles(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_PRINT_COLUMN_TITLES };
+  const titles: Record<string, string> = {};
+  for (const [key, title] of Object.entries(raw)) {
+    if (Object.hasOwn(SCHEDULE_COLUMN_LABELS, key) && typeof title === "string") {
+      titles[key] = title.slice(0, MAX_PRINT_COLUMN_TITLE_LENGTH);
+    }
+  }
+  return titles;
 }
 
 export function normalizeAppData(raw: Partial<AppData>): AppData {

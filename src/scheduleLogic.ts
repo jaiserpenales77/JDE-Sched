@@ -56,6 +56,25 @@ export const SCHEDULE_COLUMN_LABELS: Record<ScheduleColumnKey, string> = {
   changeover: "CHANGEOVER",
 };
 
+// Shorter titles for the printout's narrow columns, so a title isn't what
+// makes its column wider than the numbers in it. Each one can be changed
+// in Customize Print Design.
+export const DEFAULT_PRINT_COLUMN_TITLES: Record<string, string> = {
+  count: "CT",
+  bottleSize: "BTL SIZE",
+  allergen: "ALLRG",
+  woQuantity: "WO QTY",
+  bottlesRemaining: "BTLS LEFT",
+};
+
+export const MAX_PRINT_COLUMN_TITLE_LENGTH = 40;
+
+// A column's title on the printout: the one set in Customize Print Design,
+// or the column's full name when that's blank.
+export function printColumnTitle(key: ScheduleColumnKey, titles: Record<string, string>): string {
+  return titles[key]?.trim() || SCHEDULE_COLUMN_LABELS[key];
+}
+
 // Seq order: numbers compare as numbers (so 6.5 sits between 6 and 7);
 // anything else compares as text, numbers-aware.
 function compareSeq(a: string, b: string): number {

@@ -1,6 +1,6 @@
 import type { AppData, DailyBoard, Employee, PrintAssignSettings, SchedulePrintSettings, ShiftKey, WorkOrder } from "./types";
 import { SHIFT_LABELS } from "./types";
-import { defaultChangeoverClock } from "./scheduleLogic";
+import { DEFAULT_PRINT_COLUMN_TITLES, defaultChangeoverClock } from "./scheduleLogic";
 
 // Seed data carried over from JDE_Sched_FINAL_v1.8.xlsm so the app opens
 // with the same production schedule / roster the spreadsheet had, instead
@@ -231,8 +231,8 @@ export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
   }));
 }
 
-// Matches the printed Production Schedule's original look, so an existing
-// shift prints exactly as before until someone changes a setting.
+// Matches the printed Production Schedule's original look, apart from the
+// shorter titles on its narrow columns.
 export const defaultSchedulePrintSettings: SchedulePrintSettings = {
   orientation: "landscape",
   printScaleMode: "fixed",
@@ -243,6 +243,7 @@ export const defaultSchedulePrintSettings: SchedulePrintSettings = {
   titleFontSize: 16,
   headerFontSize: 6.5,
   textFontSize: 7,
+  columnTitles: DEFAULT_PRINT_COLUMN_TITLES,
   headerFillColor: "#d9d9d9",
   formulaColColor: "#fff9db",
   allergenColor: "#f8cbad",

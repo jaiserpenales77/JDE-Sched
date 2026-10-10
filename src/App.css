@@ -1604,6 +1604,30 @@ tr.print-line-spacer td {
   white-space: nowrap;
 }
 
+/* Customize Print Design: the printed column titles. */
+.print-titles-head {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.print-titles-head span {
+  display: block;
+  margin-top: 2px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.print-title-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px 12px;
+}
+/* Upper case, the way they print. */
+.print-title-name,
+.print-title-fields input[type="text"] {
+  text-transform: uppercase;
+}
+
 .print-design-colors {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

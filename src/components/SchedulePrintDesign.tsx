@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { SchedulePrintSettings } from "../types";
 import { defaultSchedulePrintSettings } from "../seedData";
+import { MAX_PRINT_COLUMN_TITLE_LENGTH, SCHEDULE_COLUMN_LABELS, orderedScheduleColumns } from "../scheduleLogic";
+import type { ScheduleColumnKey } from "../scheduleLogic";
 import PageSizeControls from "./PageSizeControls";
 import { ColorField } from "./PrintDesignSettings";
 
@@ -20,6 +22,10 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
 
   function set<K extends keyof SchedulePrintSettings>(key: K, value: SchedulePrintSettings[K]) {
     setSettings((s) => ({ ...s, [key]: value }));
+  }
+
+  function setColumnTitle(key: ScheduleColumnKey, title: string) {
+    setSettings((s) => ({ ...s, columnTitles: { ...s.columnTitles, [key]: title } }));
   }
 
   return (
@@ -62,6 +68,30 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
               <input type="checkbox" checked={settings.showDate} onChange={(e) => set("showDate", e.target.checked)} />
               Show today's date under the title
             </label>
+          </div>
+
+          <div>
+            <div className="print-titles-head">
+              Column titles on the printout
+              <span>
+                Short titles keep narrow columns narrow, so Product Description, Cap Description and Remarks get more
+                room. Leave a box blank to print the column's full name.
+              </span>
+            </div>
+            <div className="print-title-fields">
+              {orderedScheduleColumns([]).map((key) => (
+                <label className="print-design-field" key={key}>
+                  <span className="print-title-name">{SCHEDULE_COLUMN_LABELS[key]}</span>
+                  <input
+                    type="text"
+                    value={settings.columnTitles[key] ?? ""}
+                    placeholder={SCHEDULE_COLUMN_LABELS[key]}
+                    maxLength={MAX_PRINT_COLUMN_TITLE_LENGTH}
+                    onChange={(e) => setColumnTitle(key, e.target.value)}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="print-design-row">

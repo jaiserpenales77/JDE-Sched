@@ -246,6 +246,8 @@ export interface SchedulePrintSettings {
   titleFontSize: number; // pt
   headerFontSize: number; // pt
   textFontSize: number; // pt
+  // Printed column titles by column key; blank = the column's full name.
+  columnTitles: Record<string, string>;
   headerFillColor: string;
   formulaColColor: string;
   allergenColor: string;

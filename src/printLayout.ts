@@ -342,3 +342,16 @@ export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
     "--sched-count-changed": d.countChangedColor,
   } as CSSProperties;
 }
+
+// How wide the printed Production Schedule is laid out, in CSS px: the
+// page inside its margins, divided by a fixed Print size's zoom - the same
+// sizing as the print effect in App.tsx. A "fit" shrink happens after
+// layout, so it doesn't change how the columns share the width.
+export function printedScheduleWidthPx(d: SchedulePrintSettings): number {
+  const PX_PER_IN = 96;
+  const marginMm = Math.min(30, Math.max(0, Number(d.printMarginMm) || 0));
+  const pageWidthIn = d.orientation === "landscape" ? 11 : 8.5;
+  const widthPx = pageWidthIn * PX_PER_IN - ((marginMm * PX_PER_IN) / 25.4) * 2;
+  const zoom = d.printScaleMode === "fixed" ? Math.min(200, Math.max(25, Number(d.printScalePercent) || 100)) / 100 : 1;
+  return widthPx / zoom;
+}

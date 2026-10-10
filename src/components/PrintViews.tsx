@@ -21,7 +21,7 @@ import {
   isBulkHighlightRow,
   lineStatusLabel,
   orderedScheduleColumns,
-  SCHEDULE_COLUMN_LABELS,
+  printColumnTitle,
 } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
 import {
@@ -29,6 +29,7 @@ import {
   chunk,
   nameRoleClass,
   pageBoxKeys,
+  printedScheduleWidthPx,
   resolveBoxLayout,
   scheduleCssVars,
   sectionHeaderStyle,
@@ -234,33 +235,53 @@ export function PrintSchedule({
     setDrag(null);
   }
 
-  // How wide a column's contents want to be, in px: its widest cell, or
-  // the longest word of its title (titles wrap).
-  function contentWidth(key: ScheduleColumnKey): number {
+  // How wide each column's contents want to be, in px: its widest cell on
+  // one line, or the longest word of its printed title (titles wrap). The
+  // cells are measured on a hidden copy of the table that's free to size
+  // itself, so a column that's wider than its contents can shrink back.
+  function contentWidths(): Map<ScheduleColumnKey, number> {
+    const widths = new Map<ScheduleColumnKey, number>();
     const table = tableRef.current;
-    if (!table) return 0;
-    let widest = 0;
-    table.querySelectorAll<HTMLElement>(`td[data-col="${key}"]`).forEach((td) => {
-      widest = Math.max(widest, td.scrollWidth + 2);
+    if (!table) return widths;
+    const atLeast = (key: ScheduleColumnKey, px: number) => widths.set(key, Math.max(widths.get(key) ?? 0, px));
+
+    const copy = table.cloneNode(true) as HTMLTableElement;
+    copy.querySelector("colgroup")?.remove();
+    copy.querySelector("thead")?.remove();
+    Object.assign(copy.style, {
+      position: "absolute",
+      left: "0",
+      top: "0",
+      visibility: "hidden",
+      width: "max-content",
+      tableLayout: "auto",
     });
-    const th = table.querySelector<HTMLElement>(`th[data-col="${key}"]`);
-    if (th) {
-      const ctx = document.createElement("canvas").getContext("2d");
-      if (ctx) {
-        const cs = getComputedStyle(th);
-        ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-        const words = SCHEDULE_COLUMN_LABELS[key].toUpperCase().split(/\s+/);
-        const longest = Math.max(...words.map((w) => ctx.measureText(w).width));
-        widest = Math.max(widest, longest + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 4);
-      }
-    }
-    return widest;
+    table.after(copy);
+    copy.querySelectorAll<HTMLElement>("td[data-col]").forEach((td) => {
+      // A little slack, so no cell ends in "…" on the printout.
+      atLeast(td.dataset.col as ScheduleColumnKey, td.getBoundingClientRect().width + 4);
+    });
+    copy.remove();
+
+    const ctx = document.createElement("canvas").getContext("2d");
+    table.querySelectorAll<HTMLElement>("th[data-col]").forEach((th) => {
+      if (!ctx) return;
+      const key = th.dataset.col as ScheduleColumnKey;
+      const cs = getComputedStyle(th);
+      ctx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const words = printColumnTitle(key, design.columnTitles).toUpperCase().split(/\s+/);
+      const longest = Math.max(...words.map((w) => ctx.measureText(w).width));
+      atLeast(key, longest + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 4);
+    });
+    return widths;
   }
 
+  // Fitting sizes columns for the printed page, which is usually narrower
+  // than this preview (the text is the same size on both).
   function fitColumn(key: ScheduleColumnKey) {
     if (!setColumnWidths || !tableRef.current) return;
-    const tableW = tableRef.current.getBoundingClientRect().width;
-    const share = Math.min(MAX_FIT_SHARE, contentWidth(key) / tableW);
+    const tableW = printedScheduleWidthPx(design);
+    const share = Math.min(MAX_FIT_SHARE, (contentWidths().get(key) ?? 0) / tableW);
     setColumnWidths((w) => ({ ...w, [key]: widthForShare(key, share) }));
   }
 
@@ -269,8 +290,10 @@ export function PrintSchedule({
   // evenly. If everything fits, the spare room is spread in proportion.
   function fitAllColumns() {
     if (!setColumnWidths || !tableRef.current) return;
-    const tableW = tableRef.current.getBoundingClientRect().width;
-    const wanted = visibleKeys.map((key) => Math.min(contentWidth(key), tableW * MAX_FIT_SHARE));
+    const tableW = printedScheduleWidthPx(design);
+    const content = contentWidths();
+    const minW = (tableW * MIN_COLUMN_PCT) / 100;
+    const wanted = visibleKeys.map((key) => Math.max(minW, Math.min(content.get(key) ?? 0, tableW * MAX_FIT_SHARE)));
     const given = new Array<number>(wanted.length).fill(0);
     let remaining = tableW;
     let open = wanted.map((_, i) => i);
@@ -391,7 +414,7 @@ export function PrintSchedule({
                 onDrop={(e) => onHeaderDrop(e, key)}
                 onDragEnd={() => setDropAt(null)}
               >
-                {SCHEDULE_COLUMN_LABELS[key]}
+                {printColumnTitle(key, design.columnTitles)}
                 <ColResizeHandle {...resizeHandleProps(key)} />
               </th>
             ))}
