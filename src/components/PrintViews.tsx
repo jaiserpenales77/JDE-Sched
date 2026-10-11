@@ -29,6 +29,7 @@ import {
   chunk,
   nameRoleClass,
   pageBoxKeys,
+  printedScheduleHeightsPx,
   printedScheduleWidthPx,
   resolveBoxLayout,
   scheduleCssVars,
@@ -39,6 +40,8 @@ import {
   statusKey,
 } from "../printLayout";
 import ProgressBar from "./ProgressBar";
+import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
+import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -150,10 +153,14 @@ export function PrintSchedule({
   changeoverTimes = {},
 }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
-  const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const now = new Date();
+  const today = now.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const theme = activeHolidayTheme(design.holidayTheme, now);
+  const showScene = !!theme && design.holidayScene;
   const classic = design.tableStyle === "classic";
   // The newer designs print big numbers with commas (19,056).
   const quantity = (n: number | "") => (!classic && typeof n === "number" ? n.toLocaleString("en-US") : n);
+  const rootRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const [drag, setDrag] = useState<{
     key: ScheduleColumnKey;
@@ -192,6 +199,18 @@ export function PrintSchedule({
     const clamped = Math.min(MAX_COLUMN_SHARE, Math.max(MIN_COLUMN_PCT / 100, share));
     return (clamped * others) / (1 - clamped);
   }
+
+  // The preview shows the holiday scene the printout would get. (When
+  // printing, the print effect in App.tsx works it out on the page itself.)
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!setColumnWidths || !root || !tableRef.current) return;
+    if (showScene) {
+      root.dataset.scene = sceneSizeFor(tableRef.current, printedScheduleHeightsPx(design), design.printScaleMode === "fit");
+    } else {
+      delete root.dataset.scene;
+    }
+  });
 
   useLayoutEffect(() => {
     if (!setColumnWidths || !tableRef.current) return;
@@ -370,8 +389,9 @@ export function PrintSchedule({
 
   return (
     <div
+      ref={rootRef}
       className={`print-schedule sched-style-${design.tableStyle}${classic ? "" : " sched-modern"}`}
-      style={scheduleCssVars(design)}
+      style={scheduleCssVars(design, theme)}
     >
       {setColumnWidths && (
         <div className="print-preview-tools">
@@ -398,8 +418,17 @@ export function PrintSchedule({
         <thead>
           <tr>
             <th colSpan={visibleKeys.length} className="print-title-row">
-              {design.title}
-              {design.showDate && <span className="print-title-date">{today}</span>}
+              {theme ? (
+                <>
+                  <HolidayTitle theme={theme} title={design.title} today={now} date={design.showDate ? today : null} />
+                  <HolidayStrip theme={theme} count={design.orientation === "landscape" ? 36 : 27} />
+                </>
+              ) : (
+                <>
+                  {design.title}
+                  {design.showDate && <span className="print-title-date">{today}</span>}
+                </>
+              )}
             </th>
           </tr>
           <tr className="print-col-headers">
@@ -528,6 +557,7 @@ export function PrintSchedule({
           );
         })}
       </table>
+      {showScene && <HolidayScene theme={theme} />}
     </div>
   );
 }

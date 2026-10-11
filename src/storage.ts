@@ -12,6 +12,7 @@ import type {
 } from "./types";
 import { SCHEDULE_TABLE_STYLES, SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
+import { HOLIDAY_THEME_IDS } from "./holidayThemes";
 import {
   DEFAULT_PRINT_COLUMN_TITLES,
   MAX_PRINT_COLUMN_TITLE_LENGTH,
@@ -98,6 +99,8 @@ function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | 
     if (merged[key].toLowerCase() === OLD_STATUS_DEFAULTS[key]) merged[key] = defaultSchedulePrintSettings[key];
   }
   if (!SCHEDULE_TABLE_STYLES.includes(merged.tableStyle)) merged.tableStyle = defaultSchedulePrintSettings.tableStyle;
+  if (merged.holidayTheme !== "auto" && !HOLIDAY_THEME_IDS.includes(merged.holidayTheme)) merged.holidayTheme = "off";
+  if (typeof merged.holidayScene !== "boolean") merged.holidayScene = defaultSchedulePrintSettings.holidayScene;
   merged.columnTitles = normalizeColumnTitles(rest.columnTitles);
   return merged;
 }

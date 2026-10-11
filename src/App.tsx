@@ -6,6 +6,7 @@ import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import { useLineRates } from "./lineRates";
 import { DEFAULT_SHIFT_START, changeoverEstimates } from "./scheduleLogic";
+import { sceneSizeFor } from "./holidayThemes";
 import UnlockScreen from "./components/UnlockScreen";
 import { Brand } from "./components/LogoMark";
 import ProductionSchedule from "./components/ProductionSchedule";
@@ -225,12 +226,13 @@ function App() {
       // changes how big the text inside the boxes is, never how many
       // sheets it takes.
       const freeForm = report === "assignments" && printSettings.freeFormLayout;
+      let scale = 1;
       if (!fixed || freeForm) {
         printRoot.classList.add("measuring");
         const naturalHeight = reportEl.getBoundingClientRect().height;
         printRoot.classList.remove("measuring");
 
-        const scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
+        scale = Math.min(1, (pageContentHeightPx / naturalHeight) * FIT_SAFETY_FACTOR);
         if (scale < 1) {
           // Shift right by half the width it lost, so it's centered on the
           // page. Transform lengths are in the element's zoomed units.
@@ -245,7 +247,19 @@ function App() {
         }
       }
 
+      // A holiday theme's scene under the schedule gets only the room left
+      // on its last printed page: it never adds a page or shrinks the
+      // schedule (one that had to shrink to fit has no room left).
+      const sceneTable = reportEl.querySelector(".holiday-scene") ? reportEl.querySelector("table") : null;
+      if (sceneTable) {
+        printRoot.classList.add("measuring");
+        const pageHeights = [pageContentHeightPx, pageContentHeightPx + HEADER_FOOTER_BUFFER_PX];
+        reportEl.dataset.scene = scale < 1 ? "none" : sceneSizeFor(sceneTable, pageHeights, !fixed);
+        printRoot.classList.remove("measuring");
+      }
+
       cleanups.push(() => {
+        delete reportEl.dataset.scene;
         reportEl.style.transform = "";
         reportEl.style.transformOrigin = "";
         reportEl.style.zoom = "";

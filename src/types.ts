@@ -243,6 +243,11 @@ export type ScheduleTableStyle = (typeof SCHEDULE_TABLE_STYLES)[number];
 // Line Assignments ones; colors are the original workbook's by default.
 export interface SchedulePrintSettings {
   tableStyle: ScheduleTableStyle;
+  // "off", "auto" (the holiday whose dates include today) or a theme's id
+  // from holidayThemes.ts.
+  holidayTheme: string;
+  // The theme's scene under the schedule, when there's room for it.
+  holidayScene: boolean;
   orientation: "landscape" | "portrait";
   printScaleMode: "fit" | "fixed";
   printScalePercent: number;

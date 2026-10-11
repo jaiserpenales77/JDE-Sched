@@ -6,6 +6,9 @@ Changes that are built and tested but not live yet. They wait on the
 it's time, ask Claude to run this plan, and everything below goes live
 together.
 
+**Timing:** Halloween's theme dates start October 15. To have it this
+year, run the update before October 31.
+
 ## What's in the next update
 
 ### 1. Shorter column titles on the printed schedule
@@ -85,6 +88,57 @@ then clicks **Fit all columns** in the Print Report Preview.
 **Job Instruction:** the Extras page gets "Choose a design for the
 printout".
 
+### 3. Holiday themes for the printed schedule
+
+Added 2026-10-11. Tested on a local test database with rows from a real
+printout, and with longer made-up schedules of up to two pages.
+
+**What changes for people using the app:**
+
+- **Customize Print Design** gets a **Holiday theme** choice:
+  - **Off**, where every shift starts.
+  - **Automatic:** each theme shows on its own dates and turns off
+    afterward, so nobody has to remember.
+  - Or one theme, picked to stay on.
+- 12 themes, with the dates Automatic uses:
+
+  | Theme | Automatic dates |
+  |---|---|
+  | New Year | Dec 27 – Jan 2 |
+  | Valentine's Day | Feb 7 – 14 |
+  | St. Patrick's Day | Mar 10 – 17 |
+  | Easter | the week before Easter |
+  | Memorial Day | the week before Memorial Day |
+  | Independence Day | Jun 28 – Jul 4 |
+  | Labor Day | the week before Labor Day |
+  | Halloween | Oct 15 – 31 |
+  | Veterans Day | Nov 8 – 11 |
+  | Thanksgiving | Nov 15 – 30 |
+  | Winter holidays ("Happy Holidays!") | Dec 1 – 26 |
+  | Christmas ("Merry Christmas!") | only when picked |
+
+- A theme adds icons beside the title, a greeting next to the date, a
+  thin strip of small icons under the title, and its own color on the
+  lines. It works with all four designs.
+- **Scene under the schedule** (ticked unless someone unticks it): a few
+  of the theme's pictures after the last line. Full size when there's
+  room, smaller when there's only a little, none when the page is full.
+  It never adds a page or makes the schedule smaller, whether or not the
+  browser prints its own header and footer.
+- The row colors that mean something (scheduled green, allergen, oily
+  product, bulk item) never change, and no theme uses green for its
+  lines, so scheduled lines still stand out.
+- With **Fit to one page**, a theme's title line is a little taller, so a
+  schedule that already fills the page prints very slightly smaller.
+
+**Needs:** nothing outside the app. No Firestore rules change, no new
+logins.
+
+**Once it's live:** each shift that wants it picks **Automatic** (or a
+theme) under **Holiday theme** in Customize Print Design.
+
+**Job Instruction:** the Extras page gets "Turn on a holiday theme".
+
 ---
 
 ## Running the update
@@ -109,7 +163,10 @@ changes in Firebase.
 4. Open **Customize Print Design** and click each design under
    **Design**. The preview changes each time. Finish on the one your
    shift wants.
-5. Print the schedule (or print it to PDF) and check the page.
+5. Under **Holiday theme**, pick **Halloween**: the preview shows the
+   pumpkins, "Happy Halloween!" and the scene under the schedule. Then
+   set it to Automatic or Off, as your shift wants.
+6. Print the schedule (or print it to PDF) and check the page.
 
 **Announcement:**
 
@@ -119,14 +176,16 @@ changes in Firebase.
 > grid, Line bands or Striped table. The new designs fit the same schedule
 > on about a third less of the page. The narrow columns also print shorter
 > titles (CT, BTL SIZE, ALLRG, WO QTY, BTLS LEFT), which you can change in
-> the same place. Refresh LineUp to get it, then click **Fit all columns**
-> in the Print Report Preview once.
+> the same place. You can also turn on a **Holiday theme** there:
+> Automatic decorates the printout for each holiday on its own. Refresh
+> LineUp to get it, then click **Fit all columns** in the Print Report
+> Preview once.
 
 ## If something goes wrong
 
 Claude puts the previous version back, and it's live again in a few
 minutes. The data isn't affected: the previous version just doesn't use
-the saved titles or designs, and prints Classic.
+the saved titles, designs or themes, and prints Classic with no theme.
 
 ## Adding to this plan
 

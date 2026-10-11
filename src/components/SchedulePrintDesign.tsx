@@ -3,6 +3,7 @@ import type { SchedulePrintSettings, ScheduleTableStyle } from "../types";
 import { defaultSchedulePrintSettings } from "../seedData";
 import { MAX_PRINT_COLUMN_TITLE_LENGTH, SCHEDULE_COLUMN_LABELS, orderedScheduleColumns } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
+import { HOLIDAY_THEMES, activeHolidayTheme } from "../holidayThemes";
 import PageSizeControls from "./PageSizeControls";
 import { ColorField } from "./PrintDesignSettings";
 
@@ -52,6 +53,8 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
     setSettings((s) => ({ ...s, [key]: value }));
   }
 
+  const autoTheme = activeHolidayTheme("auto", new Date());
+
   function setColumnTitle(key: ScheduleColumnKey, title: string) {
     setSettings((s) => ({ ...s, columnTitles: { ...s.columnTitles, [key]: title } }));
   }
@@ -83,6 +86,48 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
                 </label>
               ))}
             </div>
+          </div>
+
+          <div>
+            <div className="print-design-row">
+              <label className="print-design-field">
+                Holiday theme
+                <select value={settings.holidayTheme} onChange={(e) => set("holidayTheme", e.target.value)}>
+                  <option value="off">Off</option>
+                  <option value="auto">Automatic (changes with the holidays)</option>
+                  <optgroup label="Always this one">
+                    {HOLIDAY_THEMES.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </label>
+              <label className="print-design-checkbox">
+                <input
+                  type="checkbox"
+                  checked={settings.holidayScene}
+                  disabled={settings.holidayTheme === "off"}
+                  onChange={(e) => set("holidayScene", e.target.checked)}
+                />
+                Scene under the schedule, when there's room
+              </label>
+              {settings.holidayTheme === "auto" && (
+                <span className="print-scale-hint">
+                  {autoTheme ? `Showing now: ${autoTheme.name}` : "No holiday today, so no theme"}
+                </span>
+              )}
+            </div>
+            {settings.holidayTheme === "auto" && (
+              <p className="holiday-dates">
+                Automatic shows each theme on its dates:{" "}
+                {HOLIDAY_THEMES.filter((t) => t.isOn)
+                  .map((t) => `${t.name} (${t.when})`)
+                  .join(" · ")}
+                . Christmas shows only when picked.
+              </p>
+            )}
           </div>
 
           <div className="print-design-row">

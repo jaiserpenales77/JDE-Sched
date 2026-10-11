@@ -9,6 +9,7 @@ import type {
   SchedulePrintSettings,
   SectionStyle,
 } from "./types";
+import type { HolidayTheme } from "./holidayThemes";
 
 // Stable keys for a box's saved position/size, independent of the
 // underlying slot/section's generated id (which is regenerated every time
@@ -332,8 +333,11 @@ function darker(hex: string, amount: number): string {
 
 // The Production Schedule report's look as CSS variables (see the
 // --sched-* rules in App.css), set on the report so the live preview and
-// the printout always match.
-export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
+// the printout always match. A holiday theme brings its own color for the
+// lines and a light shade of it for the column-title row.
+export function scheduleCssVars(d: SchedulePrintSettings, theme: HolidayTheme | null = null): CSSProperties {
+  const divider = theme?.accent ?? d.dividerColor;
+  const headerFill = theme?.tint ?? d.headerFillColor;
   // The Line bands design fills a scheduled line's name cell with a darker
   // shade of the scheduled green, so its name stays readable.
   const scheduledBand = darker(d.scheduledBorderColor, 0.3);
@@ -341,7 +345,7 @@ export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
     "--sched-title-size": `${d.titleFontSize}pt`,
     "--sched-header-size": `${d.headerFontSize}pt`,
     "--sched-text-size": `${d.textFontSize}pt`,
-    "--sched-header-fill": d.headerFillColor,
+    "--sched-header-fill": headerFill,
     "--sched-formula-fill": d.formulaColColor,
     "--sched-allergen": d.allergenColor,
     "--sched-oil": d.oilColor,
@@ -352,8 +356,8 @@ export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
     "--sched-ready-text": readableTextOn(d.readyColor),
     "--sched-pm-text": readableTextOn(d.pmColor),
     "--sched-ot-text": readableTextOn(d.otColor),
-    "--sched-divider": d.dividerColor,
-    "--sched-divider-text": readableTextOn(d.dividerColor),
+    "--sched-divider": divider,
+    "--sched-divider-text": readableTextOn(divider),
     "--sched-scheduled": d.scheduledBorderColor,
     "--sched-scheduled-band": scheduledBand,
     "--sched-scheduled-band-text": readableTextOn(scheduledBand),
@@ -372,4 +376,16 @@ export function printedScheduleWidthPx(d: SchedulePrintSettings): number {
   const widthPx = pageWidthIn * PX_PER_IN - ((marginMm * PX_PER_IN) / 25.4) * 2;
   const zoom = d.printScaleMode === "fixed" ? Math.min(200, Math.max(25, Number(d.printScalePercent) || 100)) / 100 : 1;
   return widthPx / zoom;
+}
+
+// How tall a printed page's room for the schedule is, in the same units:
+// inside the margins, with and without the browser's own header and footer
+// (the print effect in App.tsx keeps 0.75 in for them).
+export function printedScheduleHeightsPx(d: SchedulePrintSettings): number[] {
+  const PX_PER_IN = 96;
+  const marginMm = Math.min(30, Math.max(0, Number(d.printMarginMm) || 0));
+  const pageHeightIn = d.orientation === "landscape" ? 8.5 : 11;
+  const heightPx = pageHeightIn * PX_PER_IN - ((marginMm * PX_PER_IN) / 25.4) * 2;
+  const zoom = d.printScaleMode === "fixed" ? Math.min(200, Math.max(25, Number(d.printScalePercent) || 100)) / 100 : 1;
+  return [(heightPx - 0.75 * PX_PER_IN) / zoom, heightPx / zoom];
 }
