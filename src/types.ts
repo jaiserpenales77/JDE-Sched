@@ -248,6 +248,9 @@ export interface SchedulePrintSettings {
   holidayTheme: string;
   // The theme's scene under the schedule, when there's room for it.
   holidayScene: boolean;
+  // Which starting theme the saved settings have had (see
+  // normalizeSchedulePrintSettings): 2 = Automatic.
+  holidayDefaultVersion: number;
   orientation: "landscape" | "portrait";
   printScaleMode: "fit" | "fixed";
   printScalePercent: number;

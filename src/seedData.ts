@@ -235,8 +235,9 @@ export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
 // shorter titles on its narrow columns.
 export const defaultSchedulePrintSettings: SchedulePrintSettings = {
   tableStyle: "classic",
-  holidayTheme: "off",
+  holidayTheme: "auto",
   holidayScene: true,
+  holidayDefaultVersion: 2,
   orientation: "landscape",
   printScaleMode: "fixed",
   printScalePercent: 100,

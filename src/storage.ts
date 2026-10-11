@@ -101,6 +101,12 @@ function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | 
   if (!SCHEDULE_TABLE_STYLES.includes(merged.tableStyle)) merged.tableStyle = defaultSchedulePrintSettings.tableStyle;
   if (merged.holidayTheme !== "auto" && !HOLIDAY_THEME_IDS.includes(merged.holidayTheme)) merged.holidayTheme = "off";
   if (typeof merged.holidayScene !== "boolean") merged.holidayScene = defaultSchedulePrintSettings.holidayScene;
+  // Holiday themes first went out starting on Off; every shift moves to
+  // Automatic once. A shift that picks Off after that keeps it.
+  if (rest.holidayDefaultVersion !== 2) {
+    if (merged.holidayTheme === "off") merged.holidayTheme = "auto";
+    merged.holidayDefaultVersion = 2;
+  }
   merged.columnTitles = normalizeColumnTitles(rest.columnTitles);
   return merged;
 }
