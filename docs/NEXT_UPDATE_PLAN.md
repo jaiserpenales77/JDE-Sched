@@ -8,31 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. Holiday themes start on Automatic
-
-Added 2026-10-11. Tested on a local test database.
-
-**What changes for people using the app:**
-
-- Every shift's **Holiday theme** moves to **Automatic** once, including
-  shifts the last update saved as Off. From October 15, the printed
-  schedule shows the Halloween theme by itself, then each holiday on its
-  own dates.
-- After that, a shift that picks Off (or one theme) keeps it. A shift that
-  already picked a theme keeps it. **Reset to defaults** also gives
-  Automatic.
-
-**Needs:** nothing outside the app.
-
-**Check:** on each shift, Customize Print Design → **Holiday theme** says
-Automatic.
-
-**Announcement:**
-
-> **LineUp:** from October 15 the printed schedule decorates itself for
-> Halloween, and for each holiday on its own dates after that. To turn it
-> off for your shift: Production Schedule tab → **Customize Print Design**
-> → **Holiday theme** → **Off**.
+Nothing yet.
 
 ---
 
@@ -61,6 +37,14 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-10-11: holiday themes start on Automatic
+
+Every shift's Holiday theme moved to Automatic once (including shifts the
+earlier update saved as Off), so from October 15 the printout shows the
+Halloween theme by itself. A shift that picks Off or one theme after that
+keeps it, and Reset to defaults gives Automatic. Nothing changed in
+Firebase.
 
 ### 2026-10-11: print titles, designs and holiday themes
 
