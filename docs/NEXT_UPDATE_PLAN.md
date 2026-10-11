@@ -48,6 +48,43 @@ drag an edge to make one of them wider.
 **Job Instruction:** the Extras page gets "Change a printed column title"
 and "Fit the columns to the page".
 
+### 2. Choose a design for the printed schedule
+
+Added 2026-10-11. Tested on a local test database with every row from a
+real printout.
+
+**What changes for people using the app:**
+
+- **Customize Print Design** starts with a **Design** choice. Each design
+  has a small picture of its look:
+  - **Classic:** today's look, with a black grid, a gap between lines and
+    thick green boxes.
+  - **Clean grid:** light gray lines, no gaps between lines, a thinner
+    green box.
+  - **Line bands:** each line's name in a navy band, green with a ✓ when
+    the line is scheduled. No up-and-down lines, and every other row is
+    lightly shaded.
+  - **Striped table:** a navy title row, every other row lightly shaded,
+    a thinner green box.
+- The Print Report Preview and the printout follow the chosen design.
+  Each shift keeps its own choice. Every shift starts on Classic, so
+  nothing looks different until someone picks another design.
+- Clean grid, Line bands and Striped table leave out the blank row
+  between lines, so the same schedule takes about 55% of the page instead
+  of 83%. They also put commas in big numbers (19,056), center the
+  changeover codes in bold, and put the title and date on one line. The
+  allergen, oily product and bulk item colors, and the other color
+  settings, work in every design.
+
+**Needs:** nothing outside the app. No Firestore rules change, no new
+logins.
+
+**Once it's live:** each shift picks its design in Customize Print Design,
+then clicks **Fit all columns** in the Print Report Preview.
+
+**Job Instruction:** the Extras page gets "Choose a design for the
+printout".
+
 ---
 
 ## Running the update
@@ -69,22 +106,27 @@ changes in Firebase.
    titles read CT, BTL SIZE, ALLRG, WO QTY and BTLS LEFT.
 3. Click **Fit all columns**. WO QTY and % ACTUAL COMPLETE get narrower,
    and no number ends in "…".
-4. Print the schedule (or print it to PDF) and check the page.
+4. Open **Customize Print Design** and click each design under
+   **Design**. The preview changes each time. Finish on the one your
+   shift wants.
+5. Print the schedule (or print it to PDF) and check the page.
 
 **Announcement:**
 
-> **LineUp update:** the printed schedule now uses shorter titles on its
-> narrow columns (CT, BTL SIZE, ALLRG, WO QTY, BTLS LEFT), so Product
-> Description, Cap Description and Remarks get more room. Refresh LineUp
-> to get it. Then, on the Production Schedule tab, click **Fit all
-> columns** in the Print Report Preview once. To change a printed title,
-> open **Customize Print Design**.
+> **LineUp update:** you can now choose a design for the printed
+> schedule. On the Production Schedule tab, open **Customize Print
+> Design** and pick one under **Design**: Classic (today's look), Clean
+> grid, Line bands or Striped table. The new designs fit the same schedule
+> on about a third less of the page. The narrow columns also print shorter
+> titles (CT, BTL SIZE, ALLRG, WO QTY, BTLS LEFT), which you can change in
+> the same place. Refresh LineUp to get it, then click **Fit all columns**
+> in the Print Report Preview once.
 
 ## If something goes wrong
 
 Claude puts the previous version back, and it's live again in a few
 minutes. The data isn't affected: the previous version just doesn't use
-the saved titles.
+the saved titles or designs, and prints Classic.
 
 ## Adding to this plan
 

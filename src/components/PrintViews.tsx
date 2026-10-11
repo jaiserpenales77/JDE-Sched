@@ -151,6 +151,9 @@ export function PrintSchedule({
 }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
   const today = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+  const classic = design.tableStyle === "classic";
+  // The newer designs print big numbers with commas (19,056).
+  const quantity = (n: number | "") => (!classic && typeof n === "number" ? n.toLocaleString("en-US") : n);
   const tableRef = useRef<HTMLTableElement>(null);
   const [drag, setDrag] = useState<{
     key: ScheduleColumnKey;
@@ -366,7 +369,10 @@ export function PrintSchedule({
 
 
   return (
-    <div className="print-schedule" style={scheduleCssVars(design)}>
+    <div
+      className={`print-schedule sched-style-${design.tableStyle}${classic ? "" : " sched-modern"}`}
+      style={scheduleCssVars(design)}
+    >
       {setColumnWidths && (
         <div className="print-preview-tools">
           <button type="button" className="btn small" onClick={fitAllColumns} title="Size every column to what's in it">
@@ -460,7 +466,7 @@ export function PrintSchedule({
                   capDescription: <td data-col="capDescription" className="print-left">{row.capDescription}</td>,
                   allergen: <td data-col="allergen">{row.allergen}</td>,
                   remarks: <td data-col="remarks" className="print-left">{row.remarks}</td>,
-                  woQuantity: <td data-col="woQuantity" className="print-num">{row.woQuantity}</td>,
+                  woQuantity: <td data-col="woQuantity" className="print-num">{quantity(row.woQuantity)}</td>,
                   percentComplete: <td data-col="percentComplete" className="print-num">{row.percentComplete}</td>,
                   desiccant: <td data-col="desiccant">{row.desiccant}</td>,
                   percentActual: (
@@ -468,7 +474,11 @@ export function PrintSchedule({
                       <ProgressBar value={percentActual(row)} />
                     </td>
                   ),
-                  bottlesRemaining: <td data-col="bottlesRemaining" className="print-num print-formula-col">{bottlesRemaining(row)}</td>,
+                  bottlesRemaining: (
+                    <td data-col="bottlesRemaining" className="print-num print-formula-col">
+                      {quantity(bottlesRemaining(row))}
+                    </td>
+                  ),
                   changeover: (
                     <td data-col="changeover" className="print-formula-col">
                       {chg ||

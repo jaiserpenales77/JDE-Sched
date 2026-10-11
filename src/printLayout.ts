@@ -318,10 +318,25 @@ function readableTextOn(hex: string): string {
   return 0.299 * r + 0.587 * g + 0.114 * b > 160 ? "#000" : "#fff";
 }
 
+// A darker shade of a #rrggbb color (amount 0-1 of black mixed in).
+function darker(hex: string, amount: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  const channel = (shift: number) =>
+    Math.round(((n >> shift) & 255) * (1 - amount))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${channel(16)}${channel(8)}${channel(0)}`;
+}
+
 // The Production Schedule report's look as CSS variables (see the
 // --sched-* rules in App.css), set on the report so the live preview and
 // the printout always match.
 export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
+  // The Line bands design fills a scheduled line's name cell with a darker
+  // shade of the scheduled green, so its name stays readable.
+  const scheduledBand = darker(d.scheduledBorderColor, 0.3);
   return {
     "--sched-title-size": `${d.titleFontSize}pt`,
     "--sched-header-size": `${d.headerFontSize}pt`,
@@ -338,7 +353,10 @@ export function scheduleCssVars(d: SchedulePrintSettings): CSSProperties {
     "--sched-pm-text": readableTextOn(d.pmColor),
     "--sched-ot-text": readableTextOn(d.otColor),
     "--sched-divider": d.dividerColor,
+    "--sched-divider-text": readableTextOn(d.dividerColor),
     "--sched-scheduled": d.scheduledBorderColor,
+    "--sched-scheduled-band": scheduledBand,
+    "--sched-scheduled-band-text": readableTextOn(scheduledBand),
     "--sched-count-changed": d.countChangedColor,
   } as CSSProperties;
 }

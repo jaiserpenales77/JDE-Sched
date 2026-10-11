@@ -1363,6 +1363,156 @@ tr.print-line-spacer td {
   border: none;
 }
 
+/* Designs for the printed Production Schedule, picked in Customize Print
+   Design. Classic is the rules above; the other three build on them. */
+
+/* Clean grid, Line bands and Striped table: no blank row between lines,
+   the title and date on one line, even-width digits, changeover codes
+   centered. */
+.print-schedule.sched-modern tr.print-line-spacer {
+  display: none;
+}
+.print-schedule.sched-modern .print-title-row {
+  text-align: left;
+  padding: 0 2px 6px;
+}
+.print-schedule.sched-modern .print-title-date {
+  display: inline-block;
+  float: right;
+  margin-top: 0.6em;
+}
+.print-schedule.sched-modern .print-col-headers th {
+  vertical-align: bottom;
+  letter-spacing: 0.02em;
+  padding: 3px;
+}
+.print-schedule.sched-modern .print-table td[data-col] {
+  font-variant-numeric: tabular-nums;
+}
+.print-schedule.sched-modern .print-table td[data-col="changeover"] {
+  text-align: center;
+  font-weight: 700;
+}
+.print-schedule.sched-modern .print-progress-cell .progress-track {
+  border-color: #9aa3af;
+  border-radius: 3px;
+}
+
+/* Clean grid: light gray lines. */
+.print-schedule.sched-style-clean .print-col-headers th {
+  color: #1f2937;
+  border: 1px solid #c3cad4;
+  border-bottom: 2px solid #1f2937;
+}
+.print-schedule.sched-style-clean .print-table tbody td {
+  border: 1px solid #cfd5dd;
+}
+.print-schedule.sched-style-clean .print-table td.print-line-cell:not(.print-line-ready, .print-line-pm, .print-line-ot) {
+  background: #f5f7fa;
+}
+.print-schedule.sched-style-clean .print-table td.print-line-cell,
+.print-schedule.sched-style-clean tr.print-divider td {
+  border-bottom: 2px solid var(--sched-divider, #000080);
+}
+
+/* Line bands and Striped table: every other row lightly shaded. */
+.print-schedule.sched-style-bands
+  tbody
+  tr:nth-child(even):not(.print-hl-allergen, .print-hl-oil, .print-hl-bulk)
+  td:not(.print-line-cell, .print-formula-col) {
+  background: #f2f4f7;
+}
+.print-schedule.sched-style-striped
+  tbody
+  tr:nth-child(even):not(.print-hl-allergen, .print-hl-oil, .print-hl-bulk)
+  td:not(.print-line-cell, .print-formula-col) {
+  background: #edf2f8;
+}
+
+/* Line bands: each line's name in a band of the divider color (a darker
+   shade of the scheduled green when it's scheduled), and no up-and-down
+   lines. */
+.print-schedule.sched-style-bands .print-col-headers th {
+  background: #fff;
+  color: var(--sched-divider, #000080);
+  border: none;
+  border-bottom: 2px solid var(--sched-divider, #000080);
+}
+.print-schedule.sched-style-bands .print-table tbody td {
+  border: none;
+  border-bottom: 1px solid #e1e5eb;
+}
+.print-schedule.sched-style-bands .print-table td.print-line-cell {
+  background: var(--sched-divider, #000080);
+  color: var(--sched-divider-text, #fff);
+  border: none;
+  border-bottom: 3px solid #fff;
+}
+.print-schedule.sched-style-bands tr.print-divider td:not(.print-line-cell) {
+  border-bottom: 1.5px solid var(--sched-divider, #000080);
+}
+.print-schedule.sched-style-bands tr.print-line-scheduled td.print-line-cell {
+  background: var(--sched-scheduled-band, #008c04);
+  color: var(--sched-scheduled-band-text, #fff);
+}
+.print-schedule.sched-style-bands tr.print-line-scheduled td:last-child {
+  border-right: none;
+}
+.print-schedule.sched-style-bands tr.print-line-scheduled-first td {
+  border-top: none;
+}
+.print-schedule.sched-style-bands tr.print-line-scheduled-last td:not(.print-line-cell) {
+  border-bottom: 1.5px solid var(--sched-scheduled-band, #008c04);
+}
+/* With the LINE column hidden there's no band: a green edge instead. */
+.print-schedule.sched-style-bands tr.print-line-scheduled:not(.print-merged) td:first-child {
+  border-left: 4px solid var(--sched-scheduled, #00c805);
+}
+.print-schedule.sched-style-bands .print-line-name {
+  font-size: calc(var(--sched-text-size, 7pt) * 1.2);
+  letter-spacing: 0.03em;
+}
+/* A check mark as well: navy and green look alike in black and white. */
+.print-schedule.sched-style-bands tr.print-line-scheduled .print-line-name::before {
+  content: "✓ ";
+}
+.print-schedule.sched-style-bands .print-status-tag {
+  box-shadow: 0 0 0 1px #fff;
+}
+
+/* Striped table: a title row in the divider color, light gray lines. */
+.print-schedule.sched-style-striped .print-col-headers th {
+  background: var(--sched-divider, #000080);
+  color: var(--sched-divider-text, #fff);
+  border: 1px solid var(--sched-divider, #000080);
+  border-left-color: color-mix(in srgb, var(--sched-divider, #000080) 70%, #fff);
+  border-right-color: color-mix(in srgb, var(--sched-divider, #000080) 70%, #fff);
+}
+.print-schedule.sched-style-striped .print-table tbody td {
+  border: 1px solid #d3d9e1;
+}
+.print-schedule.sched-style-striped .print-table td.print-line-cell,
+.print-schedule.sched-style-striped tr.print-divider td {
+  border-bottom: 2px solid var(--sched-divider, #000080);
+}
+
+/* Clean grid and Striped table: a thinner box around scheduled lines
+   (after their line rules, so the box's edges win). */
+.print-schedule:is(.sched-style-clean, .sched-style-striped) tr.print-line-scheduled td.print-line-cell,
+.print-schedule:is(.sched-style-clean, .sched-style-striped) tr.print-line-scheduled:not(.print-merged) td:first-child {
+  border-left: 3px solid var(--sched-scheduled, #00c805);
+}
+.print-schedule:is(.sched-style-clean, .sched-style-striped) tr.print-line-scheduled td:last-child {
+  border-right: 3px solid var(--sched-scheduled, #00c805);
+}
+.print-schedule:is(.sched-style-clean, .sched-style-striped) tr.print-line-scheduled-first td {
+  border-top: 3px solid var(--sched-scheduled, #00c805);
+}
+.print-schedule:is(.sched-style-clean, .sched-style-striped) tr.print-line-scheduled-last td,
+.print-schedule:is(.sched-style-clean, .sched-style-striped) tr.print-line-scheduled td.print-line-cell {
+  border-bottom: 3px solid var(--sched-scheduled, #00c805);
+}
+
 /* Colors lifted straight from the original workbook's cell fills:
    #1F3864 navy / #D9E2F3 banner blue / #BF9000 safety-banner gold /
    #8C8C8C "Not Scheduled" gray / #A9B7CE "Scheduled" status-label blue /
@@ -1604,14 +1754,159 @@ tr.print-line-spacer td {
   white-space: nowrap;
 }
 
-/* Customize Print Design: the printed column titles. */
-.print-titles-head {
+/* Customize Print Design: the Design buttons, each with a tiny drawing of
+   its look. */
+.design-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 270px));
+  gap: 10px;
+}
+.design-choice {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr;
+  column-gap: 10px;
+  row-gap: 2px;
+  align-items: start;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  cursor: pointer;
+}
+.design-choice:hover {
+  border-color: var(--accent, #2563eb);
+}
+.design-choice.selected {
+  border-color: var(--accent, #2563eb);
+  box-shadow: 0 0 0 1px var(--accent, #2563eb);
+}
+.design-choice:has(input:focus-visible) {
+  outline: 2px solid var(--accent, #2563eb);
+  outline-offset: 2px;
+}
+.design-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.design-choice .design-thumb {
+  grid-row: span 2;
+}
+.design-choice-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.design-choice-note {
+  font-size: 11.5px;
+  line-height: 1.3;
+  color: var(--muted);
+}
+
+.design-thumb {
+  display: flex;
+  flex-direction: column;
+  width: 58px;
+  height: 44px;
+  padding: 4px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #d1d5db;
+}
+.design-thumb .dt-head {
+  height: 5px;
+  background: #d9d9d9;
+}
+.design-thumb .dt-group {
+  display: flex;
+  flex: 2;
+  min-height: 0;
+}
+.design-thumb .dt-group.dt-scheduled {
+  flex: 3;
+}
+.design-thumb .dt-line {
+  width: 12px;
+}
+.design-thumb .dt-rows {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.design-thumb .dt-rows span {
+  flex: 1;
+  border-bottom: 1px solid #cfd5dd;
+}
+.design-thumb-classic .dt-head {
+  border: 1px solid #000;
+}
+.design-thumb-classic .dt-group {
+  margin-top: 3px;
+  border: 1px solid #000;
+}
+.design-thumb-classic .dt-line {
+  border-right: 1px solid #000;
+}
+.design-thumb-classic .dt-rows span {
+  border-color: #000;
+}
+.design-thumb-classic .dt-scheduled {
+  box-shadow: 0 0 0 2px #00c805;
+}
+.design-thumb-clean .dt-group {
+  border-bottom: 1px solid #000080;
+}
+.design-thumb-clean .dt-line {
+  background: #f1f3f6;
+  border-right: 1px solid #cfd5dd;
+}
+.design-thumb-clean .dt-scheduled {
+  box-shadow: 0 0 0 1px #00c805;
+}
+.design-thumb-bands .dt-head {
+  background: #fff;
+  border-bottom: 1px solid #000080;
+}
+.design-thumb-bands .dt-group {
+  margin-top: 1px;
+}
+.design-thumb-bands .dt-line {
+  background: #000080;
+}
+.design-thumb-bands .dt-scheduled .dt-line {
+  background: #008c04;
+}
+.design-thumb-bands .dt-rows span {
+  border-color: #e1e5eb;
+}
+.design-thumb-bands .dt-rows span:nth-child(even),
+.design-thumb-striped .dt-rows span:nth-child(even) {
+  background: #e8ecf2;
+}
+.design-thumb-striped .dt-head {
+  background: #000080;
+}
+.design-thumb-striped .dt-line {
+  border-right: 1px solid #d3d9e1;
+}
+.design-thumb-striped .dt-group {
+  border-bottom: 1px solid #000080;
+}
+.design-thumb-striped .dt-scheduled {
+  box-shadow: 0 0 0 1px #00c805;
+}
+
+/* Customize Print Design: the headings over the Design buttons and the
+   printed column titles. */
+.print-design-subhead {
   margin-bottom: 8px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
 }
-.print-titles-head span {
+.print-design-subhead span {
   display: block;
   margin-top: 2px;
   font-weight: 400;

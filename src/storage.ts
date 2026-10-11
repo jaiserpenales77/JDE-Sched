@@ -10,7 +10,7 @@ import type {
   ShiftKey,
   TimeOffEntry,
 } from "./types";
-import { SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
+import { SCHEDULE_TABLE_STYLES, SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
 import {
   DEFAULT_PRINT_COLUMN_TITLES,
@@ -97,6 +97,7 @@ function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | 
   for (const key of Object.keys(OLD_STATUS_DEFAULTS) as (keyof typeof OLD_STATUS_DEFAULTS)[]) {
     if (merged[key].toLowerCase() === OLD_STATUS_DEFAULTS[key]) merged[key] = defaultSchedulePrintSettings[key];
   }
+  if (!SCHEDULE_TABLE_STYLES.includes(merged.tableStyle)) merged.tableStyle = defaultSchedulePrintSettings.tableStyle;
   merged.columnTitles = normalizeColumnTitles(rest.columnTitles);
   return merged;
 }

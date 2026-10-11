@@ -234,9 +234,15 @@ export interface ChangeoverClock {
   lunchHour: number; // 0 = none
 }
 
+// Designs for the printed Production Schedule: "classic" is the original
+// workbook's look; the others are lighter and more compact.
+export const SCHEDULE_TABLE_STYLES = ["classic", "clean", "bands", "striped"] as const;
+export type ScheduleTableStyle = (typeof SCHEDULE_TABLE_STYLES)[number];
+
 // Look of the printed Production Schedule report. Page options mirror the
 // Line Assignments ones; colors are the original workbook's by default.
 export interface SchedulePrintSettings {
+  tableStyle: ScheduleTableStyle;
   orientation: "landscape" | "portrait";
   printScaleMode: "fit" | "fixed";
   printScalePercent: number;

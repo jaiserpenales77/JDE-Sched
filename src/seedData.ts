@@ -234,6 +234,7 @@ export function seedBoardsForShift(shift: ShiftKey): DailyBoard[] {
 // Matches the printed Production Schedule's original look, apart from the
 // shorter titles on its narrow columns.
 export const defaultSchedulePrintSettings: SchedulePrintSettings = {
+  tableStyle: "classic",
   orientation: "landscape",
   printScaleMode: "fixed",
   printScalePercent: 100,

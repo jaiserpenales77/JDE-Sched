@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { SchedulePrintSettings } from "../types";
+import type { SchedulePrintSettings, ScheduleTableStyle } from "../types";
 import { defaultSchedulePrintSettings } from "../seedData";
 import { MAX_PRINT_COLUMN_TITLE_LENGTH, SCHEDULE_COLUMN_LABELS, orderedScheduleColumns } from "../scheduleLogic";
 import type { ScheduleColumnKey } from "../scheduleLogic";
@@ -9,6 +9,34 @@ import { ColorField } from "./PrintDesignSettings";
 interface Props {
   settings: SchedulePrintSettings;
   setSettings: (updater: (s: SchedulePrintSettings) => SchedulePrintSettings) => void;
+}
+
+const DESIGNS: { style: ScheduleTableStyle; name: string; note: string }[] = [
+  { style: "classic", name: "Classic", note: "Black grid, a gap between lines, thick green boxes" },
+  { style: "clean", name: "Clean grid", note: "Light gray lines, no gaps, a thinner green box" },
+  { style: "bands", name: "Line bands", note: "Line names in navy bands, green when scheduled" },
+  { style: "striped", name: "Striped table", note: "Navy title row, every other row shaded" },
+];
+
+// A tiny drawing of each design, for its button.
+function DesignThumb({ style }: { style: ScheduleTableStyle }) {
+  const group = (scheduled: boolean, rows: number) => (
+    <span className={`dt-group${scheduled ? " dt-scheduled" : ""}`}>
+      <span className="dt-line" />
+      <span className="dt-rows">
+        {Array.from({ length: rows }, (_, i) => (
+          <span key={i} />
+        ))}
+      </span>
+    </span>
+  );
+  return (
+    <span className={`design-thumb design-thumb-${style}`} aria-hidden="true">
+      <span className="dt-head" />
+      {group(false, 2)}
+      {group(true, 3)}
+    </span>
+  );
 }
 
 const SIZE_FIELDS: { key: "titleFontSize" | "headerFontSize" | "textFontSize"; label: string }[] = [
@@ -37,6 +65,26 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
 
       {open && (
         <div className="print-design-body">
+          <div>
+            <div className="print-design-subhead">Design</div>
+            <div className="design-choices" role="radiogroup" aria-label="Design">
+              {DESIGNS.map(({ style, name, note }) => (
+                <label className={`design-choice${settings.tableStyle === style ? " selected" : ""}`} key={style}>
+                  <input
+                    type="radio"
+                    name="schedule-design"
+                    value={style}
+                    checked={settings.tableStyle === style}
+                    onChange={() => set("tableStyle", style)}
+                  />
+                  <DesignThumb style={style} />
+                  <span className="design-choice-name">{name}</span>
+                  <span className="design-choice-note">{note}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <div className="print-design-row">
             <label className="print-design-field">
               Orientation
@@ -71,7 +119,7 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
           </div>
 
           <div>
-            <div className="print-titles-head">
+            <div className="print-design-subhead">
               Column titles on the printout
               <span>
                 Short titles keep narrow columns narrow, so Product Description, Cap Description and Remarks get more
