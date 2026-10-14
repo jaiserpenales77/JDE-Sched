@@ -1,5 +1,5 @@
 import type { AppData, WorkOrder } from "./types";
-import { groupByLine, percentActual, bottlesRemaining, changeoverInto } from "./scheduleLogic";
+import { groupByLine, percentActual, bottlesRemaining, changeoverInto, shownRemarks } from "./scheduleLogic";
 import { normalizeAppData } from "./storage";
 import type { SheetGrid } from "./importColumns";
 
@@ -75,7 +75,7 @@ export async function exportWorkOrdersToExcel(workOrders: WorkOrder[]) {
         row.bottleSize,
         row.capDescription,
         row.allergen,
-        row.remarks,
+        shownRemarks(group.rows, idx),
         row.woQuantity,
         row.percentComplete,
         percentActual(row),

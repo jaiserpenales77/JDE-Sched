@@ -759,6 +759,14 @@ table.schedule input.num {
   text-align: right;
 }
 
+/* "Cap Change" in a blank Remarks box: filled in by the app, so it's gray
+   until someone types a remark of their own. */
+table.schedule input::placeholder {
+  color: var(--muted, #6b7280);
+  font-style: italic;
+  opacity: 1;
+}
+
 /* Flags the Count cell that changed on an "S1 Count Change" changeover
    (the Changeover column names the code on the PREVIOUS row, but the
    count that actually differs is on this one). */

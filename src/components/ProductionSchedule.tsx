@@ -5,6 +5,8 @@ import {
   percentActual,
   bottlesRemaining,
   changeoverInto,
+  capChangeInto,
+  CAP_CHANGE_REMARK,
   rowHighlightClass,
   lineStatusClass,
   lineStatusLabel,
@@ -437,6 +439,9 @@ export default function ProductionSchedule({
                     // On an "S1 Count Change" the count that changed is this
                     // row's own Count cell.
                     const countChanged = chg === "S1 Count Change";
+                    // A blank Remarks box shows "Cap Change" (in gray) when the
+                    // cap changes here; typing a remark replaces it.
+                    const capChange = capChangeInto(group.rows, idx);
                     return (
                       <tr key={row.id} className={hl}>
                         {COLUMNS.map((c) => (
@@ -447,6 +452,12 @@ export default function ProductionSchedule({
                               <input
                                 className={`${c.numeric ? "num" : ""} ${c.key === "count" && countChanged ? "count-changed" : ""}`}
                                 type={c.numeric ? "number" : "text"}
+                                placeholder={c.key === "remarks" && capChange ? CAP_CHANGE_REMARK : undefined}
+                                title={
+                                  c.key === "remarks" && capChange && !row.remarks.trim()
+                                    ? "The cap changes here. Prints as \"Cap Change\" unless you type a remark."
+                                    : undefined
+                                }
                                 value={row[c.key] as string | number}
                                 onChange={(e) =>
                                   updateRow(

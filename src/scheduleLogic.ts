@@ -155,6 +155,33 @@ export function changeoverInto(rows: WorkOrder[], idx: number): ChangeoverCode {
   return idx > 0 ? changeoverCode(rows[idx - 1], rows[idx]) : "";
 }
 
+// Shown in Remarks when a work order's cap differs from the cap of the work
+// order before it on the same line.
+export const CAP_CHANGE_REMARK = "Cap Change";
+
+const sameCap = (a: string, b: string) =>
+  a.trim().replace(/\s+/g, " ").toUpperCase() === b.trim().replace(/\s+/g, " ").toUpperCase();
+
+// Whether this work order runs a different cap than the one before it on
+// its line. A line's first work order, or a blank cap on either one, isn't
+// a change.
+export function capChangeInto(rows: WorkOrder[], idx: number): boolean {
+  if (idx <= 0) return false;
+  const before = rows[idx - 1].capDescription ?? "";
+  const cap = rows[idx].capDescription ?? "";
+  if (!before.trim() || !cap.trim()) return false;
+  return !sameCap(before, cap);
+}
+
+// The Remarks a work order shows: whatever was typed there, else "Cap
+// Change" when its cap changes. Nothing is saved - it follows the work
+// orders' order and caps, and typing a remark replaces it.
+export function shownRemarks(rows: WorkOrder[], idx: number): string {
+  const typed = rows[idx].remarks ?? "";
+  if (typed.trim()) return typed;
+  return capChangeInto(rows, idx) ? CAP_CHANGE_REMARK : "";
+}
+
 export function isAllergenRow(wo: WorkOrder): boolean {
   const j = wo.allergen.trim();
   return j !== "" && j.toUpperCase() !== "N";
