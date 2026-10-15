@@ -8,34 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. "Cap Change" in Remarks
-
-When a work order's cap differs from the cap of the work order before it
-on the same line (in Seq order), its Remarks shows **Cap Change**, but
-only when Remarks is blank. Anything typed in Remarks always wins.
-
-- On screen it's gray italic text in the blank Remarks box, so it's clear
-  the app filled it in. Typing a remark replaces it; clearing the remark
-  brings it back.
-- It prints in the Remarks column and goes into Export Excel.
-- Nothing is saved: it follows the caps and the Seq order as they change.
-- Caps are compared ignoring extra spaces and upper/lower case. A line's
-  first work order, or a blank cap, never shows it.
-
-**Needs outside the app:** nothing (no rules or logins).
-
-**How to check:** on the Production Schedule, find a line where the cap
-changes between two work orders (for example "CAP 45MM CT YELL 116 V" to
-"CAP 53MM CT YELLOW 116 V"). The second one shows gray "Cap Change" in
-Remarks, and the Print Report Preview shows "Cap Change". Type something
-in that Remarks box: it prints instead.
-
-**Job Instruction:** one line under Extras ("Cap Change" fills in a blank
-Remarks; type your own remark to replace it).
-
-**Announcement:** "LineUp now writes **Cap Change** in Remarks when a work
-order's cap is different from the one before it on the line. If you type
-your own remark, yours is used instead."
+Nothing yet.
 
 ---
 
@@ -64,6 +37,14 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-10-15: "Cap Change" in Remarks
+
+When a work order's cap differs from the cap of the work order before it
+on the same line, its blank Remarks shows **Cap Change**: gray on screen,
+printed, and in Export Excel. Anything typed in Remarks wins, and nothing
+is saved, so it follows the caps and Seq order. Nothing changed in
+Firebase. The Job Instruction (Rev. 2026-10-15) has a new Extras step 8.
 
 ### 2026-10-11: holiday themes start on Automatic
 
