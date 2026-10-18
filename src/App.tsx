@@ -27,7 +27,6 @@ import {
 } from "./excel";
 import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
 import { SHIFT_LABELS } from "./types";
-import { exportLineAssignmentsToExcel } from "./assignmentsExcel";
 import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
@@ -450,19 +449,6 @@ function App() {
                 }}
               />
             </>
-          )}
-          {tab === "assignments" && selectedBoard && (
-            <button
-              className="btn"
-              title="Download this board as an Excel sheet laid out like the printed page"
-              onClick={() =>
-                exportLineAssignmentsToExcel(selectedBoard, employees, printSettings).catch((err) =>
-                  alert(`Could not export: ${(err as Error).message}`),
-                )
-              }
-            >
-              ⬇ Export Excel
-            </button>
           )}
           <button className="btn" onClick={() => exportAppDataToJson(data)}>
             ⬇ Backup (JSON)

@@ -19,10 +19,6 @@ The original workbook had three jobs, now one tab each in the app:
 - **Line Assignments** — a daily shift/crew board (who's running which
   line, PTO/sick lists, training plan, etc.), with a button to duplicate
   today's board into a new day, replacing the `DuplicateTabWithDate` macro.
-  **Export Excel** on this tab downloads the selected board as an `.xlsx`
-  laid out like the printed page; its Status cells are dropdowns that
-  recolor the line box, and names highlight from the roles on its Roster
-  sheet.
 - **Skills & Roles** — the employee skills matrix and per-line/per-supervisor
   team rosters, computed live instead of copy-pasted into separate columns.
 
@@ -48,9 +44,7 @@ npm run build     # type-check and build for production
 ```
 
 Built with Vite + React + TypeScript. Spreadsheet import/export uses
-[SheetJS (`xlsx`)](https://www.npmjs.com/package/xlsx), plus
-[ExcelJS](https://www.npmjs.com/package/exceljs) for the styled Line
-Assignments export (SheetJS's npm build can't write cell styles); note the npm
+[SheetJS (`xlsx`)](https://www.npmjs.com/package/xlsx); note the npm
 registry's latest published build (0.18.5) predates two known parser
 advisories (prototype pollution / ReDoS) that SheetJS has since fixed in
 builds only distributed from their own CDN. Risk is limited here because
