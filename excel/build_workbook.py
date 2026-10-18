@@ -41,12 +41,12 @@ Workbook-scope defined names
   SCHED_KIND / SCHED_HL / SCHED_SCHEDULED / SCHED_STATUS
                        '4. Schedule'!$T/$U/$V/$W$3:$702 (hidden helpers)
   '4. Schedule' also has a sheet-scoped _xlnm.Print_Area =
-  '4. Schedule'!$A$1:INDEX('4. Schedule'!$R$1:$R$702,Calc!$B$14) so the
+  '4. Schedule'!$A$1:INDEX('4. Schedule'!$Q$1:$Q$702,Calc!$B$14) so the
   printout stops at the last used row, and _xlnm.Print_Titles = rows 1:2.
 
-'4. Schedule' column A has the line name on every work-order row: bold black
-on the first row of each line, grey on the others (conditional formats), so a
-line that runs on to the next printed page is still named there.
+'4. Schedule' column A has the line name once, bold, on the first row of each
+line, and the line's READY / PM / OT tag on its 2nd row (after the name for a
+one-row line); the line's other rows are blank there.
 
 No CHAR() above 127 and nothing below CHAR(32) except 9/10/13: the
 non-breaking space, the other non-ASCII characters column-title normalization
@@ -68,7 +68,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          titles (old data left on the sheet) + the first one's paste row, B30 overrides worth a
          look, B31 capacity warnings, B32 status text, B33 status OK flag,
          B34 3. Lines ticks/statuses not dated today, B35 4. Schedule typed on
-         (its A3:R702 differ from Calc), B36 warning for '4. Schedule'!A1,
+         (its A3:Q702 differ from Calc), B36 warning for '4. Schedule'!A1,
          B37 Line column, B38/B39 first / last work order text, B40 kept
          rows whose WO # is on an earlier kept row (old rows left on the
          sheet), B41 window row of the first one, B42 its text, B43 status OK
@@ -255,7 +255,7 @@ PA_DASH = "\u2014"
 # 4. Schedule columns: (header, Calc output key, width % from PrintViews.tsx
 # DEFAULT_SCHEDULE_COLUMN_WIDTHS; STATUS is this workbook's own column).
 SCHED_COLS = [
-    ("LINE", "o_line", 6.5), ("STATUS", "o_status", 4.5), ("WO", "o_wo", 5), ("SEQ", "o_seq", 3),
+    ("LINE", "o_line", 6.5), ("WO", "o_wo", 5), ("SEQ", "o_seq", 3),
     ("ITEM", "o_item", 5), ("PRODUCT DESCRIPTION", "o_desc", 14), ("COUNT", "o_count", 3),
     ("BULK ITEM", "o_bulk", 5), ("BOTTLE SIZE", "o_bottle", 4), ("CAP DESCRIPTION", "o_cap", 10),
     ("ALLERGEN", "o_allergen", 3), ("REMARKS", "o_remarks", 12.5), ("WO QUANTITY", "o_qty", 4),
@@ -278,7 +278,7 @@ ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
 # quantity. Longer values shrink to fit (SHRINK_COLS); the two description
 # columns take the room that's left.
 SCHED_WIDTHS = {
-    "LINE": 7.5, "STATUS": 6.8, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
+    "LINE": 8.5, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
     "COUNT": 6.4, "BULK ITEM": 8.3, "BOTTLE SIZE": 6.7, "CAP DESCRIPTION": 19.6, "ALLERGEN": 8.7,
     "REMARKS": 10.4, "WO QUANTITY": 8.7, "% COMPLETE": 9.2, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 9.2,
     "BOTTLES REMAINING": 9.9, "CHANGEOVER": 11.6,
@@ -584,7 +584,8 @@ FIELD_COLS = ["wo", "seq", "item", "desc", "count", "bulk", "bottle", "cap", "al
 W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "ord0", "keep"] + FIELD_COLS +
          ["firstk", "isfirst", "cumf", "lno", "anch", "sk", "grp", "nv", "rank", "pos", "lidx", "sched",
           "der", "ovst", "stshown", "hl", "pa", "br", "wofk", "hdrlike", "nfill"])
-O = Band(W.end + 2, ["pn", "k", "kind", "first", "last"] + [k for _, k, _ in SCHED_COLS] + ["hl", "sched", "cchg"])
+O = Band(W.end + 2, ["pn", "k", "kind", "first", "last"] + [k for _, k, _ in SCHED_COLS]
+         + ["hl", "sched", "cchg", "o_status"])
 LB = Band(O.end + 2, ["n", "lk", "name", "cnt", "st", "sc", "note", "miss", "mcum", "mname", "lrow"])
 W0, WN = 5, 4 + WIN                                 # window rows
 O0, ON = 5, 4 + OUT_ROWS                            # output rows
@@ -635,7 +636,7 @@ def build_calc(wb):
     line_hdr = ft("hdr_text", 1)
     twice = f'({wr("wofk")}>0)*({wr("wofk")}<{wr("kn")})'
     lines_inputs = 'SUMPRODUCT(--(TRIM(LINES_SCHEDULED&"")<>""))+SUMPRODUCT(--(TRIM(LINES_STATUS&"")<>""))'
-    out_a, out_r = O["o_line"], O["o_chg"]       # the 18 report columns A:R, side by side in Calc
+    out_a, out_r = O["o_line"], O["o_chg"]       # the 17 report columns A:Q, side by side in Calc
     ov_pre = (f'IF({s["hdr_ov_ok"]}=1,"Header row override is set to "&{s["hdr_ov"]}&" (yellow box E5) - clear it '
               f'if today\'s file is different. ","")')
     wo_at = lambda k_, col: f"INDEX({wr(col)},{k_})"
@@ -714,7 +715,7 @@ def build_calc(wb):
                           f'&" of 1. Paste Schedule"&IF({s["wo_twice"]}>1," (and "&({s["wo_twice"]}-1)&" more like it)",""))'),
         "stale": (f'IF(AND({lines_inputs}>0,NOT(AND(ISNUMBER(LINES_CHECKED_ON),'
                   f'INT(N(LINES_CHECKED_ON))=TODAY()))),1,0)'),
-        "tamper": (f'IFERROR(IF(SUMPRODUCT(--({SCHED}!$A$3:$R${2 + OUT_ROWS}&""<>${out_a}${O0}:${out_r}${ON}&""))>0,'
+        "tamper": (f'IFERROR(IF(SUMPRODUCT(--({SCHED}!$A$3:${L(len(SCHED_COLS))}${2 + OUT_ROWS}&""<>${out_a}${O0}:${out_r}${ON}&""))>0,'
                    f'1,0),1)'),
         # one short line each (the details are on 2. Check Columns / 3. Lines)
         "short_warn": (
@@ -1063,14 +1064,18 @@ def build_calc(wb):
         ws[f"{O['first']}{r_}"] = f'=IF(AND({A["kind"]}="row",{prev_kind}<>"row"),1,0)'
         ws[f"{O['last']}{r_}"] = f'=IF(AND({A["kind"]}="row",{next_kind}<>"row"),1,0)'
         is_row = f'{A["kind"]}="row"'
-        # the line name on every work-order row (a number stays a number, like
-        # every other column): bold black on the first row of the line, light
-        # grey on the others (conditional formats on 4. Schedule), so a line
-        # that runs on to the next printed page is still named there
+        # the line name once per line, like the app: on its first work-order
+        # row (a number stays a number, like every other column)
         raw_line = paste(f'INDEX({wr("pr")},{A["k"]})', s["line_col"])
         line_txt = f'INDEX({wr("line")},{A["k"]})'
-        ws[f"{O['o_line']}{r_}"] = (f'=IF({is_row},IFERROR(IF(ISNUMBER({raw_line}),{raw_line},{line_txt}),'
-                                    f'{line_txt}),"")')
+        name = f'IFERROR(IF(ISNUMBER({raw_line}),{raw_line},{line_txt}),{line_txt})'
+        # and the line's READY / PM / OT tag right under the name: on the
+        # line's 2nd row, or after the name when it has only one work order.
+        # The line's other rows are blank in LINE.
+        tag = f'INDEX({wr("stshown")},{A["k"]})'
+        prev_first = f"N(${O['first']}{r_ - 1})" if r_ > 5 else "0"
+        ws[f"{O['o_line']}{r_}"] = (f'=IF({is_row},IF({A["first"]}=1,IF(AND({A["last"]}=1,{tag}<>""),'
+                                    f'{name}&"  "&{tag},{name}),IF(AND({prev_first}=1,{tag}<>""),{tag},"")),"")')
         for oc, wc in out_from.items():
             ws[f"{O[oc]}{r_}"] = f'=IF({is_row},INDEX({wr(wc)},{A["k"]}),"")'
         pa_v = f'INDEX({wr("pa")},{A["k"]})'
@@ -1378,21 +1383,21 @@ def build_schedule(wb):
     ws = wb.create_sheet(S_SCHED)
     ws.sheet_properties.tabColor = "1F3864"
     ws.sheet_view.showGridLines = False
-    ncol = len(SCHED_COLS)                        # 18 -> A:R
+    ncol = len(SCHED_COLS)                        # 17 -> A:Q
     last_row = 2 + OUT_ROWS
     for i, (h, _, _) in enumerate(SCHED_COLS, start=1):
         ws.column_dimensions[L(i)].width = SCHED_WIDTHS[h]
-    ws.column_dimensions["S"].width = 2
+    ws.column_dimensions["R"].width = 2
     # row 1: warnings (left), title (centred on the page), date (right). A:E
-    # holds each warning on one line; A:E and O:R are about as wide, so F:N is
+    # holds each warning on one line; A:E and N:Q are about as wide, so F:M is
     # close to centred on the table like the app's title.
     ws.merge_cells("A1:E1")
     put(ws, "A1", f"={SC['short_warn']}", font=font(HEADER_PT, True, "C00000"),
         alignment=Alignment(horizontal="left", vertical="center", wrap_text=True))
-    ws.merge_cells("F1:N1")
+    ws.merge_cells("F1:M1")
     put(ws, "F1", TITLE, font=font(TITLE_PT, True), alignment=Alignment(horizontal="center", vertical="center"))
-    ws.merge_cells("O1:R1")
-    put(ws, "O1", "=TODAY()", number_format="mmmm d, yyyy", font=font(DATE_PT, color="444444"),
+    ws.merge_cells("N1:Q1")
+    put(ws, "N1", "=TODAY()", number_format="mmmm d, yyyy", font=font(DATE_PT, color="444444"),
         alignment=Alignment(horizontal="right", vertical="center"))
     ws.row_dimensions[1].height = 36
     for i, (h, _, _) in enumerate(SCHED_COLS, start=1):
@@ -1401,7 +1406,7 @@ def build_schedule(wb):
     ws.row_dimensions[2].height = 32
     helpers = [("T", "KIND", "kind"), ("U", "HL", "hl"), ("V", "SCHEDULED", "sched"), ("W", "STATUS", "o_status"),
                ("X", "FIRST", "first"), ("Y", "LAST", "last"), ("Z", "COUNT CHG", "cchg")]
-    for col, h, _ in helpers + [("AA", "BORDER", None)]:
+    for col, h, _ in helpers + [("AA", "BORDER", None), ("AB", "TAG", None)]:
         put(ws, f"{col}2", h, font=font(8, True))
         ws.column_dimensions[col].hidden = True
     right = {"o_qty", "o_pct", "o_pa", "o_br"}
@@ -1415,12 +1420,12 @@ def build_schedule(wb):
         ws.row_dimensions[r].height = ROW_HEIGHT
         for i, (_, key, _) in enumerate(SCHED_COLS, start=1):
             c = ws.cell(r, i, f"=Calc!${O[key]}${cr}")
-            horiz = "center" if key in ("o_line", "o_status") else "right" if key in right else "left"
+            horiz = "center" if key == "o_line" else "right" if key in right else "left"
             c.alignment = Alignment(horizontal=horiz, vertical="center", shrink_to_fit=key in SHRINK_COLS)
             # LINE: grey and not bold, like the repeated names; the first row of
             # each line is made bold black by a conditional format
             c.font = (font(LINE_PT, False, C_LINE_REPEAT) if key == "o_line" else
-                      font(BODY_PT, key == "o_status"))
+                      font(BODY_PT))
             if key == "o_pa":
                 c.number_format = "0.0%"
             elif key == "o_br":
@@ -1429,6 +1434,9 @@ def build_schedule(wb):
             ws[f"{col}{r}"] = f"=Calc!${O[key]}${cr}"
         ws[f"AA{r}"] = (f'=IF($T{r}<>"row",0,IF($V{r}=1,IF($X{r}=1,IF($Y{r}=1,1,2),IF($Y{r}=1,3,4)),'
                         f'IF($X{r}=1,IF($Y{r}=1,5,6),IF($Y{r}=1,7,8))))')
+        # 1 = this LINE cell holds the line's status tag (see Calc o_line)
+        ws[f"AB{r}"] = (f'=IF($T{r}<>"row",0,IF($W{r}="",0,IF($X{r}=1,IF($Y{r}=1,1,0),'
+                        f'IF(N($X{r - 1})=1,1,0))))')
     add_conditional_formats(ws, last_row)
     ws.freeze_panes = "A3"
     # page setup
@@ -1479,6 +1487,10 @@ def add_conditional_formats(ws, last_row):
         5: Border(left=gray, right=gray, top=gray, bottom=navy), 6: Border(left=gray, right=gray, top=gray),
         7: Border(left=gray, right=gray, bottom=navy), 8: Border(left=gray, right=gray),
     }
+    # the status tag cell: the tag's own color, white (OT: black) bold text
+    for c, b in a_borders.items():
+        for cond, color, txt, _ in status[:3]:
+            cf(ws, R("A"), f"AND({code(c)},$AB3=1,{cond})", color, font(8, True, txt), b)
     for c, b in a_borders.items():
         first = c in (1, 2, 5, 6)
         if c <= 4:
@@ -1487,7 +1499,7 @@ def add_conditional_formats(ws, last_row):
         else:
             for cond, _, _, tint in status:
                 cf(ws, R("A"), f"AND({code(c)},{cond})", tint, font(8, True, "000000") if first else None, b)
-    # B..R: a grid; green top/bottom on a scheduled block; navy under each line.
+    # B..Q: a grid; green top/bottom on a scheduled block; navy under each line.
     inner = [((1,), Border(left=gray, right=gray, top=green, bottom=green)),
              ((2,), Border(left=gray, right=gray, top=green, bottom=gray)),
              ((3,), Border(left=gray, right=gray, top=gray, bottom=green)),
@@ -1501,22 +1513,18 @@ def add_conditional_formats(ws, last_row):
                 ((5, 7), Border(left=gray, right=gray, top=gray, bottom=navy))]
     hl = [('$U3="allergen"', C_ALLERGEN), ('$U3="oil"', C_OIL), ('$U3="bulk"', C_BULK)]
     hl_none = '$U3=""'
-    # STATUS column: the READY / PM / OT tag colors.
-    for codes, b in inner:
-        for cond, color, txt, _ in status:
-            cf(ws, R("B"), f"AND({code(*codes)},{cond})", color, font(8, True, txt) if txt else None, b)
-    # plain columns C:F, H:O - row highlight (allergen > oil > bulk)
-    plain = "C3:F{0} H3:O{0}".format(last_row)
+    # plain columns B:E, G:N - row highlight (allergen > oil > bulk)
+    plain = "B3:E{0} G3:N{0}".format(last_row)
     for codes, b in inner:
         for cond, color in hl + [(hl_none, None)]:
             cf(ws, plain, f"AND({code(*codes)},{cond})", color, None, b)
     # COUNT: highlight + red bold count on an "S1 Count Change" row
     for codes, b in inner:
         for cond, color in hl + [(hl_none, None)]:
-            cf(ws, R("G"), f"AND({code(*codes)},{cond},$Z3=1)", color, font(8, True, C_COUNT_CHANGED), b)
-            cf(ws, R("G"), f"AND({code(*codes)},{cond},$Z3<>1)", color, None, b)
-    # calculated columns P:R - pale yellow unless the row is highlighted
-    for rng, sets in [(R("P"), inner), (R("Q"), inner), (R("R"), last_col)]:
+            cf(ws, R("F"), f"AND({code(*codes)},{cond},$Z3=1)", color, font(8, True, C_COUNT_CHANGED), b)
+            cf(ws, R("F"), f"AND({code(*codes)},{cond},$Z3<>1)", color, None, b)
+    # calculated columns O:Q - pale yellow unless the row is highlighted
+    for rng, sets in [(R("O"), inner), (R("P"), inner), (R("Q"), last_col)]:
         for codes, b in sets:
             for cond, color in hl + [(hl_none, C_FORMULA)]:
                 cf(ws, rng, f"AND({code(*codes)},{cond})", color, None, b)
@@ -1647,7 +1655,7 @@ HOW_ROWS = [
     ("see", "", "You should see: today's date in the yellow box, and no red CHECK message next to it."),
     ("step", "6", "Click the tab 4. Schedule and check it. Then press Ctrl+S to save."),
     ("see", "", "You should see: the LINE cell of each ticked line filled bright green with a thin green box around "
-                "its rows, and READY / PM / OT in the STATUS column of the lines you marked."),
+                "its rows, and READY / PM / OT under the line name (in the LINE column) of the lines you marked."),
     ("tip", "TIP", "Ticks and statuses stay in this file from day to day. Until today's date is in the yellow box, "
                    "3. Lines and the top left of 4. Schedule show a red CHECK message - it prints too - so old "
                    "ticks never go out by mistake."),
@@ -1674,8 +1682,6 @@ HOW_ROWS = [
     ("swatch", C_TINT["READY"], "Light green, blue or yellow LINE cell: the line has a READY, PM or OT status but "
                                 "is not ticked."),
     ("swatch", C_SCHEDULED, "A ticked (Scheduled) line: green LINE cell and a thin green box around its rows."),
-    ("swatch", C_LINE_REPEAT, "LINE name in bold black: the first work order of that line. In grey: more work "
-                              "orders of the same line (so every printed page names its lines)."),
     ("swatch", C_COUNT_CHANGED, "Red bold Count = the count changed from the work order before it (S1 Count Change)."),
     ("swatch", C_DIVIDER, "Navy line under the last work order of each line."),
     ("gap",),
@@ -1797,17 +1803,16 @@ HOW_ROWS = [
     ("kv", "Seq order", "Numbers sort as numbers (6.5 goes between 6 and 7). A row with no Seq stays right after "
                         "the row above it of the same line. Seq values that are not numbers go after the numbered "
                         "ones, in the order they were pasted."),
-    ("kv", "Long schedules", "The LINE name is bold on the first row of each line and grey on its other rows, so a "
-                             "line that runs on to the next page is still named at the top of that page. Excel "
-                             "can't keep a line's rows together on one page like the web app - use Fit Sheet on One "
-                             "Page if that matters."),
+    ("kv", "Long schedules", "The LINE name is shown once, on the first row of each line. Excel can't keep a "
+                             "line's rows together on one page like the web app, so a line that runs on to the next "
+                             "page has no name at the top of that page - use Fit Sheet on One Page if that matters."),
     ("kv", "Limits", f"Up to {MAX_WO} work orders (the first {MAX_WO} under the column titles, in paste order), "
                      f"pasted rows 1 to {PASTE_ROWS}, columns A to BH, {LINE_SLOTS} lines on 3. Lines, {OUT_ROWS} "
                      f"rows on 4. Schedule. Past a limit, a red WARNING shows on 2. Check Columns and on "
                      f"4. Schedule."),
-    ("kv", "Not like the web app", "The status is in its own STATUS column; the green box around a ticked line is "
-                                   "thin (Excel can't draw a thick one by formula); the line name repeats in grey "
-                                   "on a line's other rows (Excel can't keep a line on one page); long text shrinks "
+    ("kv", "Not like the web app", "The READY / PM / OT tag is a colored cell under the line name; the green box around a ticked line is "
+                                   "thin (Excel can't draw a thick one by formula); a line that runs on to "
+                                   "the next page isn't named again there (Excel can't keep a line on one page); long text shrinks "
                                    "to fit or (remarks) is cut at the cell edge with no ...; columns can be hidden "
                                    "but not moved; the Line and WO columns are found by their titles only; pasting "
                                    "a new schedule does not clear the statuses (Part B, step 4a does)."),

@@ -59,13 +59,14 @@ and all defined names are documented at the top of `build_workbook.py`.
 - Seq values that are not numbers sort after the numbered ones, in paste order
   (the app compares them as text). Hex text such as `0x10` is not read as a
   number (JS `Number()` reads it as 16).
-- The status (READY / PM / OT) is in its own STATUS column; the box around a
-  scheduled line is a thin green border plus a green LINE cell (Excel can't draw
+- The status (READY / PM / OT) is a colored tag in the LINE column right under
+  the line name, like the app (after the name when the line has only one work
+  order); the box around a scheduled line is a thin green border plus a green
+  LINE cell (Excel can't draw
   a thick border by formula). Columns can be hidden but not reordered.
-- The LINE name is bold black on the first row of each line and repeated in
-  grey on its other rows. The app prints it once per line, but it also keeps
-  each line on one page; Excel can't, so the grey repeats make sure a line
-  that runs on to the next page is still named there.
+- The LINE name is shown once, on the first row of each line, like the app.
+  The app also keeps each line on one page; Excel can't, so a line that runs
+  on to the next page has no name at the top of that page.
 - A value too long for its column shrinks to fit (so nothing is cut off and
   no number turns into ####); only long remarks are cut at the cell edge (the
   app cuts all of them and adds "...").
