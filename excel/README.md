@@ -71,7 +71,8 @@ and all defined names are documented at the top of `build_workbook.py`.
   no number turns into ####); only long remarks are cut at the cell edge (the
   app cuts all of them and adds "...").
 - The printout uses the app's short column titles: CT, BTL SIZE, ALLRG,
-  WO QTY and BTLS LEFT (the app lets each shift change them in Customize
+  WO QTY, BTLS LEFT and PROGRESS (% Actual Complete, shown with a green
+  progress bar like the app's) (the app lets each shift change them in Customize
   Print Design; here they are fixed). The room they free goes to REMARKS.
 - Column widths are sized for real Excel, which gives text fewer pixels than
   LibreOffice: every column fits the longest word of its title in 9 pt bold and

@@ -146,7 +146,7 @@ from datetime import datetime
 from pathlib import Path
 
 from openpyxl import Workbook
-from openpyxl.formatting.rule import Rule
+from openpyxl.formatting.rule import DataBarRule, Rule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.utils import get_column_letter as L
@@ -243,6 +243,7 @@ C_DIVIDER, C_SCHEDULED, C_COUNT_CHANGED, C_GRID = "000080", "00C805", "FF0000", 
 # The line name repeated on the 2nd.. rows of a line: grey (on the green of a
 # ticked line: near black), not bold.
 C_LINE_REPEAT, C_LINE_REPEAT_ON_GREEN = "8C8C8C", "262626"
+C_PROGRESS = "43A047"   # the app's progress bar green (a little darker, it prints as a fading bar)
 # The app tints the LINE cell of a line with a status (color-mix 16% with white).
 C_TINT = {"READY": "DAEBE0", "PM": "DBE3F9", "OT": "FEF7DA"}
 # % ACTUAL COMPLETE on a work-order row: blank shows a dash, like the app's
@@ -262,7 +263,7 @@ SCHED_COLS = [
     ("ITEM", "o_item", 5), ("PRODUCT DESCRIPTION", "o_desc", 14), ("CT", "o_count", 3),
     ("BULK ITEM", "o_bulk", 5), ("BTL SIZE", "o_bottle", 4), ("CAP DESCRIPTION", "o_cap", 10),
     ("ALLRG", "o_allergen", 3), ("REMARKS", "o_remarks", 12.5), ("WO QTY", "o_qty", 4),
-    ("% COMPLETE", "o_pct", 4), ("DESICCANT", "o_desiccant", 4), ("% ACTUAL COMPLETE", "o_pa", 5),
+    ("% COMPLETE", "o_pct", 4), ("DESICCANT", "o_desiccant", 4), ("PROGRESS", "o_pa", 5),
     ("BTLS LEFT", "o_br", 4), ("CHANGEOVER", "o_chg", 6),
 ]
 # Font sizes (points). "Fit all columns on one page" prints the sheet at about
@@ -283,7 +284,7 @@ ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
 SCHED_WIDTHS = {
     "LINE": 8.5, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
     "CT": 4.2, "BULK ITEM": 8.3, "BTL SIZE": 5.0, "CAP DESCRIPTION": 19.6, "ALLRG": 6.2,
-    "REMARKS": 18.4, "WO QTY": 7.0, "% COMPLETE": 9.2, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 9.2,
+    "REMARKS": 18.4, "WO QTY": 7.0, "% COMPLETE": 9.2, "DESICCANT": 9.4, "PROGRESS": 10.5,
     "BTLS LEFT": 7.0, "CHANGEOVER": 11.6,
 }
 # Every report column shrinks a value that's too long for it, so nothing is
@@ -1476,6 +1477,12 @@ def add_conditional_formats(ws, last_row):
     conditional formats can't draw thick ones."""
     gray, navy, green = side(C_GRID), side(C_DIVIDER), side(C_SCHEDULED)
     R = lambda col: f"{col}3:{col}{last_row}"
+    # PROGRESS (% Actual Complete) as a green bar behind the percentage, like
+    # the app's progress bar: 0 % = empty, 100 % = full. Added first so it
+    # comes before the column's fill rules (they all stop further rules).
+    pa_col = L(1 + [k for _, k, _ in SCHED_COLS].index("o_pa"))
+    ws.conditional_formatting.add(R(pa_col), DataBarRule(start_type="num", start_value=0, end_type="num",
+                                                         end_value=1, color="FF" + C_PROGRESS, showValue=True))
     code = lambda *cs: "OR(" + ",".join(f"$AA3={c}" for c in cs) + ")" if len(cs) > 1 else f"$AA3={cs[0]}"
     # STATUS of the row's line (READY / PM / OT / none) - one condition each
     status = [('$W3="READY"', C_READY, "FFFFFF", C_TINT["READY"]), ('$W3="PM"', C_PM, "FFFFFF", C_TINT["PM"]),
@@ -1677,8 +1684,9 @@ HOW_ROWS = [
                            "first, then oil, then bulk."),
     ("swatch", C_OIL, "Oily product (the description contains OIL)."),
     ("swatch", C_BULK, "Bulk item A662 or A624."),
-    ("swatch", C_FORMULA, "Calculated columns: % Actual Complete, Bottles Remaining, Changeover. A dash in % Actual "
-                          "Complete means % Complete is 0 or blank."),
+    ("swatch", C_FORMULA, "Calculated columns: PROGRESS, BTLS LEFT (bottles remaining), CHANGEOVER. PROGRESS "
+                          "is % Actual Complete with a green bar (full = 100 %); a dash means % Complete is 0 "
+                          "or blank."),
     ("swatch", C_READY, "READY - the line is set up and ready to run."),
     ("swatch", C_PM, "PM - the line is down for maintenance."),
     ("swatch", C_OT, "OT - a line marked OT. A Line Status of OT, Overtime or Trial in your file also shows as OT."),
@@ -1695,8 +1703,8 @@ HOW_ROWS = [
     ("kv", "S4", "The bottle size differs."),
     ("text", "", "Each code is shown on the work order the changeover happens on. It is blank on the first work "
                  "order of a line, and when either Bottle Size is missing."),
-    ("text", "", "% Actual Complete = % Complete / 100 (blank when % Complete is 0 or blank). Bottles Remaining = "
-                 "WO Quantity x (1 - % Actual Complete), rounded."),
+    ("text", "", "PROGRESS (% Actual Complete) = % Complete / 100 (a dash when % Complete is 0 or blank). "
+                 "BTLS LEFT (Bottles Remaining) = WO Quantity x (1 - % Actual Complete), rounded."),
     ("gap",),
     ("head", "", "Something went wrong?"),
     ("kv", "The box on 2. Check Columns is red", "Read what it says. Line / WO # not found: Part A, the CAREFUL box "
