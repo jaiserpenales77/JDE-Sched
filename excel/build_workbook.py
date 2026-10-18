@@ -254,13 +254,16 @@ PA_DASH = "\u2014"
 
 # 4. Schedule columns: (header, Calc output key, width % from PrintViews.tsx
 # DEFAULT_SCHEDULE_COLUMN_WIDTHS; STATUS is this workbook's own column).
+# Titles are the app's short printout titles (CT, BTL SIZE, ALLRG, WO QTY,
+# BTLS LEFT - DEFAULT_PRINT_COLUMN_TITLES), so a title doesn't make its column
+# wider than the numbers in it; REMARKS gets the room.
 SCHED_COLS = [
     ("LINE", "o_line", 6.5), ("WO", "o_wo", 5), ("SEQ", "o_seq", 3),
-    ("ITEM", "o_item", 5), ("PRODUCT DESCRIPTION", "o_desc", 14), ("COUNT", "o_count", 3),
-    ("BULK ITEM", "o_bulk", 5), ("BOTTLE SIZE", "o_bottle", 4), ("CAP DESCRIPTION", "o_cap", 10),
-    ("ALLERGEN", "o_allergen", 3), ("REMARKS", "o_remarks", 12.5), ("WO QUANTITY", "o_qty", 4),
+    ("ITEM", "o_item", 5), ("PRODUCT DESCRIPTION", "o_desc", 14), ("CT", "o_count", 3),
+    ("BULK ITEM", "o_bulk", 5), ("BTL SIZE", "o_bottle", 4), ("CAP DESCRIPTION", "o_cap", 10),
+    ("ALLRG", "o_allergen", 3), ("REMARKS", "o_remarks", 12.5), ("WO QTY", "o_qty", 4),
     ("% COMPLETE", "o_pct", 4), ("DESICCANT", "o_desiccant", 4), ("% ACTUAL COMPLETE", "o_pa", 5),
-    ("BOTTLES REMAINING", "o_br", 4), ("CHANGEOVER", "o_chg", 6),
+    ("BTLS LEFT", "o_br", 4), ("CHANGEOVER", "o_chg", 6),
 ]
 # Font sizes (points). "Fit all columns on one page" prints the sheet at about
 # 80 %, so these are the app's print sizes / 0.8: title 16, date 9, body 7,
@@ -279,9 +282,9 @@ ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
 # columns take the room that's left.
 SCHED_WIDTHS = {
     "LINE": 8.5, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
-    "COUNT": 6.4, "BULK ITEM": 8.3, "BOTTLE SIZE": 6.7, "CAP DESCRIPTION": 19.6, "ALLERGEN": 8.7,
-    "REMARKS": 10.4, "WO QUANTITY": 8.7, "% COMPLETE": 9.2, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 9.2,
-    "BOTTLES REMAINING": 9.9, "CHANGEOVER": 11.6,
+    "CT": 4.2, "BULK ITEM": 8.3, "BTL SIZE": 5.0, "CAP DESCRIPTION": 19.6, "ALLRG": 6.2,
+    "REMARKS": 18.4, "WO QTY": 7.0, "% COMPLETE": 9.2, "DESICCANT": 9.4, "% ACTUAL COMPLETE": 9.2,
+    "BTLS LEFT": 7.0, "CHANGEOVER": 11.6,
 }
 # Every report column shrinks a value that's too long for it, so nothing is
 # cut off and no number turns into ####; only REMARKS is cut at the cell edge

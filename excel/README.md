@@ -70,6 +70,9 @@ and all defined names are documented at the top of `build_workbook.py`.
 - A value too long for its column shrinks to fit (so nothing is cut off and
   no number turns into ####); only long remarks are cut at the cell edge (the
   app cuts all of them and adds "...").
+- The printout uses the app's short column titles: CT, BTL SIZE, ALLRG,
+  WO QTY and BTLS LEFT (the app lets each shift change them in Customize
+  Print Design; here they are fixed). The room they free goes to REMARKS.
 - Column widths are sized for real Excel, which gives text fewer pixels than
   LibreOffice: every column fits the longest word of its title in 9 pt bold and
   a typical value (an 8-character item or bulk code, a 6-digit quantity) in
@@ -82,7 +85,7 @@ and all defined names are documented at the top of `build_workbook.py`.
   The widths are sized for 100 % zoom; a value too long for its column can
   still shrink below 8.5 pt to fit.
 - No conditional format changes a number format (Excel applied one meant for
-  % ACTUAL COMPLETE to BOTTLES REMAINING); a blank % ACTUAL COMPLETE on a
+  % ACTUAL COMPLETE to BOTTLES REMAINING, now titled BTLS LEFT); a blank % ACTUAL COMPLETE on a
   work-order row holds the text "—" instead.
 - Excel's TRIM also turns runs of spaces inside a value into one space, and a
   tab or line break inside a value becomes a space; rows that differ only in
