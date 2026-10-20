@@ -1981,7 +1981,33 @@ def deterministic_zip(data):
     return out.getvalue()
 
 
+# --demo: a copy ready to present - the sample schedule with a few lines
+# ticked and tagged, the "checked on" date always today (so no CHECK
+# message on the day it's shown), opening on 4. Schedule.
+DEMO_OUT = OUT.with_name("JDE_Production_Schedule_DEMO.xlsx")
+DEMO_LINES = {"VPKL05": ("Yes", "READY"), "VPKL07": ("", "PM"), "VPKL09": ("", "PM"), "VPKL10": ("Yes", "OT"),
+              "VPKL12": ("Yes", "")}
+
+
+def apply_demo(wb):
+    ws = wb[S_LINES]
+    for r in range(4, 4 + LINE_SLOTS):
+        name = ws[f"A{r}"].value
+        if name in DEMO_LINES:
+            sched, status = DEMO_LINES[name]
+            ws[f"B{r}"].value = sched or None
+            ws[f"C{r}"].value = status or None
+    ws["K1"].value = "=TODAY()"
+    ws["K1"].number_format = "mmm d, yyyy"
+    wb.properties.title = "JDE Production Schedule (demo)"
+    sched_idx = wb.sheetnames.index(S_SCHED)
+    wb.active = sched_idx
+    for w in wb.worksheets:
+        w.sheet_view.tabSelected = w.title == S_SCHED
+
+
 def main():
+    demo = "--demo" in sys.argv[1:]
     wb = Workbook()
     build_how(wb)
     build_paste(wb)
@@ -2012,12 +2038,15 @@ def main():
     wb.properties.creator = "JDE Sched"
     wb.properties.title = "JDE Production Schedule"
     wb.properties.created = FIXED_TIME
+    if demo:
+        apply_demo(wb)
     n = audit(wb)
 
+    out = DEMO_OUT if demo else OUT
     buf = io.BytesIO()
     wb.save(buf)
-    OUT.write_bytes(deterministic_zip(buf.getvalue()))
-    print(f"Wrote {OUT} ({OUT.stat().st_size // 1024} KB, {n} formulas audited)")
+    out.write_bytes(deterministic_zip(buf.getvalue()))
+    print(f"Wrote {out} ({out.stat().st_size // 1024} KB, {n} formulas audited)")
 
 
 if __name__ == "__main__":

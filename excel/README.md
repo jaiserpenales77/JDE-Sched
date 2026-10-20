@@ -31,12 +31,18 @@ and the column overrides are saved in it. Keep the original next to them as a
 clean master. The printout's footer shows the file name, so it says which
 shift's copy was printed.
 
+`JDE_Production_Schedule_DEMO.xlsx` is the same workbook set up for a
+presentation: the sample schedule with VPKL05, VPKL10 and VPKL12 ticked,
+READY / PM / OT tags on a few lines, the "checked on" date always today, and
+opening on 4. Schedule. Don't use it for real work - start from the main file.
+
 ## Regenerate
 
 The workbook is generated - don't edit it by hand and commit it, edit the script:
 
 ```sh
 python3 excel/build_workbook.py      # from the repo root; needs Python 3 + openpyxl
+python3 excel/build_workbook.py --demo   # JDE_Production_Schedule_DEMO.xlsx: ready to present
 ```
 
 The build is deterministic (same script, same bytes) and checks every formula
