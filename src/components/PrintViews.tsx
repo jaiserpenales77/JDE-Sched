@@ -43,7 +43,18 @@ import {
 import ProgressBar from "./ProgressBar";
 import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
 import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
-import { crewBadgeTone, dutyCrew, lineCrew, staffingOff, traineeGroups, zbsTarget } from "../assignmentLogic";
+import {
+  crewBadgeTone,
+  dutyCrew,
+  isRunning,
+  lineCrew,
+  lineTrainees,
+  noteWithoutZbs,
+  staffingOff,
+  traineeGroups,
+  zbsRange,
+  zbsTarget,
+} from "../assignmentLogic";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -564,6 +575,62 @@ export function PrintSchedule({
   );
 }
 
+// The ZBS row as a block per ZBS spot (the "ZBS blocks" design): white =
+// filled, outlined = open, red = more than the ZBS; then crew / ZBS and a
+// gold "+1🎓" for people training. A line without a ZBS shows its note and
+// its 👥 count. Light red / grey follow the same rules as the badge.
+export function TallyRow({ slot, children }: { slot: LineSlot; children?: ReactNode }) {
+  const zbs = zbsRange(slot.subNote);
+  const crew = lineCrew(slot).length;
+  const trainees = lineTrainees(slot).length;
+  const rest = noteWithoutZbs(slot.subNote);
+  const tone = crewBadgeTone(slot);
+  const gold = trainees > 0 && (
+    <span className="tally-train">
+      +{trainees}
+      <CapIcon />
+    </span>
+  );
+  const classes = ["tally", isRunning(slot) ? "" : "tally-idle", slot.status === "Scheduled" ? "tally-scheduled" : "", tone === "off" ? "tally-off" : ""];
+  if (!zbs) {
+    return (
+      <span className={classes.join(" ")}>
+        {rest && <span className="tally-note">{rest}</span>}
+        <span className="tally-count">
+          <PeopleIcon />
+          {crew}
+        </span>
+        {gold}
+        {children}
+      </span>
+    );
+  }
+  const filled = Math.min(crew, zbs.max);
+  const open = Math.max(0, zbs.min - crew);
+  const extra = Math.max(0, crew - zbs.max);
+  return (
+    <span className={classes.join(" ")}>
+      <span className="tally-blocks" aria-hidden="true">
+        {Array.from({ length: filled }, (_, i) => (
+          <span className="tally-block" key={`f${i}`} />
+        ))}
+        {Array.from({ length: open }, (_, i) => (
+          <span className="tally-block tally-open" key={`o${i}`} />
+        ))}
+        {Array.from({ length: extra }, (_, i) => (
+          <span className="tally-block tally-extra" key={`x${i}`} />
+        ))}
+      </span>
+      <span className="tally-count">
+        {crew}/{zbs.min}
+      </span>
+      {gold}
+      {rest && <span className="tally-note">{rest}</span>}
+      {children}
+    </span>
+  );
+}
+
 // A graduation cap, for people training.
 export function CapIcon() {
   return (
@@ -621,38 +688,68 @@ export function LineBoxContent({
   // greyed out when the line isn't running.
   const tone = crewBadgeTone(slot);
   const off = tone === "off" ? staffingOff(slot) : null;
+  // The chosen design (Customize Print Design); with the crew counts turned
+  // off, just the line name and its note, as before.
+  const style = settings.crewStyle;
+  const showBadge = settings.showCrewCount && style !== "tally";
+  const crew = (
+    <>
+      <PeopleIcon />
+      {rawNames.length}
+      {target !== null ? `/${target}` : ""}
+    </>
+  );
+  let badge: ReactNode = null;
+  if (showBadge && traineeCount > 0 && style === "bubble") {
+    // The badge, with people training as a gold "+1" bubble on its corner.
+    badge = (
+      <span className={`print-crew-badge print-crew-badge-bubbled${tone ? ` print-crew-badge-${tone}` : ""}`}>
+        {crew}
+        <span className="crew-bubble">+{traineeCount}</span>
+      </span>
+    );
+  } else if (showBadge && traineeCount > 0) {
+    // One two-tone pill: the crew (in its usual color) and a gold "+1🎓".
+    badge = (
+      <span className="print-crew-badge print-crew-badge-split">
+        <span className={`print-crew-part${tone ? ` print-crew-badge-${tone}` : ""}`}>{crew}</span>
+        <span className="print-trainee-part">
+          +{traineeCount}
+          <CapIcon />
+        </span>
+      </span>
+    );
+  } else if (showBadge) {
+    badge = (
+      <span
+        className={`print-crew-badge${tone ? ` print-crew-badge-${tone}` : ""}`}
+        title={off ? (off === "under" ? "Understaffed" : "Overstaffed") : undefined}
+      >
+        {crew}
+      </span>
+    );
+  }
+  // The ZBS row: blocks in the "ZBS blocks" design; left out by "Badge only"
+  // unless the note says more than the ZBS.
+  const noteRest = noteWithoutZbs(slot.subNote);
+  let note: ReactNode = <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>;
+  if (settings.showCrewCount && style === "tally") {
+    note = (
+      <div className={`print-assign-note print-assign-${key}`}>
+        <TallyRow slot={slot} />
+      </div>
+    );
+  } else if (settings.showCrewCount && style === "badgeOnly") {
+    note = noteRest ? <div className={`print-assign-note print-assign-${key}`}>{noteRest}</div> : null;
+  }
   return (
     <>
       <div className={`print-assign-name print-assign-${key}`}>
         <span className="print-assign-line-name">{slot.line}</span>
-        {settings.showCrewCount &&
-          (traineeCount > 0 ? (
-            // One two-tone pill: the crew (in its usual color) and a gold
-            // "+1🎓" for the people training.
-            <span className="print-crew-badge print-crew-badge-split">
-              <span className={`print-crew-part${tone ? ` print-crew-badge-${tone}` : ""}`}>
-                <PeopleIcon />
-                {rawNames.length}
-                {target !== null ? `/${target}` : ""}
-              </span>
-              <span className="print-trainee-part">
-                +{traineeCount}
-                <CapIcon />
-              </span>
-            </span>
-          ) : (
-            <span
-              className={`print-crew-badge${tone ? ` print-crew-badge-${tone}` : ""}`}
-              title={off ? (off === "under" ? "Understaffed" : "Overstaffed") : undefined}
-            >
-              <PeopleIcon />
-              {rawNames.length}
-              {target !== null ? `/${target}` : ""}
-            </span>
-          ))}
+        {badge}
       </div>
       <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
-      <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
+      {note}
       <div className="print-assign-names">
         {names.map((name, i) => (
           <div className={`print-assign-name-row ${nameRoleClass(name, roleMap, settings.highlightRoles)}`} key={i}>

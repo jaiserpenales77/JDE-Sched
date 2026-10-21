@@ -1760,6 +1760,135 @@ tr.print-line-spacer td {
 .print-crew-badge-compact .print-trainee-part svg {
   display: none;
 }
+/* "Badge + bubble": people training as a gold "+1" bubble on the badge's
+   corner, ringed in the name bar's color. */
+.print-crew-badge-bubbled,
+.page-box-badge-bubbled {
+  position: relative;
+  padding-right: 10px;
+}
+.crew-bubble {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  height: 12px;
+  padding: 0 2px;
+  border-radius: 999px;
+  background: #ffc000;
+  color: #3d2e00;
+  font-size: 6.5pt;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 0 0 1.5px var(--bubble-ring, #1f3864);
+}
+.print-assign-scheduled,
+.page-box:has(> .print-assign-scheduled) {
+  --bubble-ring: var(--print-scheduled-color, #1f3864);
+}
+.print-assign-not-scheduled,
+.print-assign-pm,
+.page-box:has(> .print-assign-not-scheduled),
+.page-box:has(> .print-assign-pm) {
+  --bubble-ring: var(--print-not-scheduled-color, #8c8c8c);
+}
+.print-assign-name:has(> .print-crew-badge-bubbled) {
+  padding-right: 9px;
+}
+.page-box-badge.page-box-badge-bubbled {
+  top: 7px;
+  right: 9px;
+}
+.page-box-badge-bubbled .crew-bubble {
+  top: -5px;
+  min-width: 14px;
+  height: 14px;
+  font-size: 9px;
+}
+
+/* "ZBS blocks": the ZBS row as a block per ZBS spot - white filled,
+   outlined open (light red on a scheduled line), red past the ZBS - then
+   crew / ZBS (light red when off) and a gold "+1🎓" for people training. */
+.tally {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  max-width: 100%;
+  vertical-align: middle;
+}
+.tally-blocks {
+  display: inline-flex;
+  gap: 2px;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.tally-block {
+  flex: 0 1 auto;
+  width: 8px;
+  min-width: 3px;
+  height: 9px;
+  border-radius: 2px;
+  background: #fff;
+}
+.tally-block.tally-open {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.2px rgba(255, 255, 255, 0.75);
+}
+.tally-scheduled .tally-block.tally-open {
+  box-shadow: inset 0 0 0 1.2px #fca5a5;
+}
+.tally-block.tally-extra {
+  background: #f87171;
+}
+.tally-idle .tally-block {
+  background: #7a7a7a;
+}
+.tally-idle .tally-block.tally-open {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.2px #7a7a7a;
+}
+.tally-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+}
+.tally-count svg {
+  flex: none;
+  width: 1.2em;
+  height: 0.96em;
+}
+.tally-off .tally-count {
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+}
+.tally-train {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #ffc000;
+  color: #3d2e00;
+  white-space: nowrap;
+}
+.tally-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tally-warn {
+  color: #fbbf24;
+}
+
 .cap-icon {
   flex: none;
   width: 1.25em;
@@ -2025,7 +2154,8 @@ tr.print-line-spacer td {
   opacity: 0;
   pointer-events: none;
 }
-.design-choice .design-thumb {
+.design-choice .design-thumb,
+.design-choice .crew-thumb {
   grid-row: span 2;
 }
 .design-choice-name {
@@ -2037,6 +2167,81 @@ tr.print-line-spacer td {
   font-size: 11.5px;
   line-height: 1.3;
   color: var(--muted);
+}
+
+/* Tiny drawings of the crew count designs (Line Assignments). */
+.crew-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 58px;
+  height: 44px;
+  padding: 4px;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #d1d5db;
+}
+.crew-thumb .ct-bar {
+  position: relative;
+  height: 9px;
+  flex: none;
+  background: #1f3864;
+}
+.crew-thumb .ct-badge {
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  display: flex;
+  justify-content: flex-end;
+  width: 15px;
+  height: 5px;
+  border-radius: 999px;
+  background: #fff;
+  overflow: visible;
+}
+.crew-thumb .ct-gold {
+  width: 5px;
+  height: 5px;
+  border-radius: 0 999px 999px 0;
+  background: #ffc000;
+}
+.crew-thumb .ct-dot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffc000;
+}
+.crew-thumb .ct-status {
+  height: 4px;
+  flex: none;
+  background: #8497b0;
+}
+.crew-thumb .ct-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  height: 5px;
+  flex: none;
+  background: #4a6290;
+}
+.crew-thumb .ct-note i {
+  width: 3px;
+  height: 3px;
+  border-radius: 1px;
+  background: #fff;
+}
+.crew-thumb .ct-note i.ct-open {
+  background: transparent;
+  box-shadow: inset 0 0 0 0.8px #fca5a5;
+}
+.crew-thumb .ct-row {
+  height: 4px;
+  flex: none;
+  background: #e5e7eb;
 }
 
 .design-thumb {

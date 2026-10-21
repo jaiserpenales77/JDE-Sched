@@ -108,18 +108,34 @@ export function zbsTarget(subNote: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+const ZBS_PATTERN = /zbs\s*-?\s*(\d+)(?:\s*\/\s*(\d+))?/i;
+
+// A line's ZBS from its note: "ZBS - 4" -> 4 to 4, "ZBS -5/6" -> 5 to 6.
+export function zbsRange(subNote: string): { min: number; max: number } | null {
+  const match = subNote.match(ZBS_PATTERN);
+  if (!match) return null;
+  const min = Number(match[1]);
+  return { min, max: Math.max(min, Number(match[2] ?? match[1])) };
+}
+
+// The rest of a line's note once its ZBS is taken out ("PTP", "new label").
+export function noteWithoutZbs(subNote: string): string {
+  return subNote
+    .replace(ZBS_PATTERN, "")
+    .replace(/^[\s\-·,;:]+|[\s\-·,;:]+$/g, "")
+    .trim();
+}
+
 // Whether a scheduled line has fewer or more people than its ZBS number
 // ("ZBS -5/6" allows 5 or 6). Lines that aren't scheduled, or have no ZBS
 // number, are never off.
 export function staffingOff(slot: LineSlot): "under" | "over" | null {
   if (slot.status !== "Scheduled") return null;
-  const match = slot.subNote.match(/zbs\s*-?\s*(\d+)(?:\s*\/\s*(\d+))?/i);
-  if (!match) return null;
-  const min = Number(match[1]);
-  const max = Math.max(min, Number(match[2] ?? match[1]));
+  const zbs = zbsRange(slot.subNote);
+  if (!zbs) return null;
   // People training are extra: they don't count against the ZBS.
   const count = lineCrew(slot).length;
-  return count < min ? "under" : count > max ? "over" : null;
+  return count < zbs.min ? "under" : count > zbs.max ? "over" : null;
 }
 
 // A Room & Duty box's 👥 badge, when it's turned on for the box: how many

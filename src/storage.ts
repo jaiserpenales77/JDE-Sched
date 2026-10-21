@@ -10,7 +10,7 @@ import type {
   ShiftKey,
   TimeOffEntry,
 } from "./types";
-import { SCHEDULE_TABLE_STYLES, SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
+import { CREW_STYLES, SCHEDULE_TABLE_STYLES, SHIFT_KEYS, TIME_OFF_TYPES } from "./types";
 import { buildSeedData, defaultPrintSettings, defaultSchedulePrintSettings } from "./seedData";
 import { HOLIDAY_THEME_IDS } from "./holidayThemes";
 import {
@@ -71,6 +71,7 @@ function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefin
   const merged = { ...defaultPrintSettings, ...settings };
   if (!merged.boxLayouts || typeof merged.boxLayouts !== "object") merged.boxLayouts = {};
   if (typeof merged.showCrewCount !== "boolean") merged.showCrewCount = defaultPrintSettings.showCrewCount;
+  if (!CREW_STYLES.includes(merged.crewStyle)) merged.crewStyle = defaultPrintSettings.crewStyle;
   // Migrate the old single "MLL / MLT highlight" color (crewColor) - if a
   // user already customized it, carry that over to both new fields instead
   // of silently reverting them to the default.

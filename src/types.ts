@@ -168,6 +168,15 @@ export interface BoxLayout {
   height: number;
 }
 
+// Designs for a line's crew count and ZBS on Line Assignments:
+// "badge" - the 👥 badge in the name bar (a gold "+1🎓" half for people
+//   training), with the ZBS row below;
+// "bubble" - the same badge with training as a gold "+1" bubble on its corner;
+// "tally" - no badge; the ZBS row shows a block per ZBS spot and the count;
+// "badgeOnly" - the badge, without the ZBS row (more room for names).
+export const CREW_STYLES = ["badge", "bubble", "tally", "badgeOnly"] as const;
+export type CrewStyle = (typeof CREW_STYLES)[number];
+
 export interface PrintAssignSettings {
   orientation: "landscape" | "portrait";
   showBanner: boolean;
@@ -176,6 +185,8 @@ export interface PrintAssignSettings {
   highlightRoles: boolean;
   // The 👥 crew count (assigned / ZBS target) in each line's header.
   showCrewCount: boolean;
+  // How each line shows its crew and ZBS (see CREW_STYLES).
+  crewStyle: CrewStyle;
   titleColor: string;
   bannerColor: string;
   bannerTextColor: string;

@@ -99,6 +99,35 @@ gold TRAINING row, on screen and on the printout, and the crew count shows
 them as +1 instead of counting them in the ZBS. The separate Cremer
 Training box isn't needed anymore."
 
+### 3. Pick how lines show their crew and ZBS
+
+Customize Print Design (Line Assignments) has a **Crew count design**
+picker, for the page on screen and the printout:
+
+- **Badge** (the starting choice for every shift): the 👥 badge in the name
+  bar, with a gold "+1🎓" half for people training; the ZBS row below.
+- **Badge + bubble:** the same badge, with training as a gold "+1" bubble
+  on its corner.
+- **ZBS blocks:** no badge. The ZBS row shows a block per ZBS spot (white =
+  filled, outlined = open, red = more than the ZBS), then crew/ZBS (light
+  red when off) and the gold "+1🎓". Lines without a ZBS show their note
+  and 👥 count. On screen a line's ⚠ stays at the end of the row.
+- **Badge only:** the badge, without the ZBS row: one more row for names.
+  A note that says more than the ZBS ("PTP") keeps its row.
+
+Same colors in every design: light red when a scheduled line is off its
+ZBS, grey when it isn't running, gold for training. The ZBS is still typed
+the same way, in the line's Note.
+
+**Needs outside the app:** nothing.
+
+**How to check:** in Customize Print Design on Line Assignments, click each
+design: the page above changes, and so does the printout.
+
+**Announcement:** "You can now pick how each line shows its crew and ZBS on
+Line Assignments: Badge, Badge + bubble, ZBS blocks, or Badge only. It's
+under Customize Print Design on the Line Assignments tab."
+
 ---
 
 ## Running the update

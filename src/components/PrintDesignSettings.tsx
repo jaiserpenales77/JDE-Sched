@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { PrintAssignSettings } from "../types";
+import type { CrewStyle, PrintAssignSettings } from "../types";
 import { defaultPrintSettings } from "../seedData";
 import PageSizeControls from "./PageSizeControls";
 
@@ -14,6 +14,44 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
       <span>{label}</span>
     </label>
+  );
+}
+
+// The designs for a line's crew count and ZBS, with a tiny drawing of each.
+const CREW_DESIGNS: { style: CrewStyle; name: string; note: string }[] = [
+  { style: "badge", name: "Badge", note: "👥 count in the name bar, training as a gold +1 half. ZBS row below." },
+  { style: "bubble", name: "Badge + bubble", note: "The same badge, with training as a gold +1 bubble on its corner." },
+  { style: "tally", name: "ZBS blocks", note: "No badge. The ZBS row shows a block per spot: white filled, outlined open, red extra." },
+  { style: "badgeOnly", name: "Badge only", note: "The badge, with no ZBS row: one more row for names." },
+];
+
+function CrewThumb({ style }: { style: CrewStyle }) {
+  const badge = style !== "tally" && (
+    <span className="ct-badge">
+      {style === "badge" || style === "badgeOnly" ? <span className="ct-gold" /> : null}
+      {style === "bubble" && <span className="ct-dot" />}
+    </span>
+  );
+  return (
+    <span className={`crew-thumb crew-thumb-${style}`} aria-hidden="true">
+      <span className="ct-bar">{badge}</span>
+      <span className="ct-status" />
+      {style !== "badgeOnly" && (
+        <span className="ct-note">
+          {style === "tally" && (
+            <>
+              <i />
+              <i />
+              <i />
+              <i className="ct-open" />
+            </>
+          )}
+        </span>
+      )}
+      <span className="ct-row" />
+      <span className="ct-row" />
+      {style === "badgeOnly" && <span className="ct-row" />}
+    </span>
   );
 }
 
@@ -71,6 +109,26 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
               />
               Show the 👥 crew counts on lines (people / ZBS) and on duty boxes that have one
             </label>
+
+            <div>
+              <div className="print-design-subhead">Crew count design (on the page above and the printout)</div>
+              <div className="design-choices" role="radiogroup" aria-label="Crew count design">
+                {CREW_DESIGNS.map(({ style, name, note }) => (
+                  <label className={`design-choice${settings.crewStyle === style ? " selected" : ""}`} key={style}>
+                    <input
+                      type="radio"
+                      name="crew-design"
+                      value={style}
+                      checked={settings.crewStyle === style}
+                      onChange={() => set("crewStyle", style)}
+                    />
+                    <CrewThumb style={style} />
+                    <span className="design-choice-name">{name}</span>
+                    <span className="design-choice-note">{note}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
             <label className="print-design-checkbox">
               <input

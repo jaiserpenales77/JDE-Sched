@@ -200,6 +200,7 @@ export const defaultPrintSettings: PrintAssignSettings = {
   includeRoomSections: true,
   highlightRoles: true,
   showCrewCount: true,
+  crewStyle: "badge",
   titleColor: "#1f3864",
   bannerColor: "#d9e2f3",
   bannerTextColor: "#bf9000",

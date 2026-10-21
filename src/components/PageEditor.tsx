@@ -22,13 +22,14 @@ import {
   DRAG_MIME,
   dutyCrew,
   lineCrew,
+  noteWithoutZbs,
   parseNames,
   readDragPayload,
   staffingOff,
   traineeGroups,
 } from "../assignmentLogic";
 import type { SlotCoverage } from "../assignmentLogic";
-import { CapIcon, CommentBoxContent, TrainingDivider } from "./PrintViews";
+import { CapIcon, CommentBoxContent, TallyRow, TrainingDivider } from "./PrintViews";
 import PersonPicker from "./PersonPicker";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
 
@@ -239,7 +240,27 @@ export default function PageEditor({
       <>
         <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
         <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
-        <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
+        {(() => {
+          // The ZBS row, in the design picked in Customize Print Design.
+          const style = settings.crewStyle;
+          if (style === "tally")
+            return (
+              <div className={`print-assign-note print-assign-${key}`}>
+                <TallyRow slot={slot}>
+                  {cov.warnings.length > 0 && (
+                    <span className="tally-warn" title={cov.warnings.join(" · ")}>
+                      ⚠
+                    </span>
+                  )}
+                </TallyRow>
+              </div>
+            );
+          if (style === "badgeOnly") {
+            const rest = noteWithoutZbs(slot.subNote);
+            return rest ? <div className={`print-assign-note print-assign-${key}`}>{rest}</div> : null;
+          }
+          return <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>;
+        })()}
         <div className="print-assign-names">
           {names.map((n, i) => nameRow(n, slot.id, i))}
           {training.map((group) => (
@@ -262,7 +283,16 @@ export default function PageEditor({
           const title = tips.length
             ? tips.join(" · ")
             : `${cov.count} on the crew${cov.trainees ? ` + ${cov.trainees} training (not counted in the ZBS)` : ""}`;
-          // With people training: one two-tone pill, crew + gold "+1🎓".
+          if (settings.crewStyle === "tally") return null;
+          // With people training: a gold "+1" bubble on the badge's corner,
+          // or one two-tone pill, crew + gold "+1🎓".
+          if (cov.trainees > 0 && settings.crewStyle === "bubble")
+            return (
+              <span className={`page-box-badge page-box-badge-bubbled ${toneClass}`} title={title}>
+                {crew}
+                <span className="crew-bubble">+{cov.trainees}</span>
+              </span>
+            );
           return cov.trainees > 0 ? (
             <span className="page-box-badge page-box-badge-split" title={title}>
               <span className={`page-crew-part ${toneClass}`}>{crew}</span>
