@@ -107,6 +107,19 @@ export function zbsTarget(subNote: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+// Whether a scheduled line has fewer or more people than its ZBS number
+// ("ZBS -5/6" allows 5 or 6). Lines that aren't scheduled, or have no ZBS
+// number, are never off.
+export function staffingOff(slot: LineSlot): "under" | "over" | null {
+  if (slot.status !== "Scheduled") return null;
+  const match = slot.subNote.match(/zbs\s*-?\s*(\d+)(?:\s*\/\s*(\d+))?/i);
+  if (!match) return null;
+  const min = Number(match[1]);
+  const max = Math.max(min, Number(match[2] ?? match[1]));
+  const count = parseNames(slot.assigned).length;
+  return count < min ? "under" : count > max ? "over" : null;
+}
+
 export function isRunning(slot: LineSlot): boolean {
   return slot.status !== "Not Scheduled" && slot.status !== "PM";
 }

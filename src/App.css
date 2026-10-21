@@ -1712,6 +1712,12 @@ tr.print-line-spacer td {
   width: 1.2em;
   height: 0.96em;
 }
+/* A scheduled line with fewer or more people than its ZBS number. */
+.print-crew-badge-off {
+  background: #fee2e2;
+  color: #991b1b;
+  box-shadow: inset 0 0 0 1px #f87171;
+}
 .print-crew-badge-compact {
   padding: 0 3px;
 }
