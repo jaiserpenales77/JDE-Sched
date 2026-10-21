@@ -625,22 +625,31 @@ export function LineBoxContent({
     <>
       <div className={`print-assign-name print-assign-${key}`}>
         <span className="print-assign-line-name">{slot.line}</span>
-        {settings.showCrewCount && (
-          <span
-            className={`print-crew-badge${tone ? ` print-crew-badge-${tone}` : ""}`}
-            title={off ? (off === "under" ? "Understaffed" : "Overstaffed") : undefined}
-          >
-            <PeopleIcon />
-            {rawNames.length}
-            {target !== null ? `/${target}` : ""}
-          </span>
-        )}
-        {settings.showCrewCount && traineeCount > 0 && (
-          <span className="print-trainee-pill">
-            +{traineeCount}
-            <CapIcon />
-          </span>
-        )}
+        {settings.showCrewCount &&
+          (traineeCount > 0 ? (
+            // One two-tone pill: the crew (in its usual color) and a gold
+            // "+1🎓" for the people training.
+            <span className="print-crew-badge print-crew-badge-split">
+              <span className={`print-crew-part${tone ? ` print-crew-badge-${tone}` : ""}`}>
+                <PeopleIcon />
+                {rawNames.length}
+                {target !== null ? `/${target}` : ""}
+              </span>
+              <span className="print-trainee-part">
+                +{traineeCount}
+                <CapIcon />
+              </span>
+            </span>
+          ) : (
+            <span
+              className={`print-crew-badge${tone ? ` print-crew-badge-${tone}` : ""}`}
+              title={off ? (off === "under" ? "Understaffed" : "Overstaffed") : undefined}
+            >
+              <PeopleIcon />
+              {rawNames.length}
+              {target !== null ? `/${target}` : ""}
+            </span>
+          ))}
       </div>
       <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
       <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>

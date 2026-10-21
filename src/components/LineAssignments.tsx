@@ -593,12 +593,16 @@ export default function LineAssignments({
           )}
           <div className="inspector-label">
             Crew{" "}
-            <span className={`count-badge${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
-              {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
-            </span>
-            {cov.trainees > 0 && (
-              <span className="count-badge count-badge-trainee" title="Training - not counted in the ZBS">
-                +{cov.trainees} 🎓
+            {cov.trainees > 0 ? (
+              <span className="count-badge count-badge-split" title="+ people training (not counted in the ZBS)">
+                <span className={`count-crew-part${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
+                  {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
+                </span>
+                <span className="count-trainee-part">+{cov.trainees} 🎓</span>
+              </span>
+            ) : (
+              <span className={`count-badge${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
+                {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
               </span>
             )}
           </div>

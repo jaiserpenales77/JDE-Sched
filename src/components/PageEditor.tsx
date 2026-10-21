@@ -250,26 +250,33 @@ export default function PageEditor({
           ))}
         </div>
         {isSelected("line", slot.id) && addRow(parseNames(slot.assigned), slot.id)}
-        <span className="page-box-badges">
-          <span
-            className={`page-box-badge ${tone ? `page-box-badge-${tone}` : cov.warnings.length ? "page-box-badge-warn" : ""}`}
-            title={
-              tips.length
-                ? tips.join(" · ")
-                : `${cov.count} on the crew${cov.trainees ? ` + ${cov.trainees} training` : ""}`
-            }
-          >
-            👥 {cov.count}
-            {cov.target !== null ? `/${cov.target}` : ""}
-            {cov.warnings.length ? " ⚠" : ""}
-          </span>
-          {cov.trainees > 0 && (
-            <span className="page-trainee-pill" title={`${cov.trainees} training (not counted in the ZBS)`}>
-              +{cov.trainees}
-              <CapIcon />
+        {(() => {
+          const toneClass = tone ? `page-box-badge-${tone}` : cov.warnings.length ? "page-box-badge-warn" : "";
+          const crew = (
+            <>
+              👥 {cov.count}
+              {cov.target !== null ? `/${cov.target}` : ""}
+              {cov.warnings.length ? " ⚠" : ""}
+            </>
+          );
+          const title = tips.length
+            ? tips.join(" · ")
+            : `${cov.count} on the crew${cov.trainees ? ` + ${cov.trainees} training (not counted in the ZBS)` : ""}`;
+          // With people training: one two-tone pill, crew + gold "+1🎓".
+          return cov.trainees > 0 ? (
+            <span className="page-box-badge page-box-badge-split" title={title}>
+              <span className={`page-crew-part ${toneClass}`}>{crew}</span>
+              <span className="page-trainee-part">
+                +{cov.trainees}
+                <CapIcon />
+              </span>
             </span>
-          )}
-        </span>
+          ) : (
+            <span className={`page-box-badge ${toneClass}`} title={title}>
+              {crew}
+            </span>
+          );
+        })()}
       </>
     );
   }

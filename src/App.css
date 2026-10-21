@@ -1712,6 +1712,17 @@ tr.print-line-spacer td {
   width: 1.2em;
   height: 0.96em;
 }
+/* The crew half of the two-tone pill: the badge's usual look, so the
+   light red and grey below still apply to it. */
+.print-crew-part {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2937;
+  border-radius: 999px 0 0 999px;
+}
 /* A scheduled line with fewer or more people than its ZBS number. */
 .print-crew-badge-off {
   background: #fee2e2;
@@ -1727,30 +1738,26 @@ tr.print-line-spacer td {
   filter: grayscale(1);
   opacity: 0.6;
 }
-/* People training on a line: "+1🎓" next to the crew count, a gold
-   "TRAINING · CREMER" row above them, and their names in light gold. */
-.print-trainee-pill,
-.page-trainee-pill {
-  flex: none;
+/* People training on a line: the crew badge becomes one two-tone pill,
+   the crew in its usual color and a gold "+1🎓"; a gold "TRAINING ·
+   CREMER" row above them, and their names in light gold. */
+.print-crew-badge.print-crew-badge-split,
+.print-crew-badge-split.print-crew-badge-compact {
+  padding: 0;
+  gap: 0;
+  background: none;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.print-trainee-part {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
+  padding: 0 4px 0 3px;
   background: #ffc000;
   color: #3d2e00;
-  border-radius: 999px;
-  padding: 0 4px;
-  font-weight: 700;
-  white-space: nowrap;
 }
-.print-trainee-pill {
-  margin-left: -2px;
-  font-size: 7.5pt;
-  line-height: 1.4;
-}
-.print-crew-badge-hidden + .print-trainee-pill {
-  display: none;
-}
-.print-crew-badge-compact + .print-trainee-pill svg {
+.print-crew-badge-compact .print-trainee-part svg {
   display: none;
 }
 .cap-icon {
@@ -2383,28 +2390,38 @@ tr.print-line-spacer td {
   padding: 1px 6px;
   line-height: 16px;
 }
-/* A line's 👥 badge and, when someone is training, its "+1🎓" pill. */
-.page-box-badges {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  display: flex;
+/* A line's 👥 badge with people training: one two-tone pill. The crew
+   half keeps the badge's colors (amber, light red, grey). */
+.page-box-badge.page-box-badge-split {
+  display: inline-flex;
+  padding: 0;
+  background: none;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.page-crew-part {
+  padding: 1px 5px 1px 6px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px 0 0 999px;
+}
+.page-trainee-part {
+  display: inline-flex;
   align-items: center;
-  gap: 2px;
-}
-.page-box-badges > .page-box-badge {
-  position: static;
-}
-.page-trainee-pill {
-  font-size: 10px;
-  font-family: "Segoe UI", system-ui, sans-serif;
-  line-height: 16px;
-  padding: 1px 5px;
-}
-.count-badge.count-badge-trainee {
-  margin-left: 4px;
+  gap: 1px;
+  padding: 1px 6px 1px 4px;
   background: #ffc000;
-  border-color: #e0a800;
+  color: #3d2e00;
+}
+.count-badge.count-badge-split {
+  display: inline-flex;
+  padding: 0;
+  overflow: hidden;
+}
+.count-badge-split > span {
+  padding: 0 6px;
+}
+.count-badge-split > .count-trainee-part {
+  background: #ffc000;
   color: #3d2e00;
 }
 .training-panel {
@@ -2435,7 +2452,8 @@ tr.print-line-spacer td {
 /* A scheduled line with fewer or more people than its ZBS - the same light
    red as the printed badge (.print-crew-badge-off). */
 .page-box-badge-off,
-.count-badge.count-badge-off {
+.count-badge.count-badge-off,
+.count-crew-part.count-badge-off {
   background: #fee2e2;
   color: #991b1b;
   border-color: #f87171;
@@ -2444,7 +2462,8 @@ tr.print-line-spacer td {
 /* A line that isn't running (Not Scheduled or PM): greyed out, like the
    printed badge (.print-crew-badge-idle). */
 .page-box-badge-idle,
-.count-badge.count-badge-idle {
+.count-badge.count-badge-idle,
+.count-crew-part.count-badge-idle {
   background: #d4d4d4;
   color: #595959;
   border-color: #c4c4c4;

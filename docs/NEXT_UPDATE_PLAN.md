@@ -65,9 +65,10 @@ Assignments tab."
 Instead of a separate "Cremer Training" box, the person training is marked
 on their line. They're listed last in the line's box, under a gold
 **🎓 TRAINING · CREMER** row, with their name in light gold, on the page
-and on the printout. The line's 👥 badge shows the crew with a gold
-**+1🎓** pill beside it: people training aren't counted in the ZBS, so a
-full crew plus a trainee isn't light red for overstaffing.
+and on the printout. The line's 👥 badge becomes one two-tone pill: the
+crew in its usual color (white, light red or grey) and a gold **+1🎓** half.
+People training aren't counted in the ZBS, so a full crew plus a trainee
+isn't light red for overstaffing.
 
 - **To mark someone:** click the line. In its panel, under **🎓 Training on
   this line**, pick them from **Mark someone on this line as training…**.
@@ -86,7 +87,7 @@ full crew plus a trainee isn't light red for overstaffing.
 
 **How to check:** on Line Assignments, click a line, mark someone as
 training. They move to the bottom under the gold Training row, and the
-badge shows the crew with a gold +1. Print: same. Delete the old Cremer
+badge is one pill with a gold +1🎓 half. Print: same. Delete the old Cremer
 Training box if it's no longer needed.
 
 **Job Instruction:** none (the Job Instruction covers the Production
