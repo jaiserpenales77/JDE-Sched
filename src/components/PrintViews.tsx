@@ -43,7 +43,7 @@ import {
 import ProgressBar from "./ProgressBar";
 import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
 import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
-import { crewBadgeTone, dutyCrew, parseNames, staffingOff, zbsTarget } from "../assignmentLogic";
+import { crewBadgeTone, dutyCrew, lineCrew, staffingOff, traineeGroups, zbsTarget } from "../assignmentLogic";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -564,6 +564,27 @@ export function PrintSchedule({
   );
 }
 
+// A graduation cap, for people training.
+export function CapIcon() {
+  return (
+    <svg className="cap-icon" viewBox="0 0 24 18" aria-hidden="true">
+      <path d="M12 1 1 6l11 5 11-5z" fill="currentColor" />
+      <path d="M5 8.2v4.3c0 1.8 3.1 3.3 7 3.3s7-1.5 7-3.3V8.2L12 11.4z" fill="currentColor" />
+      <path d="M21.6 6.6v5.6" stroke="currentColor" strokeWidth="1.4" />
+    </svg>
+  );
+}
+
+// The gold row above a line's trainees: "TRAINING · CREMER".
+export function TrainingDivider({ skill }: { skill: string }) {
+  return (
+    <div className="print-training-divider">
+      <CapIcon />
+      {skill ? `Training · ${skill}` : "Training"}
+    </div>
+  );
+}
+
 // Two people, for the crew count badge (drawn, so it prints the same on
 // every computer).
 function PeopleIcon() {
@@ -586,7 +607,10 @@ export function LineBoxContent({
   roleMap: Map<string, string>;
   settings: PrintAssignSettings;
 }) {
-  const rawNames = parseNames(slot.assigned);
+  // The crew, then the people training listed last.
+  const rawNames = lineCrew(slot);
+  const training = traineeGroups(slot);
+  const traineeCount = training.reduce((n, g) => n + g.names.length, 0);
   // MLL > Line Leader > MLT > everyone else - same "highlight roles"
   // toggle that colors these names also controls whether they're
   // reordered to put the crew hierarchy first.
@@ -611,6 +635,12 @@ export function LineBoxContent({
             {target !== null ? `/${target}` : ""}
           </span>
         )}
+        {settings.showCrewCount && traineeCount > 0 && (
+          <span className="print-trainee-pill">
+            +{traineeCount}
+            <CapIcon />
+          </span>
+        )}
       </div>
       <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
       <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
@@ -619,6 +649,16 @@ export function LineBoxContent({
           <div className={`print-assign-name-row ${nameRoleClass(name, roleMap, settings.highlightRoles)}`} key={i}>
             {name}
           </div>
+        ))}
+        {training.map((group) => (
+          <Fragment key={group.skill}>
+            <TrainingDivider skill={group.skill} />
+            {group.names.map((name) => (
+              <div className="print-assign-name-row print-assign-trainee" key={name}>
+                {name}
+              </div>
+            ))}
+          </Fragment>
         ))}
       </div>
     </>

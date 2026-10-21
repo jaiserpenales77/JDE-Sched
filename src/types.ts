@@ -33,6 +33,16 @@ export interface LineSlot {
   status: "" | "Scheduled" | "Not Scheduled" | "PM";
   subNote: string;
   assigned: string;
+  // People on this line who are training, and on what. They stay in
+  // assigned (so the rest of the app still sees them on the line); this
+  // only lists them separately, after the crew.
+  trainees?: Trainee[];
+}
+
+export interface Trainee {
+  name: string;
+  // What they're training on: "Cremer", "MLL", ... ("" = not said).
+  skill: string;
 }
 
 export interface ListSection {

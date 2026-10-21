@@ -1727,6 +1727,54 @@ tr.print-line-spacer td {
   filter: grayscale(1);
   opacity: 0.6;
 }
+/* People training on a line: "+1🎓" next to the crew count, a gold
+   "TRAINING · CREMER" row above them, and their names in light gold. */
+.print-trainee-pill,
+.page-trainee-pill {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: #ffc000;
+  color: #3d2e00;
+  border-radius: 999px;
+  padding: 0 4px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.print-trainee-pill {
+  margin-left: -2px;
+  font-size: 7.5pt;
+  line-height: 1.4;
+}
+.print-crew-badge-hidden + .print-trainee-pill {
+  display: none;
+}
+.print-crew-badge-compact + .print-trainee-pill svg {
+  display: none;
+}
+.cap-icon {
+  flex: none;
+  width: 1.25em;
+  height: 0.95em;
+}
+.print-training-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: #fff2cc;
+  color: #7a5c00;
+  border-top: 1px solid #ffc000;
+  font-size: 7pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 1px 4px;
+}
+.print-assign-names .print-assign-name-row.print-assign-trainee {
+  background: #fffbeb;
+}
 .print-crew-badge-compact {
   padding: 0 3px;
 }
@@ -2334,6 +2382,51 @@ tr.print-line-spacer td {
   border-radius: 999px;
   padding: 1px 6px;
   line-height: 16px;
+}
+/* A line's 👥 badge and, when someone is training, its "+1🎓" pill. */
+.page-box-badges {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.page-box-badges > .page-box-badge {
+  position: static;
+}
+.page-trainee-pill {
+  font-size: 10px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  line-height: 16px;
+  padding: 1px 5px;
+}
+.count-badge.count-badge-trainee {
+  margin-left: 4px;
+  background: #ffc000;
+  border-color: #e0a800;
+  color: #3d2e00;
+}
+.training-panel {
+  margin-top: 10px;
+}
+.trainee-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.trainee-edit-name {
+  flex: 1 1 40%;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.trainee-edit-row input {
+  flex: 1 1 60%;
+  min-width: 0;
 }
 .page-box-badge-warn {
   background: #fef3c7;

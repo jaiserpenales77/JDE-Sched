@@ -60,6 +60,44 @@ click the box and tick "Show a 👥 crew badge on this box". To leave the
 badges off the printout, untick them in Customize Print Design on the Line
 Assignments tab."
 
+### 2. Training shown on the line
+
+Instead of a separate "Cremer Training" box, the person training is marked
+on their line. They're listed last in the line's box, under a gold
+**🎓 TRAINING · CREMER** row, with their name in light gold, on the page
+and on the printout. The line's 👥 badge shows the crew with a gold
+**+1🎓** pill beside it: people training aren't counted in the ZBS, so a
+full crew plus a trainee isn't light red for overstaffing.
+
+- **To mark someone:** click the line. In its panel, under **🎓 Training on
+  this line**, pick them from **Mark someone on this line as training…**.
+  **On what?** starts as the skill they're marked IP on in Skills & Roles
+  (Cremer for Adriana Martin) and can be changed to anything ("MLL", ...).
+  ✕ puts them back in the crew.
+- They stay on the line everywhere else in the app (Unassigned, search,
+  out-today checks). Transfer team brings the training marks along, and a
+  new day's board copied from this one keeps them, like the crew.
+- A lead who is training doesn't count as the line's MLL or Line Lead.
+- The gold row adds one row to the box: if a box with a custom position is
+  full, drag it a little taller (the old Cremer Training box's spot is
+  free).
+
+**Needs outside the app:** nothing (no rules or logins).
+
+**How to check:** on Line Assignments, click a line, mark someone as
+training. They move to the bottom under the gold Training row, and the
+badge shows the crew with a gold +1. Print: same. Delete the old Cremer
+Training box if it's no longer needed.
+
+**Job Instruction:** none (the Job Instruction covers the Production
+Schedule tab).
+
+**Announcement:** "Training now shows on the line itself: click the line,
+pick the person under 'Training on this line'. They're listed last under a
+gold TRAINING row, on screen and on the printout, and the crew count shows
+them as +1 instead of counting them in the ZBS. The separate Cremer
+Training box isn't needed anymore."
+
 ---
 
 ## Running the update

@@ -10,7 +10,7 @@ import type {
   TimeOffEntry,
 } from "../types";
 import { describeEntry, entriesOn, todayIso } from "../timeOffLogic";
-import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE } from "../types";
+import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE, SKILL_LABELS } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
 import UnassignedPanel from "./UnassignedPanel";
@@ -27,7 +27,10 @@ import {
   parseNames,
   crewBadgeTone,
   dutyNeededFromTitle,
+  lineCrew,
+  lineTrainees,
   slotCoverage,
+  trainingSkillFor,
 } from "../assignmentLogic";
 
 interface Props {
@@ -266,8 +269,9 @@ export default function LineAssignments({
     const merged = [...existing, ...team.filter((n) => !existing.includes(n))];
     updateBoard(board.id, {
       lineSlots: board.lineSlots.map((s) => {
-        if (s.id === slot.id) return { ...s, assigned: "" };
-        if (s.id === targetSlot.id) return { ...s, assigned: merged.join(", ") };
+        if (s.id === slot.id) return { ...s, assigned: "", trainees: [] };
+        if (s.id === targetSlot.id)
+          return { ...s, assigned: merged.join(", "), trainees: [...lineTrainees(targetSlot), ...lineTrainees(slot)] };
         return s;
       }),
     });
@@ -545,6 +549,9 @@ export default function LineAssignments({
     const slot = selection?.kind === "line" ? board.lineSlots.find((s) => s.id === selection.id) : undefined;
     if (slot) {
       const cov = slotCoverage(slot, roleMap);
+      const trainees = lineTrainees(slot);
+      const crewNames = lineCrew(slot);
+      const setTrainees = (next: typeof trainees) => updateSlot(slot.id, { trainees: next });
       return (
         <div className="panel inspector">
           <div className="inspector-head">
@@ -589,6 +596,11 @@ export default function LineAssignments({
             <span className={`count-badge${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
               {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
             </span>
+            {cov.trainees > 0 && (
+              <span className="count-badge count-badge-trainee" title="Training - not counted in the ZBS">
+                +{cov.trainees} 🎓
+              </span>
+            )}
           </div>
           <NameMultiSelect
             value={slot.assigned}
@@ -601,6 +613,53 @@ export default function LineAssignments({
             chipWarning={(name) => warningFor(name, slot.id)}
             isMatch={isMatch}
           />
+          <div className="training-panel">
+            <div className="inspector-label">🎓 Training on this line</div>
+            {trainees.map((t) => (
+              <div className="trainee-edit-row" key={nameKey(t.name)}>
+                <span className="trainee-edit-name">{t.name}</span>
+                <input
+                  list="training-skill-options"
+                  placeholder="On what? (Cremer, MLL…)"
+                  value={t.skill}
+                  onChange={(e) =>
+                    setTrainees(trainees.map((x) => (nameKey(x.name) === nameKey(t.name) ? { ...x, skill: e.target.value } : x)))
+                  }
+                />
+                <button
+                  className="btn small"
+                  title={`${t.name} goes back to the crew`}
+                  onClick={() => setTrainees(trainees.filter((x) => nameKey(x.name) !== nameKey(t.name)))}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            <select
+              className="inspector-select"
+              value=""
+              disabled={crewNames.length === 0}
+              onChange={(e) => {
+                const name = e.target.value;
+                if (name) setTrainees([...trainees, { name, skill: trainingSkillFor(name, employees) }]);
+              }}
+            >
+              <option value="">🎓 Mark someone on this line as training…</option>
+              {crewNames.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <datalist id="training-skill-options">
+              {[...Object.values(SKILL_LABELS), "MLL", "MLT", "Line Leader"].map((o) => (
+                <option key={o} value={o} />
+              ))}
+            </datalist>
+            {trainees.length > 0 && (
+              <p className="panel-hint">Listed last under a gold Training row, and not counted in the ZBS.</p>
+            )}
+          </div>
           <select
             className="inspector-select"
             value=""

@@ -1,4 +1,5 @@
-import type { DailyBoard, Employee, LineSlot, ListSection, TimeOffEntry } from "./types";
+import type { DailyBoard, Employee, LineSlot, ListSection, TimeOffEntry, Trainee } from "./types";
+import { SKILL_KEYS, SKILL_LABELS } from "./types";
 import { describeEntry, entriesOn } from "./timeOffLogic";
 import { nameKey, roleCategory, roleOf } from "./printLayout";
 
@@ -116,7 +117,8 @@ export function staffingOff(slot: LineSlot): "under" | "over" | null {
   if (!match) return null;
   const min = Number(match[1]);
   const max = Math.max(min, Number(match[2] ?? match[1]));
-  const count = parseNames(slot.assigned).length;
+  // People training are extra: they don't count against the ZBS.
+  const count = lineCrew(slot).length;
   return count < min ? "under" : count > max ? "over" : null;
 }
 
@@ -156,14 +158,54 @@ export function isRunning(slot: LineSlot): boolean {
   return slot.status !== "Not Scheduled" && slot.status !== "PM";
 }
 
+// The people on a line marked as training who are still on it, once each.
+export function lineTrainees(slot: LineSlot): Trainee[] {
+  const onLine = new Set(parseNames(slot.assigned).map(nameKey));
+  const seen = new Set<string>();
+  return (slot.trainees ?? []).filter((t) => {
+    const key = nameKey(t.name);
+    if (!onLine.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+// A line's crew: everyone on it except the people training.
+export function lineCrew(slot: LineSlot): string[] {
+  const training = new Set(lineTrainees(slot).map((t) => nameKey(t.name)));
+  return parseNames(slot.assigned).filter((n) => !training.has(nameKey(n)));
+}
+
+// Trainees grouped by what they're training on, in the order first marked.
+export function traineeGroups(slot: LineSlot): { skill: string; names: string[] }[] {
+  const groups: { skill: string; names: string[] }[] = [];
+  for (const t of lineTrainees(slot)) {
+    const skill = t.skill.trim();
+    const group = groups.find((g) => g.skill.toLowerCase() === skill.toLowerCase());
+    if (group) group.names.push(t.name);
+    else groups.push({ skill, names: [t.name] });
+  }
+  return groups;
+}
+
+// What someone is most likely training on: the first skill marked "IP"
+// (in progress) for them on Skills & Roles, or "".
+export function trainingSkillFor(name: string, employees: Employee[]): string {
+  const emp = employees.find((e) => nameKey(e.name) === nameKey(name));
+  const key = emp && SKILL_KEYS.find((k) => emp.skills?.[k] === "IP");
+  return key ? SKILL_LABELS[key] : "";
+}
+
 export interface SlotCoverage {
+  // The crew, not counting people training.
   count: number;
   target: number | null;
   warnings: string[];
+  trainees: number;
 }
 
 export function slotCoverage(slot: LineSlot, roleMap: Map<string, string>): SlotCoverage {
-  const names = parseNames(slot.assigned);
+  const names = lineCrew(slot);
   const target = zbsTarget(slot.subNote);
   const warnings: string[] = [];
   if (slot.status === "Scheduled") {
@@ -178,7 +220,7 @@ export function slotCoverage(slot: LineSlot, roleMap: Map<string, string>): Slot
       if (target !== null && names.length < target) warnings.push(`Short ${target - names.length} (ZBS ${target})`);
     }
   }
-  return { count: names.length, target, warnings };
+  return { count: names.length, target, warnings, trainees: lineTrainees(slot).length };
 }
 
 // "Line 08", "Line 8 ", "line 12/9" -> "8", "8", "12"; "STRETCH" -> "stretch".

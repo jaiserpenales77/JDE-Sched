@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import type { DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import type { BoxLayout, CommentBox, DailyBoard, LineSlot, ListSection, PrintAssignSettings, SectionStyle } from "../types";
 import {
@@ -17,9 +17,18 @@ import {
   sortByRole,
   statusKey,
 } from "../printLayout";
-import { crewBadgeTone, DRAG_MIME, dutyCrew, parseNames, readDragPayload, staffingOff } from "../assignmentLogic";
+import {
+  crewBadgeTone,
+  DRAG_MIME,
+  dutyCrew,
+  lineCrew,
+  parseNames,
+  readDragPayload,
+  staffingOff,
+  traineeGroups,
+} from "../assignmentLogic";
 import type { SlotCoverage } from "../assignmentLogic";
-import { CommentBoxContent } from "./PrintViews";
+import { CapIcon, CommentBoxContent, TrainingDivider } from "./PrintViews";
 import PersonPicker from "./PersonPicker";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
 
@@ -156,9 +165,9 @@ export default function PageEditor({
     };
   }
 
-  function nameRow(name: string, placeId: string, i: number, sectionStyle?: SectionStyle) {
+  function nameRow(name: string, placeId: string, i: number, sectionStyle?: SectionStyle, trainee = false) {
     const warning = warningFor(name, placeId);
-    const roleClass = nameRoleClass(name, roleMap, settings.highlightRoles);
+    const roleClass = trainee ? "print-assign-trainee" : nameRoleClass(name, roleMap, settings.highlightRoles);
     const classes = ["print-assign-name-row", "page-name", roleClass];
     if (warning) classes.push(warning.soft ? "page-name-soft" : "page-name-warn");
     if (isMatch(name)) classes.push("page-name-match");
@@ -215,8 +224,10 @@ export default function PageEditor({
   }
 
   function lineContent(slot: LineSlot) {
-    const raw = parseNames(slot.assigned);
+    // The crew, then the people training listed last (as on the printout).
+    const raw = lineCrew(slot);
     const names = settings.highlightRoles ? sortByRole(raw, roleMap) : raw;
+    const training = traineeGroups(slot);
     const key = statusKey(slot.status);
     const cov = coverage(slot);
     // Same look as the printout: light red when a scheduled line is off its
@@ -229,15 +240,35 @@ export default function PageEditor({
         <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
         <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
         <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
-        <div className="print-assign-names">{names.map((n, i) => nameRow(n, slot.id, i))}</div>
-        {isSelected("line", slot.id) && addRow(names, slot.id)}
-        <span
-          className={`page-box-badge ${tone ? `page-box-badge-${tone}` : cov.warnings.length ? "page-box-badge-warn" : ""}`}
-          title={tips.length ? tips.join(" · ") : `${cov.count} assigned`}
-        >
-          👥 {cov.count}
-          {cov.target !== null ? `/${cov.target}` : ""}
-          {cov.warnings.length ? " ⚠" : ""}
+        <div className="print-assign-names">
+          {names.map((n, i) => nameRow(n, slot.id, i))}
+          {training.map((group) => (
+            <Fragment key={group.skill}>
+              <TrainingDivider skill={group.skill} />
+              {group.names.map((n, i) => nameRow(n, slot.id, names.length + i, undefined, true))}
+            </Fragment>
+          ))}
+        </div>
+        {isSelected("line", slot.id) && addRow(parseNames(slot.assigned), slot.id)}
+        <span className="page-box-badges">
+          <span
+            className={`page-box-badge ${tone ? `page-box-badge-${tone}` : cov.warnings.length ? "page-box-badge-warn" : ""}`}
+            title={
+              tips.length
+                ? tips.join(" · ")
+                : `${cov.count} on the crew${cov.trainees ? ` + ${cov.trainees} training` : ""}`
+            }
+          >
+            👥 {cov.count}
+            {cov.target !== null ? `/${cov.target}` : ""}
+            {cov.warnings.length ? " ⚠" : ""}
+          </span>
+          {cov.trainees > 0 && (
+            <span className="page-trainee-pill" title={`${cov.trainees} training (not counted in the ZBS)`}>
+              +{cov.trainees}
+              <CapIcon />
+            </span>
+          )}
         </span>
       </>
     );
