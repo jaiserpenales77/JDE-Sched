@@ -1678,6 +1678,47 @@ tr.print-line-spacer td {
   font-size: 13pt;
   padding: 6px 8px;
 }
+/* The line's name, and its crew count badge at the right when it's on
+   (same numbers as the 👥 badge on the page above). Kept compact so a
+   name like "Rework Line" still fits on one line in a narrow box. */
+.print-assign-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.print-assign-name:has(.print-crew-badge) {
+  padding-right: 4px;
+}
+.print-assign-line-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.print-crew-badge {
+  flex: none;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2937;
+  border-radius: 999px;
+  padding: 0 4px;
+  font-size: 7.5pt;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.print-crew-badge svg {
+  width: 1.2em;
+  height: 0.96em;
+}
+.print-crew-badge-compact {
+  padding: 0 3px;
+}
+.print-crew-badge-compact svg,
+.print-crew-badge-hidden {
+  display: none;
+}
 .print-assign-status {
   font-weight: 700;
   font-size: 8pt;

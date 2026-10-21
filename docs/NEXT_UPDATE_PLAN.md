@@ -8,7 +8,35 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+### 1. Crew count on the printed Line Assignments
+
+Each line's printed header shows the same 👥 badge as the page on screen:
+people assigned, and the ZBS number when the line has one (for example
+"7/5", "0/6", or "0" for PTP). It works with custom box positions and the
+regular layout.
+
+- A box in Customize Print Design (Line Assignments) turns it off:
+  **Show the 👥 crew count on each line (people / ZBS)**. It starts ticked
+  for every shift.
+- It never makes a box taller or the page smaller. If a line's name and
+  the badge don't both fit in a narrow box, the badge prints without its
+  icon; if even that doesn't fit, that one line prints without the badge,
+  so no name gets pushed out of its box.
+- The ⚠ warnings on screen don't print.
+
+**Needs outside the app:** nothing (no rules or logins).
+
+**How to check:** print Line Assignments. Each line's dark (or gray) name
+bar has a white badge at the right with the same numbers as the 👥 badges
+on the page above. Untick the box in Customize Print Design and print
+again: the badges are gone.
+
+**Job Instruction:** none (the Job Instruction covers the Production
+Schedule tab).
+
+**Announcement:** "The printed Line Assignments now show each line's crew
+count (people / ZBS), the same as the 👥 badge on screen. To leave it off,
+untick it in Customize Print Design on the Line Assignments tab."
 
 ---
 

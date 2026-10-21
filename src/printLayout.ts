@@ -389,3 +389,28 @@ export function printedScheduleHeightsPx(d: SchedulePrintSettings): number[] {
   const zoom = d.printScaleMode === "fixed" ? Math.min(200, Math.max(25, Number(d.printScalePercent) || 100)) / 100 : 1;
   return [(heightPx - 0.75 * PX_PER_IN) / zoom, heightPx / zoom];
 }
+
+// A line name too long to share its bar with the crew count badge would
+// wrap and make the box taller, which can push a name out of a free-form
+// box. So at the printed width the badge first loses its icon, and if the
+// name still wraps only because of the badge, the badge is left off that
+// line. Undone by the returned function.
+export function tightenCrewBadges(report: HTMLElement): () => void {
+  const changed: HTMLElement[] = [];
+  const wraps = (name: Element) => {
+    const range = document.createRange();
+    range.selectNodeContents(name);
+    return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size > 1;
+  };
+  for (const badge of report.querySelectorAll<HTMLElement>(".print-crew-badge")) {
+    const name = badge.previousElementSibling;
+    if (!name || !wraps(name)) continue;
+    changed.push(badge);
+    badge.classList.add("print-crew-badge-compact");
+    if (!wraps(name)) continue;
+    badge.classList.add("print-crew-badge-hidden");
+    // A name that wraps even on its own keeps its (small) badge.
+    if (wraps(name)) badge.classList.remove("print-crew-badge-hidden");
+  }
+  return () => changed.forEach((b) => b.classList.remove("print-crew-badge-compact", "print-crew-badge-hidden"));
+}

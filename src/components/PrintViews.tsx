@@ -43,6 +43,7 @@ import {
 import ProgressBar from "./ProgressBar";
 import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
 import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
+import { parseNames, zbsTarget } from "../assignmentLogic";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -563,6 +564,19 @@ export function PrintSchedule({
   );
 }
 
+// Two people, for the crew count badge (drawn, so it prints the same on
+// every computer).
+function PeopleIcon() {
+  return (
+    <svg viewBox="0 0 20 16" aria-hidden="true">
+      <circle cx="13" cy="4.2" r="3.2" fill="#8b7fb8" />
+      <path d="M7.4 15.5c0-3.6 2.5-6 5.6-6s5.6 2.4 5.6 6z" fill="#8b7fb8" />
+      <circle cx="7" cy="5" r="3.4" fill="#5b4f8f" />
+      <path d="M1 15.8c0-3.8 2.7-6.3 6-6.3s6 2.5 6 6.3z" fill="#5b4f8f" />
+    </svg>
+  );
+}
+
 export function LineBoxContent({
   slot,
   roleMap,
@@ -572,18 +586,25 @@ export function LineBoxContent({
   roleMap: Map<string, string>;
   settings: PrintAssignSettings;
 }) {
-  const rawNames = slot.assigned
-    .split(",")
-    .map((n) => n.trim())
-    .filter(Boolean);
+  const rawNames = parseNames(slot.assigned);
   // MLL > Line Leader > MLT > everyone else - same "highlight roles"
   // toggle that colors these names also controls whether they're
   // reordered to put the crew hierarchy first.
   const names = settings.highlightRoles ? sortByRole(rawNames, roleMap) : rawNames;
   const key = statusKey(slot.status);
+  const target = zbsTarget(slot.subNote);
   return (
     <>
-      <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
+      <div className={`print-assign-name print-assign-${key}`}>
+        <span className="print-assign-line-name">{slot.line}</span>
+        {settings.showCrewCount && (
+          <span className="print-crew-badge">
+            <PeopleIcon />
+            {rawNames.length}
+            {target !== null ? `/${target}` : ""}
+          </span>
+        )}
+      </div>
       <div className={`print-assign-status print-assign-${key}`}>{slot.status || "—"}</div>
       <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>
       <div className="print-assign-names">

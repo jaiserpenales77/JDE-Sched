@@ -66,6 +66,15 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
             <label className="print-design-checkbox">
               <input
                 type="checkbox"
+                checked={settings.showCrewCount}
+                onChange={(e) => set("showCrewCount", e.target.checked)}
+              />
+              Show the 👥 crew count on each line (people / ZBS)
+            </label>
+
+            <label className="print-design-checkbox">
+              <input
+                type="checkbox"
                 checked={settings.freeFormLayout}
                 onChange={(e) => set("freeFormLayout", e.target.checked)}
               />

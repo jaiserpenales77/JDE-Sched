@@ -70,6 +70,7 @@ function normalizeBoard(board: Partial<DailyBoard>): DailyBoard {
 function normalizePrintSettings(settings: Partial<PrintAssignSettings> | undefined): PrintAssignSettings {
   const merged = { ...defaultPrintSettings, ...settings };
   if (!merged.boxLayouts || typeof merged.boxLayouts !== "object") merged.boxLayouts = {};
+  if (typeof merged.showCrewCount !== "boolean") merged.showCrewCount = defaultPrintSettings.showCrewCount;
   // Migrate the old single "MLL / MLT highlight" color (crewColor) - if a
   // user already customized it, carry that over to both new fields instead
   // of silently reverting them to the default.

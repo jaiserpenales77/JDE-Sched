@@ -7,6 +7,7 @@ import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import { useLineRates } from "./lineRates";
 import { DEFAULT_SHIFT_START, changeoverEstimates } from "./scheduleLogic";
 import { sceneSizeFor } from "./holidayThemes";
+import { tightenCrewBadges } from "./printLayout";
 import UnlockScreen from "./components/UnlockScreen";
 import { Brand } from "./components/LogoMark";
 import ProductionSchedule from "./components/ProductionSchedule";
@@ -219,6 +220,16 @@ function App() {
       if (zoom !== 1) reportEl.style.zoom = String(zoom);
       reportEl.style.width = `${pageContentWidthPx / zoom}px`;
 
+      // At the printed width, a line name that can't share its bar with
+      // the crew count badge gets a smaller badge (or none) instead of
+      // wrapping.
+      let untightenBadges = () => {};
+      if (report === "assignments") {
+        printRoot.classList.add("measuring");
+        untightenBadges = tightenCrewBadges(reportEl);
+        printRoot.classList.remove("measuring");
+      }
+
       // Then shrink the report (never enlarge) to fit one page, the way
       // Excel's "fit sheet on one page" works: always in "fit" mode, and
       // always for the Line Assignments free-form layout - a page-shaped
@@ -259,6 +270,7 @@ function App() {
       }
 
       cleanups.push(() => {
+        untightenBadges();
         delete reportEl.dataset.scene;
         reportEl.style.transform = "";
         reportEl.style.transformOrigin = "";

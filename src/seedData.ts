@@ -199,6 +199,7 @@ export const defaultPrintSettings: PrintAssignSettings = {
   bannerText: "REPORT ANY SAFETY, QUALITY AND MAJOR PRODUCTION DOWNTIME ISSUES IMMEDIATELY",
   includeRoomSections: true,
   highlightRoles: true,
+  showCrewCount: true,
   titleColor: "#1f3864",
   bannerColor: "#d9e2f3",
   bannerTextColor: "#bf9000",

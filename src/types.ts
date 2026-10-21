@@ -160,6 +160,8 @@ export interface PrintAssignSettings {
   bannerText: string;
   includeRoomSections: boolean;
   highlightRoles: boolean;
+  // The 👥 crew count (assigned / ZBS target) in each line's header.
+  showCrewCount: boolean;
   titleColor: string;
   bannerColor: string;
   bannerTextColor: string;
