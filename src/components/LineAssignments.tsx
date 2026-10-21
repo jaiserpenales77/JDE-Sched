@@ -19,7 +19,15 @@ import type { PageSelection } from "./PageEditor";
 import PersonPicker from "./PersonPicker";
 import PrintDesignSettings from "./PrintDesignSettings";
 import { buildRoleMap, nameKey, roleCategory, roleOf } from "../printLayout";
-import { autoFillFromPrimaryLines, boardOut, boardPlacements, cleanEmployeeName, parseNames, slotCoverage } from "../assignmentLogic";
+import {
+  autoFillFromPrimaryLines,
+  boardOut,
+  boardPlacements,
+  cleanEmployeeName,
+  parseNames,
+  slotCoverage,
+  staffingOff,
+} from "../assignmentLogic";
 
 interface Props {
   boards: DailyBoard[];
@@ -576,7 +584,10 @@ export default function LineAssignments({
             </ul>
           )}
           <div className="inspector-label">
-            Crew <span className="count-badge">{cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}</span>
+            Crew{" "}
+            <span className={`count-badge${staffingOff(slot) ? " count-badge-off" : ""}`}>
+              {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
+            </span>
           </div>
           <NameMultiSelect
             value={slot.assigned}

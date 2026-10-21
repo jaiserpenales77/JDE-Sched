@@ -17,7 +17,7 @@ import {
   sortByRole,
   statusKey,
 } from "../printLayout";
-import { DRAG_MIME, parseNames, readDragPayload } from "../assignmentLogic";
+import { DRAG_MIME, parseNames, readDragPayload, staffingOff } from "../assignmentLogic";
 import type { SlotCoverage } from "../assignmentLogic";
 import { CommentBoxContent } from "./PrintViews";
 import PersonPicker from "./PersonPicker";
@@ -219,6 +219,10 @@ export default function PageEditor({
     const names = settings.highlightRoles ? sortByRole(raw, roleMap) : raw;
     const key = statusKey(slot.status);
     const cov = coverage(slot);
+    // Light red when a scheduled line is off its ZBS (same as the printout);
+    // amber for its other warnings, like no MLL or Line Lead.
+    const off = staffingOff(slot);
+    const tips = [...(off === "over" ? ["More people than the ZBS"] : []), ...cov.warnings];
     return (
       <>
         <div className={`print-assign-name print-assign-${key}`}>{slot.line}</div>
@@ -227,8 +231,8 @@ export default function PageEditor({
         <div className="print-assign-names">{names.map((n, i) => nameRow(n, slot.id, i))}</div>
         {isSelected("line", slot.id) && addRow(names, slot.id)}
         <span
-          className={`page-box-badge ${cov.warnings.length ? "page-box-badge-warn" : ""}`}
-          title={cov.warnings.length ? cov.warnings.join(" · ") : `${cov.count} assigned`}
+          className={`page-box-badge ${off ? "page-box-badge-off" : cov.warnings.length ? "page-box-badge-warn" : ""}`}
+          title={tips.length ? tips.join(" · ") : `${cov.count} assigned`}
         >
           👥 {cov.count}
           {cov.target !== null ? `/${cov.target}` : ""}

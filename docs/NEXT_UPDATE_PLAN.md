@@ -26,13 +26,17 @@ regular layout.
   more people than its ZBS number (a range like "ZBS -5/6" allows 5 or 6).
   Lines that aren't scheduled, and lines with no ZBS number, stay white.
 - The ⚠ warnings on screen don't print.
+- **On screen too:** the 👥 badge on the page, and the Crew count in a
+  selected line's panel, use the same light red for a scheduled line over
+  or under its ZBS. A line that has the right count but no MLL or Line Lead
+  keeps its amber ⚠ badge.
 
 **Needs outside the app:** nothing (no rules or logins).
 
 **How to check:** print Line Assignments. Each line's dark (or gray) name
 bar has a badge at the right with the same numbers as the 👥 badges on the
 page above. A scheduled line with more or fewer people than its ZBS has a
-light red badge; the rest are white. Untick the box in Customize Print Design and print
+light red badge; the rest are white. The 👥 badges on the page match. Untick the box in Customize Print Design and print
 again: the badges are gone.
 
 **Job Instruction:** none (the Job Instruction covers the Production

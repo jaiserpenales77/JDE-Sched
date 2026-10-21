@@ -2301,6 +2301,15 @@ tr.print-line-spacer td {
   background: #fef3c7;
   color: #92400e;
 }
+/* A scheduled line with fewer or more people than its ZBS - the same light
+   red as the printed badge (.print-crew-badge-off). */
+.page-box-badge-off,
+.count-badge.count-badge-off {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #f87171;
+  box-shadow: inset 0 0 0 1px #f87171;
+}
 .page-name {
   position: relative;
   cursor: grab;
