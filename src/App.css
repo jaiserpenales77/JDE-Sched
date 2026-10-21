@@ -1718,6 +1718,15 @@ tr.print-line-spacer td {
   color: #991b1b;
   box-shadow: inset 0 0 0 1px #f87171;
 }
+/* A line that isn't running (Not Scheduled or PM): greyed out. */
+.print-crew-badge-idle {
+  background: #d4d4d4;
+  color: #595959;
+}
+.print-crew-badge-idle svg {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
 .print-crew-badge-compact {
   padding: 0 3px;
 }
@@ -2309,6 +2318,15 @@ tr.print-line-spacer td {
   color: #991b1b;
   border-color: #f87171;
   box-shadow: inset 0 0 0 1px #f87171;
+}
+/* A line that isn't running (Not Scheduled or PM): greyed out, like the
+   printed badge (.print-crew-badge-idle). */
+.page-box-badge-idle,
+.count-badge.count-badge-idle {
+  background: #d4d4d4;
+  color: #595959;
+  border-color: #c4c4c4;
+  filter: grayscale(1);
 }
 .page-name {
   position: relative;

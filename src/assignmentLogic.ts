@@ -120,6 +120,14 @@ export function staffingOff(slot: LineSlot): "under" | "over" | null {
   return count < min ? "under" : count > max ? "over" : null;
 }
 
+// How a line's 👥 crew count badge looks, on screen and printed: light red
+// when a scheduled line is off its ZBS, greyed out when the line isn't
+// running (Not Scheduled or PM), plain otherwise.
+export function crewBadgeTone(slot: LineSlot): "off" | "idle" | null {
+  if (!isRunning(slot)) return "idle";
+  return staffingOff(slot) ? "off" : null;
+}
+
 export function isRunning(slot: LineSlot): boolean {
   return slot.status !== "Not Scheduled" && slot.status !== "PM";
 }

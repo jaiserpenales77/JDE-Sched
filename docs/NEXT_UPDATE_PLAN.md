@@ -8,44 +8,47 @@ together.
 
 ## What's in the next update
 
-### 1. Crew count on the printed Line Assignments
+### 1. Crew count on Line Assignments (printout and screen)
 
 Each line's printed header shows the same 👥 badge as the page on screen:
 people assigned, and the ZBS number when the line has one (for example
 "7/5", "0/6", or "0" for PTP). It works with custom box positions and the
 regular layout.
 
-- A box in Customize Print Design (Line Assignments) turns it off:
-  **Show the 👥 crew count on each line (people / ZBS)**. It starts ticked
-  for every shift.
+- **Colors, on the printout and on screen:**
+  - **light red** when a scheduled line has fewer or more people than its
+    ZBS number (a range like "ZBS -5/6" allows 5 or 6);
+  - **grey** on lines that aren't running (Not Scheduled or PM), so their
+    "0/6"-style counts don't stand out;
+  - **white** otherwise, including scheduled lines with no ZBS number.
+- On screen this is the 👥 badge on the page and the Crew count in a
+  selected line's panel. A line with the right count but no MLL or Line
+  Lead keeps its amber ⚠ badge on screen. The ⚠ warnings don't print.
+- A box in Customize Print Design (Line Assignments) turns the printed
+  badge off: **Show the 👥 crew count on each line (people / ZBS)**. It
+  starts ticked for every shift.
 - It never makes a box taller or the page smaller. If a line's name and
   the badge don't both fit in a narrow box, the badge prints without its
   icon; if even that doesn't fit, that one line prints without the badge,
   so no name gets pushed out of its box.
-- **Light red when a scheduled line is under or overstaffed:** fewer or
-  more people than its ZBS number (a range like "ZBS -5/6" allows 5 or 6).
-  Lines that aren't scheduled, and lines with no ZBS number, stay white.
-- The ⚠ warnings on screen don't print.
-- **On screen too:** the 👥 badge on the page, and the Crew count in a
-  selected line's panel, use the same light red for a scheduled line over
-  or under its ZBS. A line that has the right count but no MLL or Line Lead
-  keeps its amber ⚠ badge.
 
 **Needs outside the app:** nothing (no rules or logins).
 
-**How to check:** print Line Assignments. Each line's dark (or gray) name
-bar has a badge at the right with the same numbers as the 👥 badges on the
-page above. A scheduled line with more or fewer people than its ZBS has a
-light red badge; the rest are white. The 👥 badges on the page match. Untick the box in Customize Print Design and print
-again: the badges are gone.
+**How to check:** print Line Assignments. Each line's name bar has a badge
+at the right with the same numbers as the 👥 badges on the page above:
+light red on a scheduled line over or under its ZBS, grey on lines that
+aren't running, white on the rest. The badges on the page have the same
+colors. Untick the box in Customize Print Design and print again: the
+badges are gone.
 
 **Job Instruction:** none (the Job Instruction covers the Production
 Schedule tab).
 
-**Announcement:** "The printed Line Assignments now show each line's crew
-count (people / ZBS), the same as the 👥 badge on screen. It turns light
-red when a scheduled line has more or fewer people than its ZBS. To leave
-it off, untick it in Customize Print Design on the Line Assignments tab."
+**Announcement:** "Line Assignments now print each line's crew count
+(people / ZBS), the same as the 👥 badge on screen. On both, it turns light
+red when a scheduled line has more or fewer people than its ZBS, and it's
+greyed out on lines that aren't running. To leave it off the printout,
+untick it in Customize Print Design on the Line Assignments tab."
 
 ---
 

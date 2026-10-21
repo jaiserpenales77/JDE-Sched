@@ -43,7 +43,7 @@ import {
 import ProgressBar from "./ProgressBar";
 import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
 import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
-import { parseNames, staffingOff, zbsTarget } from "../assignmentLogic";
+import { crewBadgeTone, parseNames, staffingOff, zbsTarget } from "../assignmentLogic";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -593,15 +593,17 @@ export function LineBoxContent({
   const names = settings.highlightRoles ? sortByRole(rawNames, roleMap) : rawNames;
   const key = statusKey(slot.status);
   const target = zbsTarget(slot.subNote);
-  // Light red when a scheduled line has fewer or more people than its ZBS.
-  const off = staffingOff(slot);
+  // Light red when a scheduled line has fewer or more people than its ZBS,
+  // greyed out when the line isn't running.
+  const tone = crewBadgeTone(slot);
+  const off = tone === "off" ? staffingOff(slot) : null;
   return (
     <>
       <div className={`print-assign-name print-assign-${key}`}>
         <span className="print-assign-line-name">{slot.line}</span>
         {settings.showCrewCount && (
           <span
-            className={`print-crew-badge${off ? " print-crew-badge-off" : ""}`}
+            className={`print-crew-badge${tone ? ` print-crew-badge-${tone}` : ""}`}
             title={off ? (off === "under" ? "Understaffed" : "Overstaffed") : undefined}
           >
             <PeopleIcon />

@@ -25,8 +25,8 @@ import {
   boardPlacements,
   cleanEmployeeName,
   parseNames,
+  crewBadgeTone,
   slotCoverage,
-  staffingOff,
 } from "../assignmentLogic";
 
 interface Props {
@@ -585,7 +585,7 @@ export default function LineAssignments({
           )}
           <div className="inspector-label">
             Crew{" "}
-            <span className={`count-badge${staffingOff(slot) ? " count-badge-off" : ""}`}>
+            <span className={`count-badge${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
               {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
             </span>
           </div>
