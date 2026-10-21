@@ -1899,9 +1899,9 @@ tr.print-line-spacer td {
   align-items: center;
   justify-content: center;
   gap: 3px;
-  background: #fff2cc;
-  color: #7a5c00;
-  border-top: 1px solid #ffc000;
+  background: #ffe699;
+  color: #5c4300;
+  border-top: 1.5px solid #e0a800;
   font-size: 7pt;
   font-weight: 700;
   text-transform: uppercase;
@@ -1909,7 +1909,7 @@ tr.print-line-spacer td {
   padding: 1px 4px;
 }
 .print-assign-names .print-assign-name-row.print-assign-trainee {
-  background: #fffbeb;
+  background: #fff5d6;
 }
 .print-crew-badge-compact {
   padding: 0 3px;
