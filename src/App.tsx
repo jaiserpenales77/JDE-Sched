@@ -220,9 +220,8 @@ function App() {
       if (zoom !== 1) reportEl.style.zoom = String(zoom);
       reportEl.style.width = `${pageContentWidthPx / zoom}px`;
 
-      // At the printed width, a line name that can't share its bar with
-      // the crew count badge gets a smaller badge (or none) instead of
-      // wrapping.
+      // At the printed width, fit each 👥 badge beside its title without
+      // cutting off anything in its box (see tightenCrewBadges).
       let untightenBadges = () => {};
       if (report === "assignments") {
         printRoot.classList.add("measuring");

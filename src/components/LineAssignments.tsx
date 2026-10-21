@@ -26,6 +26,7 @@ import {
   cleanEmployeeName,
   parseNames,
   crewBadgeTone,
+  dutyNeededFromTitle,
   slotCoverage,
 } from "../assignmentLogic";
 
@@ -675,6 +676,35 @@ export default function LineAssignments({
             <button className="btn small" onClick={() => addItem("roomSections", section)}>
               + Text
             </button>
+          </div>
+          <div className="duty-badge-options">
+            <label className="print-design-checkbox">
+              <input
+                type="checkbox"
+                checked={!!section.crewBadge}
+                onChange={(e) => updateSection("roomSections", section.id, { crewBadge: e.target.checked })}
+              />
+              Show a 👥 crew badge on this box
+            </label>
+            {section.crewBadge && (
+              <label className="inspector-field duty-needed">
+                People needed
+                <input
+                  type="number"
+                  min={0}
+                  max={99}
+                  placeholder={dutyNeededFromTitle(section.title) !== null ? `${dutyNeededFromTitle(section.title)} (from the title)` : "optional"}
+                  value={typeof section.crewNeeded === "number" ? section.crewNeeded : ""}
+                  onChange={(e) => {
+                    const n = Math.round(Number(e.target.value));
+                    updateSection("roomSections", section.id, {
+                      crewNeeded: e.target.value === "" || !(n > 0) ? null : Math.min(99, n),
+                    });
+                  }}
+                />
+                <span className="duty-needed-hint">Fewer people than this shows the badge in light red.</span>
+              </label>
+            )}
           </div>
           {renderSectionStyle(section)}
           <button

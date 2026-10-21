@@ -69,7 +69,7 @@ export default function PrintDesignSettings({ settings, setSettings }: Props) {
                 checked={settings.showCrewCount}
                 onChange={(e) => set("showCrewCount", e.target.checked)}
               />
-              Show the 👥 crew count on each line (people / ZBS)
+              Show the 👥 crew counts on lines (people / ZBS) and on duty boxes that have one
             </label>
 
             <label className="print-design-checkbox">

@@ -1814,6 +1814,35 @@ tr.print-line-spacer td {
 .print-assign-room-row {
   margin-top: 14px;
 }
+/* A duty box's title, and its 👥 badge at the right when it has one. */
+.print-assign-room-header:has(> .print-crew-badge) {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-right: 4px;
+}
+.print-assign-room-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* On the page above, room for the box's 👥 badge at the top right. */
+.print-assign-room-header.page-room-header-badged {
+  padding-right: 52px;
+}
+.duty-badge-options {
+  margin: 10px 0 4px;
+}
+.duty-needed input {
+  width: 9em;
+}
+.duty-needed-hint {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .print-assign-room-header {
   background: #44546a;
   color: #fff;

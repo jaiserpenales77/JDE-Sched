@@ -8,7 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. Crew count on Line Assignments (printout and screen)
+### 1. Crew count badges on Line Assignments (lines and duty boxes)
 
 Each line's printed header shows the same 👥 badge as the page on screen:
 people assigned, and the ZBS number when the line has one (for example
@@ -24,13 +24,20 @@ regular layout.
 - On screen this is the 👥 badge on the page and the Crew count in a
   selected line's panel. A line with the right count but no MLL or Line
   Lead keeps its amber ⚠ badge on screen. The ⚠ warnings don't print.
+- **Duty boxes (Room & Duty), when you want them:** click a duty box and
+  tick **Show a 👥 crew badge on this box** in its panel. Optionally type
+  **People needed**; a "Min 2" in the box's title counts too. The badge is
+  light red when the box has fewer people than it needs, grey when nobody
+  is on it and it needs no one, white otherwise. "Jessica & Debbie" counts
+  as two. The choice is saved with the box, so it carries over to new
+  days, like the box's colors.
 - A box in Customize Print Design (Line Assignments) turns the printed
-  badge off: **Show the 👥 crew count on each line (people / ZBS)**. It
-  starts ticked for every shift.
-- It never makes a box taller or the page smaller. If a line's name and
-  the badge don't both fit in a narrow box, the badge prints without its
-  icon; if even that doesn't fit, that one line prints without the badge,
-  so no name gets pushed out of its box.
+  badges off: **Show the 👥 crew counts on lines (people / ZBS) and on duty
+  boxes that have one**. It starts ticked for every shift.
+- The badge never cuts anything off. If a title and its badge don't both
+  fit, the badge first drops its icon; then the title wraps onto a second
+  line if its box still shows everything; only if it wouldn't is the badge
+  left off that box. The page never gets smaller.
 
 **Needs outside the app:** nothing (no rules or logins).
 
@@ -38,8 +45,9 @@ regular layout.
 at the right with the same numbers as the 👥 badges on the page above:
 light red on a scheduled line over or under its ZBS, grey on lines that
 aren't running, white on the rest. The badges on the page have the same
-colors. Untick the box in Customize Print Design and print again: the
-badges are gone.
+colors. Click a duty box (Wash Room), tick "Show a 👥 crew badge on this
+box": its badge shows on the page and prints. Untick the box in Customize
+Print Design and print again: the badges are gone.
 
 **Job Instruction:** none (the Job Instruction covers the Production
 Schedule tab).
@@ -47,8 +55,10 @@ Schedule tab).
 **Announcement:** "Line Assignments now print each line's crew count
 (people / ZBS), the same as the 👥 badge on screen. On both, it turns light
 red when a scheduled line has more or fewer people than its ZBS, and it's
-greyed out on lines that aren't running. To leave it off the printout,
-untick it in Customize Print Design on the Line Assignments tab."
+greyed out on lines that aren't running. Duty boxes can have one too:
+click the box and tick "Show a 👥 crew badge on this box". To leave the
+badges off the printout, untick them in Customize Print Design on the Line
+Assignments tab."
 
 ---
 

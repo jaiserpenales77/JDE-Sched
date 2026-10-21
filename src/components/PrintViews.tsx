@@ -43,7 +43,7 @@ import {
 import ProgressBar from "./ProgressBar";
 import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
 import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
-import { crewBadgeTone, parseNames, staffingOff, zbsTarget } from "../assignmentLogic";
+import { crewBadgeTone, dutyCrew, parseNames, staffingOff, zbsTarget } from "../assignmentLogic";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -634,10 +634,19 @@ export function RoomBoxContent({
   roleMap: Map<string, string>;
   settings: PrintAssignSettings;
 }) {
+  // The 👥 badge, for a duty box that has it turned on.
+  const crew = settings.showCrewCount ? dutyCrew(section) : null;
   return (
     <>
       <div className="print-assign-room-header" style={sectionHeaderStyle(section.style)}>
-        {section.title}
+        <span className="print-assign-room-title">{section.title}</span>
+        {crew && (
+          <span className={`print-crew-badge${crew.tone ? ` print-crew-badge-${crew.tone}` : ""}`}>
+            <PeopleIcon />
+            {crew.count}
+            {crew.needed !== null ? `/${crew.needed}` : ""}
+          </span>
+        )}
       </div>
       <div className="print-assign-names">
         {section.items.map((item, i) => {

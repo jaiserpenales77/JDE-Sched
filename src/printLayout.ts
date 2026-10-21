@@ -390,27 +390,36 @@ export function printedScheduleHeightsPx(d: SchedulePrintSettings): number[] {
   return [(heightPx - 0.75 * PX_PER_IN) / zoom, heightPx / zoom];
 }
 
-// A line name too long to share its bar with the crew count badge would
-// wrap and make the box taller, which can push a name out of a free-form
-// box. So at the printed width the badge first loses its icon, and if the
-// name still wraps only because of the badge, the badge is left off that
-// line. Undone by the returned function.
+// Fits each 👥 badge beside its line name or duty title at the printed
+// width. A title too long to share its bar with the badge first gets the
+// badge without its icon; if it still has to wrap, it wraps as long as its
+// box still shows everything in it (a box with a custom position has a
+// fixed height). Only when wrapping would cut something off is the badge
+// left off that box. Undone by the returned function.
 export function tightenCrewBadges(report: HTMLElement): () => void {
   const changed: HTMLElement[] = [];
-  const wraps = (name: Element) => {
+  const wraps = (title: Element) => {
     const range = document.createRange();
-    range.selectNodeContents(name);
+    range.selectNodeContents(title);
     return new Set([...range.getClientRects()].map((r) => Math.round(r.top))).size > 1;
   };
+  const boxFits = (badge: HTMLElement) => {
+    const box = badge.closest<HTMLElement>(".print-assign-col-absolute");
+    return !box || box.scrollHeight <= box.clientHeight + 1;
+  };
   for (const badge of report.querySelectorAll<HTMLElement>(".print-crew-badge")) {
-    const name = badge.previousElementSibling;
-    if (!name || !wraps(name)) continue;
+    const title = badge.previousElementSibling;
+    if (!title || !wraps(title)) continue;
     changed.push(badge);
     badge.classList.add("print-crew-badge-compact");
-    if (!wraps(name)) continue;
+    if (!wraps(title)) continue;
+    badge.classList.remove("print-crew-badge-compact");
+    if (boxFits(badge)) continue;
+    badge.classList.add("print-crew-badge-compact");
+    if (boxFits(badge)) continue;
     badge.classList.add("print-crew-badge-hidden");
-    // A name that wraps even on its own keeps its (small) badge.
-    if (wraps(name)) badge.classList.remove("print-crew-badge-hidden");
+    // A title that wraps even on its own keeps its (small) badge.
+    if (wraps(title)) badge.classList.remove("print-crew-badge-hidden");
   }
   return () => changed.forEach((b) => b.classList.remove("print-crew-badge-compact", "print-crew-badge-hidden"));
 }

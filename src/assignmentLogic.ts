@@ -120,6 +120,30 @@ export function staffingOff(slot: LineSlot): "under" | "over" | null {
   return count < min ? "under" : count > max ? "over" : null;
 }
 
+// A Room & Duty box's 👥 badge, when it's turned on for the box: how many
+// people it lists ("Jessica & Debbie" counts as two) and how many it needs -
+// the box's own number, else a "Min 2" in its title. Light red when it has
+// fewer than it needs, grey when nobody is on it and it needs no one.
+export interface DutyCrew {
+  count: number;
+  needed: number | null;
+  tone: "off" | "idle" | null;
+}
+
+export function dutyNeededFromTitle(title: string): number | null {
+  const match = title.match(/\bmin\.?\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+export function dutyCrew(section: ListSection): DutyCrew | null {
+  if (!section.crewBadge) return null;
+  const count = section.items.flatMap((item) => item.split("&")).filter((p) => p.trim()).length;
+  const own = section.crewNeeded;
+  const needed = typeof own === "number" && own > 0 ? own : dutyNeededFromTitle(section.title);
+  const tone = needed !== null && count < needed ? "off" : count === 0 && needed === null ? "idle" : null;
+  return { count, needed, tone };
+}
+
 // How a line's 👥 crew count badge looks, on screen and printed: light red
 // when a scheduled line is off its ZBS, greyed out when the line isn't
 // running (Not Scheduled or PM), plain otherwise.

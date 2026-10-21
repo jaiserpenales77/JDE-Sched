@@ -41,6 +41,10 @@ export interface ListSection {
   items: string[];
   // Only used by Room & Duty sections; absent = the standard report look.
   style?: SectionStyle;
+  // Room & Duty sections: show a 👥 crew count badge on the box, and how
+  // many people it needs (null / absent = a "Min 2" in the title, if any).
+  crewBadge?: boolean;
+  crewNeeded?: number | null;
 }
 
 export interface SectionStyle {

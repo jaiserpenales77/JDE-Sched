@@ -17,7 +17,7 @@ import {
   sortByRole,
   statusKey,
 } from "../printLayout";
-import { crewBadgeTone, DRAG_MIME, parseNames, readDragPayload, staffingOff } from "../assignmentLogic";
+import { crewBadgeTone, DRAG_MIME, dutyCrew, parseNames, readDragPayload, staffingOff } from "../assignmentLogic";
 import type { SlotCoverage } from "../assignmentLogic";
 import { CommentBoxContent } from "./PrintViews";
 import PersonPicker from "./PersonPicker";
@@ -245,11 +245,28 @@ export default function PageEditor({
 
   function roomContent(section: ListSection) {
     const items = section.items.filter((item) => item.trim());
+    const crew = dutyCrew(section);
     return (
       <>
-        <div className="print-assign-room-header" style={sectionHeaderStyle(section.style)}>
+        <div
+          className={`print-assign-room-header${crew ? " page-room-header-badged" : ""}`}
+          style={sectionHeaderStyle(section.style)}
+        >
           {section.title}
         </div>
+        {crew && (
+          <span
+            className={`page-box-badge${crew.tone ? ` page-box-badge-${crew.tone}` : ""}`}
+            title={
+              crew.tone === "off"
+                ? `Short ${crew.needed! - crew.count} (needs ${crew.needed})`
+                : `${crew.count} on this duty${crew.needed !== null ? ` (needs ${crew.needed})` : ""}`
+            }
+          >
+            👥 {crew.count}
+            {crew.needed !== null ? `/${crew.needed}` : ""}
+          </span>
+        )}
         <div className="print-assign-names">{items.map((item, i) => nameRow(item, section.id, i, section.style))}</div>
         {isSelected("room", section.id) && addRow(items, section.id)}
       </>
