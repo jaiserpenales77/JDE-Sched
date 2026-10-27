@@ -23,6 +23,17 @@ service cloud.firestore {
       return request.auth != null
         && request.auth.token.email in ['1st@jde-sched.local', '2nd@jde-sched.local', '3rd@jde-sched.local'];
     }
+    // Each shift's people's names - only the names - so another shift can
+    // pick them for overtime. Any shift reads all three lists; a shift
+    // writes only its own. Schedules, boards, time off and skills stay in
+    // each shift's private document above.
+    match /jde-sched-names/{shift} {
+      allow read: if jdeAnyShiftAccount();
+      allow write: if jdeShiftAccount(shift)
+        && request.resource.data.keys().hasOnly(['names'])
+        && request.resource.data.names is list
+        && request.resource.data.names.size() <= 1000;
+    }
 
     // Packaging Lead Hub. Accounts are username@pk030.local.
     function signedIn() {

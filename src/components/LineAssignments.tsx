@@ -57,6 +57,8 @@ interface Props {
   // Scheduled time off from the Time Off tab - anyone covering the board's
   // date counts as out on that board.
   timeOff: TimeOffEntry[];
+  // The other shifts' names, in shift order, A-Z - for picking overtime.
+  otherShifts: { label: string; names: string[] }[];
 }
 
 function blankBoard(date: string, shiftLabel: string): DailyBoard {
@@ -117,6 +119,7 @@ export default function LineAssignments({
   printSettings,
   setPrintSettings,
   timeOff,
+  otherShifts,
 }: Props) {
   const sorted = [...boards].sort((a, b) => (a.date < b.date ? 1 : -1));
   const today = todayIso();
@@ -217,6 +220,12 @@ export default function LineAssignments({
   const scheduled = board?.lineSlots.filter((s) => s.status === "Scheduled") ?? [];
   const needsAttention = scheduled.filter((s) => slotCoverage(s, roleMap).warnings.length > 0).length;
   const rosterKeys = [...new Set(employeeNames.map(nameKey).filter(Boolean))];
+  const rosterKeySet = new Set(rosterKeys);
+  // Which other shift someone's name is on, for overtime ("2nd Shift").
+  function shiftOf(name: string): string | undefined {
+    const key = nameKey(name);
+    return otherShifts.find((s) => s.names.some((n) => nameKey(n) === key))?.label;
+  }
   const rosterAvailable = rosterKeys.filter((k) => !out.has(k));
   const rosterPlaced = rosterAvailable.filter((k) => placements.has(k)).length;
 
@@ -571,6 +580,15 @@ export default function LineAssignments({
       const setExtras = (next: ExtraPerson[]) => updateSlot(slot.id, { trainees: next });
       const changeExtra = (name: string, patch: Partial<ExtraPerson>) =>
         setExtras(extras.map((x) => (nameKey(x.name) === nameKey(name) ? { ...x, ...patch } : x)));
+      // The other shifts' names for overtime, leaving out anyone already on
+      // this line.
+      const onLine = new Set(parseNames(slot.assigned).map(nameKey));
+      const overtimeChoices = otherShifts
+        .map((s) => ({
+          label: s.label,
+          names: s.names.filter((n) => !onLine.has(nameKey(n))).sort((a, b) => a.localeCompare(b)),
+        }))
+        .filter((s) => s.names.length > 0);
       return (
         <div className="panel inspector">
           <div className="inspector-head">
@@ -667,9 +685,14 @@ export default function LineAssignments({
             <div className="inspector-label">Training, dumping &amp; overtime</div>
             {extras.map((t) => {
               const kind = extraKind(t);
+              // Someone from another shift (not on this roster): ✕ takes them
+              // off the line instead of leaving them in the crew.
+              const fromShift = rosterKeySet.has(nameKey(t.name)) ? undefined : shiftOf(t.name);
               return (
                 <div className={`trainee-edit-row extra-edit-${kind}`} key={nameKey(t.name)}>
-                  <span className="trainee-edit-name">{t.name}</span>
+                  <span className="trainee-edit-name" title={fromShift ? `${t.name} (${fromShift})` : t.name}>
+                    {t.name}
+                  </span>
                   <select
                     value={kind}
                     title={`Why ${t.name} is extra`}
@@ -688,11 +711,19 @@ export default function LineAssignments({
                   </select>
                   <button
                     className="btn small"
-                    title={`${t.name} goes back to the crew`}
-                    onClick={() => setExtras(extras.filter((x) => nameKey(x.name) !== nameKey(t.name)))}
+                    title={fromShift ? `Take ${t.name} off this line` : `${t.name} goes back to the crew`}
+                    onClick={() =>
+                      updateSlot(slot.id, {
+                        trainees: extras.filter((x) => nameKey(x.name) !== nameKey(t.name)),
+                        ...(fromShift
+                          ? { assigned: parseNames(slot.assigned).filter((n) => nameKey(n) !== nameKey(t.name)).join(", ") }
+                          : {}),
+                      })
+                    }
                   >
                     ✕
                   </button>
+                  {fromShift && <span className="extra-from">From {fromShift}</span>}
                   {kind === "training" && (
                     <input
                       className="trainee-edit-skill"
@@ -717,24 +748,53 @@ export default function LineAssignments({
                   </option>
                 ))}
               </select>
-              <select
-                className="inspector-select"
-                value=""
-                disabled={crewNames.length === 0}
-                onChange={(e) => {
-                  const name = e.target.value;
-                  if (!name) return;
-                  const skill = extraKindToAdd === "training" ? trainingSkillFor(name, employees) : "";
-                  setExtras([...extras, { name, skill, kind: extraKindToAdd }]);
-                }}
-              >
-                <option value="">Pick someone…</option>
-                {crewNames.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              {extraKindToAdd === "overtime" ? (
+                // Overtime comes from the other shifts: their names, by
+                // shift (in shift order), A-Z. Picking adds them to the line.
+                <select
+                  className="inspector-select"
+                  value=""
+                  disabled={overtimeChoices.length === 0}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    if (!name) return;
+                    updateSlot(slot.id, {
+                      assigned: [...parseNames(slot.assigned), name].join(", "),
+                      trainees: [...extras, { name, skill: "", kind: "overtime" }],
+                    });
+                  }}
+                >
+                  <option value="">{overtimeChoices.length ? "From another shift…" : "No other shift's names yet"}</option>
+                  {overtimeChoices.map((group) => (
+                    <optgroup key={group.label} label={group.label}>
+                      {group.names.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              ) : (
+                <select
+                  className="inspector-select"
+                  value=""
+                  disabled={crewNames.length === 0}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    if (!name) return;
+                    const skill = extraKindToAdd === "training" ? trainingSkillFor(name, employees) : "";
+                    setExtras([...extras, { name, skill, kind: extraKindToAdd }]);
+                  }}
+                >
+                  <option value="">Pick someone…</option>
+                  {crewNames.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             <datalist id="training-skill-options">
               {[...Object.values(SKILL_LABELS), "MLL", "MLT", "Line Leader"].map((o) => (
@@ -745,6 +805,7 @@ export default function LineAssignments({
               {extras.length > 0
                 ? "Listed last under their own row (gold Training, light blue Dumping, light green Overtime). Overtime counts toward the ZBS; training and dumping don't."
                 : "Overtime counts toward the ZBS; training and dumping are on top of it."}
+              {extraKindToAdd === "overtime" && " Overtime is picked from the other shifts' names."}
             </p>
           </div>
           <select

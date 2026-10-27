@@ -2707,6 +2707,13 @@ tr.print-line-spacer td {
   flex: 1 1 100%;
   min-width: 0;
 }
+/* "From 2nd Shift" under someone picked from another shift. */
+.extra-from {
+  flex: 1 1 100%;
+  margin-top: -2px;
+  font-size: 12px;
+  color: var(--muted, #6b7280);
+}
 .extra-add-row {
   display: flex;
   gap: 6px;

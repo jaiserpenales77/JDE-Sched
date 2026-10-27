@@ -33,7 +33,8 @@ function dataStorageKey(shift: ShiftKey): string {
 // Each shift syncs a completely separate document - a device showing one
 // shift never even fetches another shift's Production Schedule, roster or
 // Line Assignments boards, so there's no shared record anywhere to leak
-// data across shifts.
+// data across shifts. (Only the roster's names are shared, for overtime:
+// see shiftNames.ts.)
 function shiftDoc(shift: ShiftKey) {
   return doc(db, "jde-sched", shift);
 }
@@ -333,7 +334,8 @@ export function useShiftData(shift: ShiftKey | null) {
   }
 
   const history = { undo, redo, canUndo: historySize.undo > 0, canRedo: historySize.redo > 0 };
-  const sync = { problem: syncProblem, saveNow };
+  // ready: this shift's data has loaded from the cloud and is saving there.
+  const sync = { problem: syncProblem, saveNow, ready: syncReady && syncProblem === null };
   return [data, setData, history, sync] as const;
 }
 

@@ -5,6 +5,7 @@ import { lockApp, useShiftAuth } from "./auth";
 import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import { useLineRates } from "./lineRates";
+import { useShiftNames } from "./shiftNames";
 import { DEFAULT_SHIFT_START, changeoverEstimates } from "./scheduleLogic";
 import { sceneSizeFor } from "./holidayThemes";
 import { tightenCrewBadges } from "./printLayout";
@@ -27,7 +28,7 @@ import {
   readWorkbookSheets,
 } from "./excel";
 import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
-import { SHIFT_LABELS } from "./types";
+import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
@@ -61,6 +62,9 @@ function App() {
   const shiftAuth = useShiftAuth();
   const shift = shiftAuth.shift;
   const [data, setData, history, sync] = useShiftData(shift);
+  // Every shift's roster names (this shift's kept up to date), for picking
+  // people from other shifts for overtime.
+  const shiftNames = useShiftNames(shift, data.employees, sync.ready);
   const [locking, setLocking] = useState(false);
   // "Reset to sample data" / "Wipe all data" waiting for WIPE to be typed.
   const [eraseAction, setEraseAction] = useState<"reset" | "wipe" | null>(null);
@@ -520,6 +524,7 @@ function App() {
             printSettings={printSettings}
             setPrintSettings={setPrintSettings}
             timeOff={timeOff}
+            otherShifts={SHIFT_KEYS.filter((s) => s !== shift).map((s) => ({ label: SHIFT_LABELS[s], names: shiftNames[s] }))}
           />
         )}
         {tab === "roster" && <SkillsRoles employees={employees} setEmployees={setEmployees} />}

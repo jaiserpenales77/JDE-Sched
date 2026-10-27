@@ -229,7 +229,8 @@ export interface PrintAssignSettings {
 // the page (next to the tabs) and remembered per device. Every tab's data
 // (Production Schedule, Line Assignments, Skills & Roles) is kept in a
 // completely separate synced record per shift, so a device on one shift
-// never even fetches another shift's data.
+// never even fetches another shift's data - only the other shifts' roster
+// names, to pick people for overtime (shiftNames.ts).
 export const SHIFT_KEYS = ["1st", "2nd", "3rd"] as const;
 export type ShiftKey = (typeof SHIFT_KEYS)[number];
 export const SHIFT_LABELS: Record<ShiftKey, string> = {
