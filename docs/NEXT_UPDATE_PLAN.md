@@ -8,75 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. A picked lead goes first, before an MLL (Line Assignments)
-
-A lead picked under **Line lead** in a line's side panel is now listed
-**first** on the line, even when an MLL is on it: picked lead (green),
-then the MLL (still navy), Line Leader, MLT and everyone else. Same on
-the page, the side panel's crew chips and the printout. With **From
-Skills & Roles**, the order is as before (MLL first).
-
-**Needs outside the app:** nothing.
-
-**How to check:** on a line with an MLL, pick someone else under Line
-lead: their green row moves above the MLL's navy row.
-
-**Announcement:** "Line Assignments: the lead you pick for a line is now
-listed first, above the MLL."
-
-### 2. A line's side panel, redesigned ("board look", Line Assignments)
-
-Clicking a line opens a tidier side panel, in sections:
-
-- **Top bar** in the line's status color (like its box on the board): the
-  line's name (click it to rename), the 👥 crew badge, and Status and
-  Note fields.
-- **👥 Crew:** the crew chips in the board's role colors (picked lead green
-  with a ⭐ and first, MLL, MLT; Customize Print Design's highlight colors),
-  with a small Lead / MLL / MLT key.
-- **⭐ Line lead:** a card showing the lead (green once one is picked) with
-  **Change** to pick another.
-- **➕ Training · dumping · overtime:** as before, with a one-line tip.
-- **Transfer team** and **Delete line** as two buttons at the bottom.
-
-Nothing it does changes: the same choices, saved the same way, and other
-panels (date, duty boxes, comments) are unchanged.
-
-**Needs outside the app:** nothing.
-
-**How to check:** click a line: the panel has the colored top bar and the
-three sections; rename it from the top, pick a lead with Change, and try
-Transfer team.
-
-**Announcement:** "Line Assignments: the side panel for a line has a new,
-tidier look - the line's name, count, status and note at the top, then
-Crew, Line lead and Training · dumping · overtime."
-
-### 3. Add people to the roster from a list (Skills & Roles)
-
-Under the roster, **📋 Add from a list** opens a box to paste or type
-names, one per line. A role can go after a tab (pasted from Excel) or a
-" - " (`Ed Lura - MLL`), or on the end as on the printed sheet
-(`Jenise Amado MLT`; LL means Line Leader). A preview shows each name,
-its role and whether it's **New** or **Already on the roster**; **Add N
-people** adds only the new ones (no one already there is changed). The
-new names show up for the other shifts' overtime lists right away.
-
-**Needs outside the app:** nothing.
-
-**After it's live, on 2nd shift:** Skills & Roles → 📋 Add from a list →
-paste the list in `docs/2nd-shift-roster-2026-10-26.txt` (42 people, read
-from the 10/26 2nd shift sheet: 5 MLL, Cornelis Tap as Line Leader,
-Jenise Amado and A. Espino as MLT, Ester Rashidian as Coordinator) →
-check the preview → **Add**. Check the spelling of Ed Lura, Cornelis Tap
-(hard to read on the sheet) and Johnathan Hernaez first.
-
-**How to check:** the roster has the new people at the bottom, with their
-roles; on Line Assignments an MLL from the list shows navy.
-
-**Announcement:** "Skills & Roles: to add several people at once, use 📋 Add
-from a list and paste the names (a role can follow a ' - ', like 'Ed Lura -
-MLL')."
+Nothing yet. New changes are added here once they're built and tested.
 
 ---
 
@@ -105,6 +37,31 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-10-27 (night): lead first, new line side panel, add people from a list
+
+1. **A picked lead goes first** on a line (page, side panel chips and
+   printout), above an MLL; with From Skills & Roles the MLL is first as
+   before.
+2. **A line's side panel, redesigned ("board look"):** a top bar in the
+   line's status color with its name (click to rename), 👥 badge, Status
+   and Note; then Crew (chips in the board's role colors, the picked lead
+   green with a ⭐), Line lead (a card with Change), and Training ·
+   dumping · overtime; Transfer team and Delete line as two buttons.
+3. **Skills & Roles → 📋 Add from a list:** paste names one per line, a
+   role after a tab, a " - " or on the end (MLL / MLT / LL); a preview
+   shows who's new, and only new people are added.
+
+Nothing changed in Firebase. The Job Instruction covers the Production
+Schedule tab, so it stays at Rev. 2026-10-15.
+
+**Once it's live, on 2nd shift:** Skills & Roles → 📋 Add from a list →
+paste `docs/2nd-shift-roster-2026-10-26.txt` (42 people from the 10/26
+sheet; check Ed Lura, Cornelis Tap and Johnathan Hernaez) → Add.
+
+**Announcement:** "Line Assignments: a line's side panel has a new, tidier
+look, and the lead you pick is listed first, above the MLL. Skills &
+Roles: add several people at once with 📋 Add from a list."
 
 ### 2026-10-27 (evening): overtime from the other shifts' names (Line Assignments)
 
