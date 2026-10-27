@@ -8,43 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. Overtime from the other shifts' names (Line Assignments)
-
-In a line's side panel, with **⏱ Overtime** picked under "Training,
-dumping & overtime", the list is **From another shift…**: the other
-shifts' people, grouped in shift order (1st Shift, 2nd Shift, 3rd Shift,
-leaving out your own) and A–Z inside each. Picking a name adds them to
-the line under the light green OVERTIME row, counted toward the ZBS, with
-"From 2nd Shift" under their name in the panel. Their ✕ takes them off
-the line (they aren't on this shift's crew). Training and Dumping still
-pick from the line's own crew, and someone from this shift can still be
-switched to Overtime from their row.
-
-How the names get there: each shift shares **only its people's names**
-(as shown on Line Assignments) in a small shared list, kept up to date
-whenever someone on that shift opens LineUp. Schedules, boards, time off
-and skills stay private to each shift. A shift can change only its own
-list, and Packaging Lead Hub accounts can't read them.
-
-**Needs outside the app (you, about 2 minutes, before or right after the
-release):** publish the updated database rules. In the Firebase console
-(project jde-schedule-database): **Firestore Database → Rules**, replace
-everything with the contents of `firestore.rules` from this branch (Claude
-can paste it for you in chat), then **Publish**. The only change is the new
-`jde-sched-names` block. Until the rules are published, the overtime list
-says "No other shift's names yet" and nothing else is affected.
-
-**After it's live:** each shift's names show up for the others once
-someone on that shift opens LineUp (unlocks it) once.
-
-**How to check:** on 3rd shift, click a line, pick ⏱ Overtime: the list
-shows 1st Shift and 2nd Shift names A–Z (once those shifts have opened
-LineUp). Pick one: they're under OVERTIME on the line and in the count.
-
-**Announcement:** "Line Assignments: for overtime, pick ⏱ Overtime in the
-line's side panel and choose the person from the other shifts' names
-(grouped by shift, A–Z). They're added to the line and counted toward the
-ZBS."
+Nothing yet. New changes are added here once they're built and tested.
 
 ---
 
@@ -73,6 +37,26 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-10-27 (evening): overtime from the other shifts' names (Line Assignments)
+
+With **⏱ Overtime** picked in a line's side panel, the list is **From
+another shift…**: the other shifts' people, grouped in shift order and
+A–Z. Picking a name adds them to the line under OVERTIME, counted toward
+the ZBS ("From 2nd Shift" in the panel; their ✕ takes them off the line).
+Training and Dumping still pick from the line's own crew.
+
+Each shift shares **only its people's names** in `jde-sched-names/{shift}`,
+updated whenever someone on that shift unlocks LineUp; any shift reads all
+three, a shift writes only its own, and schedules, boards, time off and
+skills stay private. **Firebase:** the database rules gained the
+`jde-sched-names` block, published by hand in the Firebase console
+(Firestore Database → Rules). The Job Instruction stays at Rev. 2026-10-15.
+
+**Announcement:** "Line Assignments: for overtime, pick ⏱ Overtime in the
+line's side panel and choose the person from the other shifts' names
+(grouped by shift, A–Z). They're added to the line and counted toward the
+ZBS."
 
 ### 2026-10-27 (later): overtime counts toward the ZBS (Line Assignments)
 
