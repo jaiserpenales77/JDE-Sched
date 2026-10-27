@@ -232,9 +232,12 @@ function roleRank(name: string, roleMap: Map<string, string>): number {
   return ROLE_RANK[roleCategory(roleOf(name, roleMap))];
 }
 
-export function sortByRole(names: string[], roleMap: Map<string, string>): string[] {
+// first: a line's lead picked in its panel, who goes before everyone - an
+// MLL included.
+export function sortByRole(names: string[], roleMap: Map<string, string>, first: string | null = null): string[] {
+  const firstKey = first ? nameKey(first) : "";
   return names
-    .map((name, index) => ({ name, index, rank: roleRank(name, roleMap) }))
+    .map((name, index) => ({ name, index, rank: firstKey && nameKey(name) === firstKey ? -1 : roleRank(name, roleMap) }))
     .sort((a, b) => a.rank - b.rank || a.index - b.index)
     .map((entry) => entry.name);
 }

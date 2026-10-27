@@ -33,6 +33,7 @@ import {
   dutyCrew,
   extraGroups,
   lineCrew,
+  lineLead,
   noteWithoutZbs,
   parseNames,
   slotRoleMap,
@@ -248,7 +249,7 @@ export default function PageEditor({
     const raw = lineCrew(slot);
     // Roles on this line: a lead picked in its panel counts as its Line Leader.
     const lineRoles = slotRoleMap(slot, roleMap);
-    const names = settings.highlightRoles ? sortByRole(raw, lineRoles) : raw;
+    const names = settings.highlightRoles ? sortByRole(raw, lineRoles, lineLead(slot)) : raw;
     const groups = extraGroups(slot);
     const key = statusKey(slot.status);
     const cov = coverage(slot);

@@ -27,6 +27,8 @@ interface Props {
   // When given, displays chips MLL > Line Leader > MLT > everyone else,
   // matching the same order the print report uses.
   roleMap?: Map<string, string>;
+  // A line's lead picked in its panel: their chip goes first.
+  leadFirst?: string | null;
   // Where each option already is today - groups the "+ Add employee"
   // list so people already on another line or out today are set apart.
   describe?: (name: string) => NameStatus;
@@ -43,6 +45,7 @@ export default function NameMultiSelect({
   slotId,
   onDropEmployee,
   roleMap,
+  leadFirst = null,
   describe,
   chipWarning,
   isMatch,
@@ -52,7 +55,7 @@ export default function NameMultiSelect({
   const [dragOver, setDragOver] = useState(false);
 
   const selected = parseNames(value);
-  const displayed = roleMap ? sortByRole(selected, roleMap) : selected;
+  const displayed = roleMap ? sortByRole(selected, roleMap, leadFirst) : selected;
   const available = options.filter((name) => !selected.includes(name));
 
   const groups: Record<NameStatus["status"], { name: string; note?: string }[]> = { free: [], elsewhere: [], out: [] };

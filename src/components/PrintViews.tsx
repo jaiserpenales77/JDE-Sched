@@ -52,6 +52,7 @@ import {
   extraGroups,
   isRunning,
   lineCrew,
+  lineLead,
   noteWithoutZbs,
   slotRoleMap,
   staffingOff,
@@ -734,7 +735,7 @@ export function LineBoxContent({
   // MLL > Line Leader > MLT > everyone else - same "highlight roles"
   // toggle that colors these names also controls whether they're
   // reordered to put the crew hierarchy first.
-  const names = settings.highlightRoles ? sortByRole(rawNames, roleMap) : rawNames;
+  const names = settings.highlightRoles ? sortByRole(rawNames, roleMap, lineLead(slot)) : rawNames;
   const key = statusKey(slot.status);
   const target = zbsTarget(slot.subNote);
   // Light red when a scheduled line has fewer or more people than its ZBS,

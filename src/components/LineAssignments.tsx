@@ -657,6 +657,7 @@ export default function LineAssignments({
             slotId={slot.id}
             onDropEmployee={(name, fromId) => movePerson(name, fromId, slot.id)}
             roleMap={slotRoleMap(slot, roleMap)}
+            leadFirst={lineLead(slot)}
             describe={describe}
             chipWarning={(name) => warningFor(name, slot.id)}
             isMatch={isMatch}
@@ -677,7 +678,7 @@ export default function LineAssignments({
             </select>
             <span className="duty-needed-hint">
               {lineLead(slot)
-                ? "Shown as this line's Line Leader (green) at the top of the crew, after any MLL, on the page and the printout."
+                ? "Shown as this line's Line Leader (green) at the top of the crew (before any MLL), on the page and the printout."
                 : "Anyone with Line Leader, MLL or MLT in Skills & Roles is highlighted, as before."}
             </span>
           </label>

@@ -8,7 +8,21 @@ together.
 
 ## What's in the next update
 
-Nothing yet. New changes are added here once they're built and tested.
+### 1. A picked lead goes first, before an MLL (Line Assignments)
+
+A lead picked under **Line lead** in a line's side panel is now listed
+**first** on the line, even when an MLL is on it: picked lead (green),
+then the MLL (still navy), Line Leader, MLT and everyone else. Same on
+the page, the side panel's crew chips and the printout. With **From
+Skills & Roles**, the order is as before (MLL first).
+
+**Needs outside the app:** nothing.
+
+**How to check:** on a line with an MLL, pick someone else under Line
+lead: their green row moves above the MLL's navy row.
+
+**Announcement:** "Line Assignments: the lead you pick for a line is now
+listed first, above the MLL."
 
 ---
 
