@@ -8,69 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. Pick a lead for a line (Line Assignments)
-
-A line's side panel has a **Line lead** box, under its crew. It starts on
-**From Skills & Roles** (as today: whoever is a Line Leader, MLL or MLT on
-the roster is highlighted). Picking someone from the line's crew makes
-them that line's Line Leader:
-
-- they're green and at the top of the crew (after any MLL), on the page,
-  in the panel and on the printout;
-- anyone else the roster calls a Line Leader is ordinary crew on that line
-  (other lines are unchanged); MLL and MLT stay as they are, and picking
-  an MLL keeps them an MLL;
-- the line's "No MLL or Line Lead" warning goes away.
-
-The pick is saved with the line, carries over to a new day's board copied
-from this one, and moves with Transfer team. If the lead leaves the line
-or is marked as an extra person (item 2), the line goes back to Skills &
-Roles.
-
-**Needs outside the app:** nothing.
-
-**How to check:** click a line, pick someone under Line lead: their name
-turns green and moves to the top, on the page and the printout. Pick
-"From Skills & Roles" to undo.
-
-**Announcement:** "On Line Assignments you can now pick a line's lead:
-click the line and choose under 'Line lead'. They're shown in green at the
-top of the crew, on screen and on the printout."
-
-### 2. Extra people on a line: training, dumping or overtime (Line Assignments)
-
-The side panel's "Training on this line" becomes **Extra people on this
-line**. Each extra person is marked as one of:
-
-- **🎓 Training** (gold, as today), with what they're training on;
-- **Dumping** (light blue);
-- **Overtime** (light green).
-
-Like training today, extra people are listed after the crew under their
-own colored row ("TRAINING · CREMER", "DUMPING", "OVERTIME"), and their
-names are tinted in that color. None of them count against the ZBS, so
-they don't turn a line's badge light red, and they can't be the line's
-lead.
-
-The 👥 badge gets a "+1" half in each kind's color (👥 4/4 +1🎓 +1 for
-overtime). Badge + bubble shows a bubble per kind, and ZBS blocks shows
-a colored "+1" per kind. It works the same on the page, in the side panel
-and on the printout.
-
-People already marked as training stay training. Nothing changes in
-Firebase: the kind is saved with the person, on the line as today.
-
-**Needs outside the app:** nothing.
-
-**How to check:** click a line. Under "Extra people on this line", pick
-Dumping, then someone on the line. They move under a light blue DUMPING
-row, and the badge shows a blue +1. Change their kind to Overtime: the row
-turns light green. Print preview shows the same rows and badge.
-
-**Announcement:** "On Line Assignments, extra people on a line can now be
-marked as Training, Dumping or Overtime: click the line, then use 'Extra
-people on this line'. They're listed under their own colored row and
-don't count against the ZBS."
+Nothing yet. New changes are added here once they're built and tested.
 
 ---
 
@@ -99,6 +37,30 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-10-27: line lead pick, extra people for training, dumping or overtime (Line Assignments)
+
+1. **Pick a lead for a line:** a line's side panel has a **Line lead** box
+   (starting on From Skills & Roles). The person picked is that line's
+   Line Leader, green at the top of the crew (after any MLL), on the
+   page and the printout; anyone else the roster calls a Line Leader is
+   ordinary crew on that line, and its "No MLL or Line Lead" warning goes
+   away. The pick moves with Transfer team and a copied day.
+2. **Extra people on a line:** "Training on this line" became **Extra
+   people on this line**: Training (gold, with what they're training on),
+   Dumping (light blue) or Overtime (light green). They're listed after
+   the crew under their own colored row, the 👥 badge shows a "+1" in each
+   kind's color (bubbles and ZBS blocks too), and none of them count
+   against the ZBS or can be the line's lead. People marked as training
+   before stayed training.
+
+Nothing changed in Firebase. The Job Instruction covers the Production
+Schedule tab, so it stays at Rev. 2026-10-15.
+
+**Announcement:** "On Line Assignments you can now pick a line's lead
+(click the line, 'Line lead'), and mark extra people on a line as
+Training, Dumping or Overtime ('Extra people on this line'). Extra people
+are listed under their own colored row and don't count against the ZBS."
 
 ### 2026-10-21: crew counts, training on the line, crew count designs (Line Assignments)
 

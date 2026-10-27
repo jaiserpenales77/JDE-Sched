@@ -2717,6 +2717,9 @@ tr.print-line-spacer td {
   min-width: 0;
   margin-top: 0;
 }
+.training-panel .panel-hint {
+  margin-top: 6px;
+}
 .page-box-badge-warn {
   background: #fef3c7;
   color: #92400e;

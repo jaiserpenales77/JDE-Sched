@@ -728,7 +728,7 @@ export default function LineAssignments({
                   setExtras([...extras, { name, skill, kind: extraKindToAdd }]);
                 }}
               >
-                <option value="">Mark someone on this line as {EXTRA_KIND_LABELS[extraKindToAdd].toLowerCase()}…</option>
+                <option value="">Pick someone…</option>
                 {crewNames.map((n) => (
                   <option key={n} value={n}>
                     {n}
