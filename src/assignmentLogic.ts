@@ -212,6 +212,28 @@ export function trainingSkillFor(name: string, employees: Employee[]): string {
   return key ? SKILL_LABELS[key] : "";
 }
 
+// The lead picked for a line in its panel, if they're still on its crew
+// (not training); null = the leads come from Skills & Roles.
+export function lineLead(slot: LineSlot): string | null {
+  const key = nameKey(slot.lead ?? "");
+  if (!key) return null;
+  return lineCrew(slot).find((n) => nameKey(n) === key) ?? null;
+}
+
+// Roles as they apply on one line. With a lead picked, that person is the
+// line's Line Leader (an MLL stays an MLL), and anyone else the roster calls
+// a Line Leader is ordinary crew on this line. MLL and MLT are unchanged.
+export function slotRoleMap(slot: LineSlot, roleMap: Map<string, string>): Map<string, string> {
+  const lead = lineLead(slot);
+  if (!lead) return roleMap;
+  const map = new Map(roleMap);
+  for (const name of lineCrew(slot)) {
+    if (roleCategory(roleOf(name, roleMap)) === "leader") map.set(`full:${nameKey(name)}`, "");
+  }
+  if (roleCategory(roleOf(lead, roleMap)) !== "mll") map.set(`full:${nameKey(lead)}`, "Line Leader");
+  return map;
+}
+
 export interface SlotCoverage {
   // The crew, not counting people training.
   count: number;
@@ -220,7 +242,8 @@ export interface SlotCoverage {
   trainees: number;
 }
 
-export function slotCoverage(slot: LineSlot, roleMap: Map<string, string>): SlotCoverage {
+export function slotCoverage(slot: LineSlot, allRoles: Map<string, string>): SlotCoverage {
+  const roleMap = slotRoleMap(slot, allRoles);
   const names = lineCrew(slot);
   const target = zbsTarget(slot.subNote);
   const warnings: string[] = [];

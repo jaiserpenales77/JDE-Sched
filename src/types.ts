@@ -37,6 +37,8 @@ export interface LineSlot {
   // assigned (so the rest of the app still sees them on the line); this
   // only lists them separately, after the crew.
   trainees?: Trainee[];
+  // The line's lead, picked in its panel ("" / absent = from Skills & Roles).
+  lead?: string;
 }
 
 export interface Trainee {

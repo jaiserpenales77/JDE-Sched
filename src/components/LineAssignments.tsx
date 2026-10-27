@@ -28,8 +28,10 @@ import {
   crewBadgeTone,
   dutyNeededFromTitle,
   lineCrew,
+  lineLead,
   lineTrainees,
   slotCoverage,
+  slotRoleMap,
   trainingSkillFor,
 } from "../assignmentLogic";
 
@@ -269,9 +271,14 @@ export default function LineAssignments({
     const merged = [...existing, ...team.filter((n) => !existing.includes(n))];
     updateBoard(board.id, {
       lineSlots: board.lineSlots.map((s) => {
-        if (s.id === slot.id) return { ...s, assigned: "", trainees: [] };
+        if (s.id === slot.id) return { ...s, assigned: "", trainees: [], lead: "" };
         if (s.id === targetSlot.id)
-          return { ...s, assigned: merged.join(", "), trainees: [...lineTrainees(targetSlot), ...lineTrainees(slot)] };
+          return {
+            ...s,
+            assigned: merged.join(", "),
+            trainees: [...lineTrainees(targetSlot), ...lineTrainees(slot)],
+            lead: lineLead(targetSlot) ?? lineLead(slot) ?? "",
+          };
         return s;
       }),
     });
@@ -612,11 +619,31 @@ export default function LineAssignments({
             options={employeeNames}
             slotId={slot.id}
             onDropEmployee={(name, fromId) => movePerson(name, fromId, slot.id)}
-            roleMap={roleMap}
+            roleMap={slotRoleMap(slot, roleMap)}
             describe={describe}
             chipWarning={(name) => warningFor(name, slot.id)}
             isMatch={isMatch}
           />
+          <label className="inspector-field">
+            Line lead
+            <select value={lineLead(slot) ?? ""} onChange={(e) => updateSlot(slot.id, { lead: e.target.value })}>
+              <option value="">From Skills &amp; Roles</option>
+              {crewNames.map((n) => {
+                const role = roleOf(n, roleMap);
+                return (
+                  <option key={n} value={n}>
+                    {n}
+                    {role ? ` (${role})` : ""}
+                  </option>
+                );
+              })}
+            </select>
+            <span className="duty-needed-hint">
+              {lineLead(slot)
+                ? "Shown as this line's Line Leader (green) at the top of the crew, after any MLL, on the page and the printout."
+                : "Anyone with Line Leader, MLL or MLT in Skills & Roles is highlighted, as before."}
+            </span>
+          </label>
           <div className="training-panel">
             <div className="inspector-label">🎓 Training on this line</div>
             {trainees.map((t) => (

@@ -50,6 +50,7 @@ import {
   lineCrew,
   lineTrainees,
   noteWithoutZbs,
+  slotRoleMap,
   staffingOff,
   traineeGroups,
   zbsRange,
@@ -667,13 +668,15 @@ function PeopleIcon() {
 
 export function LineBoxContent({
   slot,
-  roleMap,
+  roleMap: allRoles,
   settings,
 }: {
   slot: LineSlot;
   roleMap: Map<string, string>;
   settings: PrintAssignSettings;
 }) {
+  // Roles on this line: a lead picked in its panel counts as its Line Leader.
+  const roleMap = slotRoleMap(slot, allRoles);
   // The crew, then the people training listed last.
   const rawNames = lineCrew(slot);
   const training = traineeGroups(slot);

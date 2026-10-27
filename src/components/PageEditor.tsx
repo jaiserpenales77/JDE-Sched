@@ -24,6 +24,7 @@ import {
   lineCrew,
   noteWithoutZbs,
   parseNames,
+  slotRoleMap,
   readDragPayload,
   staffingOff,
   traineeGroups,
@@ -166,9 +167,16 @@ export default function PageEditor({
     };
   }
 
-  function nameRow(name: string, placeId: string, i: number, sectionStyle?: SectionStyle, trainee = false) {
+  function nameRow(
+    name: string,
+    placeId: string,
+    i: number,
+    sectionStyle?: SectionStyle,
+    trainee = false,
+    roles: Map<string, string> = roleMap,
+  ) {
     const warning = warningFor(name, placeId);
-    const roleClass = trainee ? "print-assign-trainee" : nameRoleClass(name, roleMap, settings.highlightRoles);
+    const roleClass = trainee ? "print-assign-trainee" : nameRoleClass(name, roles, settings.highlightRoles);
     const classes = ["print-assign-name-row", "page-name", roleClass];
     if (warning) classes.push(warning.soft ? "page-name-soft" : "page-name-warn");
     if (isMatch(name)) classes.push("page-name-match");
@@ -227,7 +235,9 @@ export default function PageEditor({
   function lineContent(slot: LineSlot) {
     // The crew, then the people training listed last (as on the printout).
     const raw = lineCrew(slot);
-    const names = settings.highlightRoles ? sortByRole(raw, roleMap) : raw;
+    // Roles on this line: a lead picked in its panel counts as its Line Leader.
+    const lineRoles = slotRoleMap(slot, roleMap);
+    const names = settings.highlightRoles ? sortByRole(raw, lineRoles) : raw;
     const training = traineeGroups(slot);
     const key = statusKey(slot.status);
     const cov = coverage(slot);
@@ -262,7 +272,7 @@ export default function PageEditor({
           return <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>;
         })()}
         <div className="print-assign-names">
-          {names.map((n, i) => nameRow(n, slot.id, i))}
+          {names.map((n, i) => nameRow(n, slot.id, i, undefined, false, lineRoles))}
           {training.map((group) => (
             <Fragment key={group.skill}>
               <TrainingDivider skill={group.skill} />

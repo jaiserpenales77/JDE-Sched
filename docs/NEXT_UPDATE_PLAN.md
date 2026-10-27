@@ -8,7 +8,33 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+### 1. Pick a lead for a line (Line Assignments)
+
+A line's side panel has a **Line lead** box, under its crew. It starts on
+**From Skills & Roles** (as today: whoever is a Line Leader, MLL or MLT on
+the roster is highlighted). Picking someone from the line's crew makes
+them that line's Line Leader:
+
+- they're green and at the top of the crew (after any MLL), on the page,
+  in the panel and on the printout;
+- anyone else the roster calls a Line Leader is ordinary crew on that line
+  (other lines are unchanged); MLL and MLT stay as they are, and picking
+  an MLL keeps them an MLL;
+- the line's "No MLL or Line Lead" warning goes away.
+
+The pick is saved with the line, carries over to a new day's board copied
+from this one, and moves with Transfer team. If the lead leaves the line
+or is marked as training, the line goes back to Skills & Roles.
+
+**Needs outside the app:** nothing.
+
+**How to check:** click a line, pick someone under Line lead: their name
+turns green and moves to the top, on the page and the printout. Pick
+"From Skills & Roles" to undo.
+
+**Announcement:** "On Line Assignments you can now pick a line's lead:
+click the line and choose under 'Line lead'. They're shown in green at the
+top of the crew, on screen and on the printout."
 
 ---
 
