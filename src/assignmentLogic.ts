@@ -133,8 +133,8 @@ export function staffingOff(slot: LineSlot): "under" | "over" | null {
   if (slot.status !== "Scheduled") return null;
   const zbs = zbsRange(slot.subNote);
   if (!zbs) return null;
-  // Extra people (training, dumping, overtime) don't count against the ZBS.
-  const count = lineCrew(slot).length;
+  // The crew and anyone on overtime; training and dumping are on top of it.
+  const count = zbsCount(slot);
   return count < zbs.min ? "under" : count > zbs.max ? "over" : null;
 }
 
@@ -219,7 +219,25 @@ export function extraGroups(slot: LineSlot): ExtraGroup[] {
   return groups.sort((a, b) => EXTRA_KINDS.indexOf(a.kind) - EXTRA_KINDS.indexOf(b.kind));
 }
 
-// How many extra people of each kind a line has (kinds with nobody left out).
+// People on overtime fill the line's ZBS spots; training and dumping are on
+// top of it.
+export function countsTowardZbs(kind: ExtraKind): boolean {
+  return kind === "overtime";
+}
+
+// How many people on a line count against its ZBS: the crew plus anyone on
+// overtime.
+export function zbsCount(slot: LineSlot): number {
+  return lineCrew(slot).length + lineOvertime(slot);
+}
+
+// How many people on a line are on overtime.
+export function lineOvertime(slot: LineSlot): number {
+  return lineExtras(slot).filter((t) => countsTowardZbs(extraKind(t))).length;
+}
+
+// How many extra people of each kind are on top of the ZBS - training and
+// dumping, for the badge's "+1"s (kinds with nobody left out).
 export interface ExtraCount {
   kind: ExtraKind;
   count: number;
@@ -227,12 +245,12 @@ export interface ExtraCount {
 
 export function extraCounts(slot: LineSlot): ExtraCount[] {
   const extras = lineExtras(slot);
-  return EXTRA_KINDS.map((kind) => ({ kind, count: extras.filter((t) => extraKind(t) === kind).length })).filter(
-    (c) => c.count > 0,
-  );
+  return EXTRA_KINDS.filter((kind) => !countsTowardZbs(kind))
+    .map((kind) => ({ kind, count: extras.filter((t) => extraKind(t) === kind).length }))
+    .filter((c) => c.count > 0);
 }
 
-// "1 training, 2 overtime" - for tooltips.
+// "1 training, 2 dumping" - for tooltips.
 export function describeExtras(counts: ExtraCount[]): string {
   return counts.map((c) => `${c.count} ${EXTRA_KIND_LABELS[c.kind].toLowerCase()}`).join(", ");
 }
@@ -268,20 +286,24 @@ export function slotRoleMap(slot: LineSlot, roleMap: Map<string, string>): Map<s
 }
 
 export interface SlotCoverage {
-  // The crew, not counting the extra people.
+  // Everyone counted against the ZBS: the crew and anyone on overtime.
   count: number;
+  // How many of them are on overtime.
+  overtime: number;
   target: number | null;
   warnings: string[];
+  // The people on top of the ZBS (training, dumping).
   extras: ExtraCount[];
 }
 
 export function slotCoverage(slot: LineSlot, allRoles: Map<string, string>): SlotCoverage {
   const roleMap = slotRoleMap(slot, allRoles);
   const names = lineCrew(slot);
+  const count = zbsCount(slot);
   const target = zbsTarget(slot.subNote);
   const warnings: string[] = [];
   if (slot.status === "Scheduled") {
-    if (names.length === 0) {
+    if (count === 0) {
       warnings.push("No crew assigned");
     } else {
       const hasLead = names.some((n) => {
@@ -289,10 +311,10 @@ export function slotCoverage(slot: LineSlot, allRoles: Map<string, string>): Slo
         return category === "mll" || category === "leader";
       });
       if (!hasLead) warnings.push("No MLL or Line Lead");
-      if (target !== null && names.length < target) warnings.push(`Short ${target - names.length} (ZBS ${target})`);
+      if (target !== null && count < target) warnings.push(`Short ${target - count} (ZBS ${target})`);
     }
   }
-  return { count: names.length, target, warnings, extras: extraCounts(slot) };
+  return { count, overtime: lineOvertime(slot), target, warnings, extras: extraCounts(slot) };
 }
 
 // "Line 08", "Line 8 ", "line 12/9" -> "8", "8", "12"; "STRETCH" -> "stretch".

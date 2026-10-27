@@ -22,9 +22,9 @@ const CREW_DESIGNS: { style: CrewStyle; name: string; note: string }[] = [
   {
     style: "badge",
     name: "Badge",
-    note: "👥 count in the name bar, extra people as a +1 half (gold training, blue dumping, green overtime). ZBS row below.",
+    note: "👥 count in the name bar (overtime included), training and dumping as a +1 half (gold, blue). ZBS row below.",
   },
-  { style: "bubble", name: "Badge + bubble", note: "The same badge, with extra people as +1 bubbles on its corner." },
+  { style: "bubble", name: "Badge + bubble", note: "The same badge, with training and dumping as +1 bubbles on its corner." },
   { style: "tally", name: "ZBS blocks", note: "No badge. The ZBS row shows a block per spot: white filled, outlined open, red extra." },
   { style: "badgeOnly", name: "Badge only", note: "The badge, with no ZBS row: one more row for names." },
 ];

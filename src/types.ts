@@ -33,10 +33,11 @@ export interface LineSlot {
   status: "" | "Scheduled" | "Not Scheduled" | "PM";
   subNote: string;
   assigned: string;
-  // Extra people on this line - training, dumping or overtime - and why.
-  // They stay in assigned (so the rest of the app still sees them on the
-  // line); this only lists them separately, after the crew, and leaves them
-  // out of the ZBS. (Saved as "trainees": training was the first kind.)
+  // People on this line for training, dumping or overtime, and which. They
+  // stay in assigned (so the rest of the app still sees them on the line);
+  // this lists them separately, after the crew. Overtime counts toward the
+  // ZBS; training and dumping don't. (Saved as "trainees": training was the
+  // first kind.)
   trainees?: ExtraPerson[];
   // The line's lead, picked in its panel ("" / absent = from Skills & Roles).
   lead?: string;
@@ -184,10 +185,10 @@ export interface BoxLayout {
 }
 
 // Designs for a line's crew count and ZBS on Line Assignments:
-// "badge" - the 👥 badge in the name bar (a "+1" half for each kind of extra
-//   people: gold training, light blue dumping, light green overtime), with
-//   the ZBS row below;
-// "bubble" - the same badge with the extra people as "+1" bubbles on its corner;
+// "badge" - the 👥 badge in the name bar (overtime counted in it, and a "+1"
+//   half for the people on top of the ZBS: gold training, light blue
+//   dumping), with the ZBS row below;
+// "bubble" - the same badge with training and dumping as "+1" bubbles on its corner;
 // "tally" - no badge; the ZBS row shows a block per ZBS spot and the count;
 // "badgeOnly" - the badge, without the ZBS row (more room for names).
 export const CREW_STYLES = ["badge", "bubble", "tally", "badgeOnly"] as const;

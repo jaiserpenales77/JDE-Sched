@@ -664,7 +664,7 @@ export default function LineAssignments({
             </span>
           </label>
           <div className="training-panel">
-            <div className="inspector-label">Extra people on this line</div>
+            <div className="inspector-label">Training, dumping &amp; overtime</div>
             {extras.map((t) => {
               const kind = extraKind(t);
               return (
@@ -743,8 +743,8 @@ export default function LineAssignments({
             </datalist>
             <p className="panel-hint">
               {extras.length > 0
-                ? "Listed last under their own row (gold Training, light blue Dumping, light green Overtime), and not counted in the ZBS."
-                : "For people on the line beyond its ZBS: training, dumping or overtime."}
+                ? "Listed last under their own row (gold Training, light blue Dumping, light green Overtime). Overtime counts toward the ZBS; training and dumping don't."
+                : "Overtime counts toward the ZBS; training and dumping are on top of it."}
             </p>
           </div>
           <select

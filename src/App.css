@@ -1862,6 +1862,10 @@ tr.print-line-spacer td {
 .tally-block.tally-extra {
   background: #f87171;
 }
+/* A ZBS spot filled by someone on overtime. */
+.tally-block.tally-ot {
+  background: #a9d08e;
+}
 .tally-idle .tally-block {
   background: #7a7a7a;
 }

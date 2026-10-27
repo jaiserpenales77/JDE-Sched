@@ -55,6 +55,7 @@ import {
   noteWithoutZbs,
   slotRoleMap,
   staffingOff,
+  zbsCount,
   zbsRange,
   zbsTarget,
 } from "../assignmentLogic";
@@ -580,13 +581,14 @@ export function PrintSchedule({
 }
 
 // The ZBS row as a block per ZBS spot (the "ZBS blocks" design): white =
-// filled, outlined = open, red = more than the ZBS; then crew / ZBS and a
-// "+1" for each kind of extra people (gold training, light blue dumping,
-// light green overtime). A line without a ZBS shows its note and its 👥
-// count. Light red / grey follow the same rules as the badge.
+// filled, light green = filled by someone on overtime, outlined = open, red
+// = more than the ZBS; then crew / ZBS and a "+1" for each kind of extra
+// people on top of it (gold training, light blue dumping). A line without a
+// ZBS shows its note and its 👥 count. Light red / grey follow the same
+// rules as the badge.
 export function TallyRow({ slot, children }: { slot: LineSlot; children?: ReactNode }) {
   const zbs = zbsRange(slot.subNote);
-  const crew = lineCrew(slot).length;
+  const crew = zbsCount(slot);
   const rest = noteWithoutZbs(slot.subNote);
   const tone = crewBadgeTone(slot);
   const plus = <ExtraParts extras={extraCounts(slot)} className="tally-plus" />;
@@ -605,13 +607,15 @@ export function TallyRow({ slot, children }: { slot: LineSlot; children?: ReactN
     );
   }
   const filled = Math.min(crew, zbs.max);
+  // The crew's spots first, then the ones filled by overtime.
+  const overtime = filled - Math.min(lineCrew(slot).length, filled);
   const open = Math.max(0, zbs.min - crew);
   const extra = Math.max(0, crew - zbs.max);
   return (
     <span className={classes.join(" ")}>
       <span className="tally-blocks" aria-hidden="true">
         {Array.from({ length: filled }, (_, i) => (
-          <span className="tally-block" key={`f${i}`} />
+          <span className={`tally-block${i >= filled - overtime ? " tally-ot" : ""}`} key={`f${i}`} />
         ))}
         {Array.from({ length: open }, (_, i) => (
           <span className="tally-block tally-open" key={`o${i}`} />
@@ -658,8 +662,8 @@ export function ExtraIcon({ kind }: { kind: ExtraKind }) {
   );
 }
 
-// The badge's "+1" halves, one per kind of extra people: gold "+1🎓"
-// training, light blue dumping, light green overtime.
+// The badge's "+1" halves, one per kind of extra people on top of the ZBS:
+// gold "+1🎓" training, light blue dumping. (Overtime is in the count.)
 export function ExtraParts({ extras, className }: { extras: ExtraCount[]; className: string }) {
   return (
     <>
@@ -744,7 +748,7 @@ export function LineBoxContent({
   const crew = (
     <>
       <PeopleIcon />
-      {rawNames.length}
+      {zbsCount(slot)}
       {target !== null ? `/${target}` : ""}
     </>
   );

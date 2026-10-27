@@ -303,7 +303,7 @@ export default function PageEditor({
           );
           const title = tips.length
             ? tips.join(" · ")
-            : `${cov.count} on the crew${cov.extras.length ? ` + ${describeExtras(cov.extras)} (not counted in the ZBS)` : ""}`;
+            : `${cov.count} on the crew${cov.overtime ? ` (${cov.overtime} on overtime)` : ""}${cov.extras.length ? ` + ${describeExtras(cov.extras)} (not counted in the ZBS)` : ""}`;
           if (settings.crewStyle === "tally") return null;
           // With extra people: "+1" bubbles on the badge's corner, or one
           // pill, the crew then a "+1" half per kind (like a gold "+1🎓").
