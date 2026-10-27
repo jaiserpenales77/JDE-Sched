@@ -1,5 +1,8 @@
+import { useState } from "react";
 import type { Employee } from "../types";
 import { SKILL_KEYS, SKILL_LABELS, SKILL_MARK_OPTIONS } from "../types";
+import { parsePastedRoster } from "../rosterPaste";
+import { nameKey } from "../printLayout";
 
 interface Props {
   employees: Employee[];
@@ -42,6 +45,25 @@ export default function SkillsRoles({ employees, setEmployees }: Props) {
   }
   function add() {
     setEmployees((emps) => [...emps, blankEmployee()]);
+  }
+
+  // "Add from a list": paste names (with roles), check the preview, add the
+  // new ones. Anyone already on the roster is left as they are.
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const pasted = parsePastedRoster(pasteText, employees);
+  const toAdd = pasted.filter((p) => !p.onRoster);
+  function closePaste() {
+    setPasteOpen(false);
+    setPasteText("");
+  }
+  function addPasted() {
+    setEmployees((emps) => {
+      const known = new Set(emps.map((e) => nameKey(e.name)));
+      const added = toAdd.filter((p) => !known.has(nameKey(p.name))).map((p) => ({ ...blankEmployee(), name: p.name, role: p.role }));
+      return [...emps, ...added];
+    });
+    closePaste();
   }
 
   const byLine = groupBy(employees, (e) => e.primaryLine);
@@ -114,9 +136,57 @@ export default function SkillsRoles({ employees, setEmployees }: Props) {
             </tbody>
           </table>
         </div>
-        <button className="btn small" style={{ marginTop: 10 }} onClick={add}>
-          + Add employee
-        </button>
+        <div className="roster-actions">
+          <button className="btn small" onClick={add}>
+            + Add employee
+          </button>
+          <button className="btn small" onClick={() => (pasteOpen ? closePaste() : setPasteOpen(true))}>
+            📋 Add from a list
+          </button>
+        </div>
+        {pasteOpen && (
+          <div className="roster-paste">
+            <label>
+              Paste or type names, one per line. A role can go after a tab or a " - " (Ed Lura - MLL), or on the end
+              (Jenise Amado MLT).
+              <textarea
+                rows={8}
+                autoFocus
+                placeholder={"Ed Lura - MLL\nJenise Amado MLT\nJesus Sierra"}
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+              />
+            </label>
+            {pasted.length > 0 && (
+              <table className="roster-paste-preview">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pasted.map((p) => (
+                    <tr key={p.name} className={p.onRoster ? "roster-paste-known" : ""}>
+                      <td>{p.name}</td>
+                      <td>{p.role || "—"}</td>
+                      <td>{p.onRoster ? "Already on the roster" : "New"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <div className="roster-actions">
+              <button className="btn small primary" disabled={toAdd.length === 0} onClick={addPasted}>
+                Add {toAdd.length} {toAdd.length === 1 ? "person" : "people"}
+              </button>
+              <button className="btn small" onClick={closePaste}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="panel">

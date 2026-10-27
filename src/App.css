@@ -954,6 +954,56 @@ tr.hl-bulk select {
 
 /* ---------- Skills & Roles ---------- */
 
+.roster-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+/* "Add from a list": a box to paste names into, with a preview. */
+.roster-paste {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--subtle);
+}
+.roster-paste label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.roster-paste textarea {
+  width: 100%;
+  max-width: 520px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+.roster-paste-preview {
+  margin-top: 10px;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.roster-paste-preview th,
+.roster-paste-preview td {
+  padding: 3px 14px 3px 0;
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+}
+.roster-paste-preview td:last-child {
+  color: var(--green);
+}
+.roster-paste-preview .roster-paste-known td {
+  color: var(--muted);
+}
+
 table.roster {
   border-collapse: collapse;
   width: 100%;

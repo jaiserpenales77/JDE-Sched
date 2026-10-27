@@ -52,6 +52,32 @@ Transfer team.
 tidier look - the line's name, count, status and note at the top, then
 Crew, Line lead and Training · dumping · overtime."
 
+### 3. Add people to the roster from a list (Skills & Roles)
+
+Under the roster, **📋 Add from a list** opens a box to paste or type
+names, one per line. A role can go after a tab (pasted from Excel) or a
+" - " (`Ed Lura - MLL`), or on the end as on the printed sheet
+(`Jenise Amado MLT`; LL means Line Leader). A preview shows each name,
+its role and whether it's **New** or **Already on the roster**; **Add N
+people** adds only the new ones (no one already there is changed). The
+new names show up for the other shifts' overtime lists right away.
+
+**Needs outside the app:** nothing.
+
+**After it's live, on 2nd shift:** Skills & Roles → 📋 Add from a list →
+paste the list in `docs/2nd-shift-roster-2026-10-26.txt` (42 people, read
+from the 10/26 2nd shift sheet: 5 MLL, Cornelis Tap as Line Leader,
+Jenise Amado and A. Espino as MLT, Ester Rashidian as Coordinator) →
+check the preview → **Add**. Check the spelling of Ed Lura, Cornelis Tap
+(hard to read on the sheet) and Johnathan Hernaez first.
+
+**How to check:** the roster has the new people at the bottom, with their
+roles; on Line Assignments an MLL from the list shows navy.
+
+**Announcement:** "Skills & Roles: to add several people at once, use 📋 Add
+from a list and paste the names (a role can follow a ' - ', like 'Ed Lura -
+MLL')."
+
 ---
 
 ## Running the update
