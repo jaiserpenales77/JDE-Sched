@@ -1738,9 +1738,10 @@ tr.print-line-spacer td {
   filter: grayscale(1);
   opacity: 0.6;
 }
-/* People training on a line: the crew badge becomes one two-tone pill,
-   the crew in its usual color and a gold "+1🎓"; a gold "TRAINING ·
-   CREMER" row above them, and their names in light gold. */
+/* Extra people on a line (training, dumping, overtime): the crew badge
+   becomes one pill, the crew in its usual color then a "+1" half per kind;
+   a row above them ("TRAINING · CREMER", "DUMPING", "OVERTIME") and their
+   names tinted in the same color. */
 .print-crew-badge.print-crew-badge-split,
 .print-crew-badge-split.print-crew-badge-compact {
   padding: 0;
@@ -1749,28 +1750,40 @@ tr.print-line-spacer td {
   overflow: hidden;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12);
 }
-.print-trainee-part {
+.print-extra-part {
   display: inline-flex;
   align-items: center;
   gap: 1px;
   padding: 0 4px 0 3px;
+}
+/* Each kind's color, on the badge halves, bubbles, ZBS blocks row and the
+   side panel's count. */
+.extra-training {
   background: #ffc000;
   color: #3d2e00;
 }
-.print-crew-badge-compact .print-trainee-part svg {
-  display: none;
+.extra-dumping {
+  background: #9dc3e6;
+  color: #0f2f4f;
 }
-/* "Badge + bubble": people training as a gold "+1" bubble on the badge's
+.extra-overtime {
+  background: #a9d08e;
+  color: #1e4620;
+}
+/* "Badge + bubble": the extra people as "+1" bubbles on the badge's
    corner, ringed in the name bar's color. */
 .print-crew-badge-bubbled,
 .page-box-badge-bubbled {
   position: relative;
   padding-right: 10px;
 }
-.crew-bubble {
+.crew-bubbles {
   position: absolute;
   top: -6px;
   right: -6px;
+  display: inline-flex;
+}
+.crew-bubble {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1778,12 +1791,13 @@ tr.print-line-spacer td {
   height: 12px;
   padding: 0 2px;
   border-radius: 999px;
-  background: #ffc000;
-  color: #3d2e00;
   font-size: 6.5pt;
   font-weight: 700;
   line-height: 1;
   box-shadow: 0 0 0 1.5px var(--bubble-ring, #1f3864);
+}
+.crew-bubble + .crew-bubble {
+  margin-left: -2px;
 }
 .print-assign-scheduled,
 .page-box:has(> .print-assign-scheduled) {
@@ -1802,8 +1816,10 @@ tr.print-line-spacer td {
   top: 7px;
   right: 9px;
 }
-.page-box-badge-bubbled .crew-bubble {
+.page-box-badge-bubbled .crew-bubbles {
   top: -5px;
+}
+.page-box-badge-bubbled .crew-bubble {
   min-width: 14px;
   height: 14px;
   font-size: 9px;
@@ -1811,7 +1827,8 @@ tr.print-line-spacer td {
 
 /* "ZBS blocks": the ZBS row as a block per ZBS spot - white filled,
    outlined open (light red on a scheduled line), red past the ZBS - then
-   crew / ZBS (light red when off) and a gold "+1🎓" for people training. */
+   crew / ZBS (light red when off) and a "+1" per kind of extra people,
+   like a gold "+1🎓" for training. */
 .tally {
   display: inline-flex;
   align-items: center;
@@ -1869,14 +1886,12 @@ tr.print-line-spacer td {
   background: #fee2e2;
   color: #991b1b;
 }
-.tally-train {
+.tally-plus {
   display: inline-flex;
   align-items: center;
   gap: 1px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #ffc000;
-  color: #3d2e00;
   white-space: nowrap;
 }
 .tally-note {
@@ -1889,27 +1904,45 @@ tr.print-line-spacer td {
   color: #fbbf24;
 }
 
-.cap-icon {
+.extra-icon {
   flex: none;
   width: 1.25em;
   height: 0.95em;
 }
-.print-training-divider {
+.print-extra-divider {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 3px;
-  background: #ffe699;
-  color: #5c4300;
-  border-top: 1.5px solid #e0a800;
   font-size: 7pt;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.02em;
   padding: 1px 4px;
 }
-.print-assign-names .print-assign-name-row.print-assign-trainee {
+.extra-divider-training {
+  background: #ffe699;
+  color: #5c4300;
+  border-top: 1.5px solid #e0a800;
+}
+.extra-divider-dumping {
+  background: #bdd7ee;
+  color: #1f3d66;
+  border-top: 1.5px solid #5b9bd5;
+}
+.extra-divider-overtime {
+  background: #c6e0b4;
+  color: #274e13;
+  border-top: 1.5px solid #70ad47;
+}
+.print-assign-names .print-assign-name-row.print-assign-extra-training {
   background: #fff5d6;
+}
+.print-assign-names .print-assign-name-row.print-assign-extra-dumping {
+  background: #e3eef9;
+}
+.print-assign-names .print-assign-name-row.print-assign-extra-overtime {
+  background: #e8f3e0;
 }
 .print-crew-badge-compact {
   padding: 0 3px;
@@ -2595,8 +2628,9 @@ tr.print-line-spacer td {
   padding: 1px 6px;
   line-height: 16px;
 }
-/* A line's 👥 badge with people training: one two-tone pill. The crew
-   half keeps the badge's colors (amber, light red, grey). */
+/* A line's 👥 badge with extra people: one pill, the crew then a "+1" half
+   per kind. The crew half keeps the badge's colors (amber, light red,
+   grey). */
 .page-box-badge.page-box-badge-split {
   display: inline-flex;
   padding: 0;
@@ -2609,13 +2643,11 @@ tr.print-line-spacer td {
   background: rgba(255, 255, 255, 0.9);
   border-radius: 999px 0 0 999px;
 }
-.page-trainee-part {
+.page-extra-part {
   display: inline-flex;
   align-items: center;
   gap: 1px;
   padding: 1px 6px 1px 4px;
-  background: #ffc000;
-  color: #3d2e00;
 }
 .count-badge.count-badge-split {
   display: inline-flex;
@@ -2625,18 +2657,25 @@ tr.print-line-spacer td {
 .count-badge-split > span {
   padding: 0 6px;
 }
-.count-badge-split > .count-trainee-part {
-  background: #ffc000;
-  color: #3d2e00;
-}
 .training-panel {
   margin-top: 10px;
 }
+/* An extra person in the side panel: name, kind and ✕, with "Training on
+   what?" under them for training; a stripe in the kind's color. */
 .trainee-edit-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 4px 6px;
   margin-bottom: 6px;
+  padding-left: 6px;
+  border-left: 4px solid #ffc000;
+}
+.trainee-edit-row.extra-edit-dumping {
+  border-left-color: #9dc3e6;
+}
+.trainee-edit-row.extra-edit-overtime {
+  border-left-color: #a9d08e;
 }
 .trainee-edit-name {
   flex: 1 1 40%;
@@ -2646,9 +2685,37 @@ tr.print-line-spacer td {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.trainee-edit-row input {
-  flex: 1 1 60%;
+.trainee-edit-row select,
+.trainee-edit-row input,
+.extra-add-row select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--panel);
+  color: var(--text);
+}
+.trainee-edit-row select {
+  flex: 0 1 auto;
   min-width: 0;
+}
+.trainee-edit-row .trainee-edit-skill {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.extra-add-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.extra-add-row select {
+  flex: none;
+}
+.extra-add-row .inspector-select {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  margin-top: 0;
 }
 .page-box-badge-warn {
   background: #fef3c7;

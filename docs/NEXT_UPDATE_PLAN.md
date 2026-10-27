@@ -24,7 +24,8 @@ them that line's Line Leader:
 
 The pick is saved with the line, carries over to a new day's board copied
 from this one, and moves with Transfer team. If the lead leaves the line
-or is marked as training, the line goes back to Skills & Roles.
+or is marked as an extra person (item 2), the line goes back to Skills &
+Roles.
 
 **Needs outside the app:** nothing.
 
@@ -35,6 +36,41 @@ turns green and moves to the top, on the page and the printout. Pick
 **Announcement:** "On Line Assignments you can now pick a line's lead:
 click the line and choose under 'Line lead'. They're shown in green at the
 top of the crew, on screen and on the printout."
+
+### 2. Extra people on a line: training, dumping or overtime (Line Assignments)
+
+The side panel's "Training on this line" becomes **Extra people on this
+line**. Each extra person is marked as one of:
+
+- **🎓 Training** (gold, as today), with what they're training on;
+- **Dumping** (light blue);
+- **Overtime** (light green).
+
+Like training today, extra people are listed after the crew under their
+own colored row ("TRAINING · CREMER", "DUMPING", "OVERTIME"), and their
+names are tinted in that color. None of them count against the ZBS, so
+they don't turn a line's badge light red, and they can't be the line's
+lead.
+
+The 👥 badge gets a "+1" half in each kind's color (👥 4/4 +1🎓 +1 for
+overtime). Badge + bubble shows a bubble per kind, and ZBS blocks shows
+a colored "+1" per kind. It works the same on the page, in the side panel
+and on the printout.
+
+People already marked as training stay training. Nothing changes in
+Firebase: the kind is saved with the person, on the line as today.
+
+**Needs outside the app:** nothing.
+
+**How to check:** click a line. Under "Extra people on this line", pick
+Dumping, then someone on the line. They move under a light blue DUMPING
+row, and the badge shows a blue +1. Change their kind to Overtime: the row
+turns light green. Print preview shows the same rows and badge.
+
+**Announcement:** "On Line Assignments, extra people on a line can now be
+marked as Training, Dumping or Overtime: click the line, then use 'Extra
+people on this line'. They're listed under their own colored row and
+don't count against the ZBS."
 
 ---
 

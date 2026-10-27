@@ -4,12 +4,14 @@ import type {
   CommentBox,
   DailyBoard,
   Employee,
+  ExtraKind,
   LineSlot,
   ListSection,
   PrintAssignSettings,
   SchedulePrintSettings,
   WorkOrder,
 } from "../types";
+import { EXTRA_KIND_LABELS } from "../types";
 import { defaultSchedulePrintSettings } from "../seedData";
 import {
   groupByLine,
@@ -46,16 +48,17 @@ import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
 import {
   crewBadgeTone,
   dutyCrew,
+  extraCounts,
+  extraGroups,
   isRunning,
   lineCrew,
-  lineTrainees,
   noteWithoutZbs,
   slotRoleMap,
   staffingOff,
-  traineeGroups,
   zbsRange,
   zbsTarget,
 } from "../assignmentLogic";
+import type { ExtraCount } from "../assignmentLogic";
 
 // Print layouts that mirror the original workbook's printed pages as
 // closely as HTML/CSS allows: same title, same column set and order as
@@ -578,20 +581,15 @@ export function PrintSchedule({
 
 // The ZBS row as a block per ZBS spot (the "ZBS blocks" design): white =
 // filled, outlined = open, red = more than the ZBS; then crew / ZBS and a
-// gold "+1🎓" for people training. A line without a ZBS shows its note and
-// its 👥 count. Light red / grey follow the same rules as the badge.
+// "+1" for each kind of extra people (gold training, light blue dumping,
+// light green overtime). A line without a ZBS shows its note and its 👥
+// count. Light red / grey follow the same rules as the badge.
 export function TallyRow({ slot, children }: { slot: LineSlot; children?: ReactNode }) {
   const zbs = zbsRange(slot.subNote);
   const crew = lineCrew(slot).length;
-  const trainees = lineTrainees(slot).length;
   const rest = noteWithoutZbs(slot.subNote);
   const tone = crewBadgeTone(slot);
-  const gold = trainees > 0 && (
-    <span className="tally-train">
-      +{trainees}
-      <CapIcon />
-    </span>
-  );
+  const plus = <ExtraParts extras={extraCounts(slot)} className="tally-plus" />;
   const classes = ["tally", isRunning(slot) ? "" : "tally-idle", slot.status === "Scheduled" ? "tally-scheduled" : "", tone === "off" ? "tally-off" : ""];
   if (!zbs) {
     return (
@@ -601,7 +599,7 @@ export function TallyRow({ slot, children }: { slot: LineSlot; children?: ReactN
           <PeopleIcon />
           {crew}
         </span>
-        {gold}
+        {plus}
         {children}
       </span>
     );
@@ -625,17 +623,34 @@ export function TallyRow({ slot, children }: { slot: LineSlot; children?: ReactN
       <span className="tally-count">
         {crew}/{zbs.min}
       </span>
-      {gold}
+      {plus}
       {rest && <span className="tally-note">{rest}</span>}
       {children}
     </span>
   );
 }
 
-// A graduation cap, for people training.
-export function CapIcon() {
+// Drawn icons for the extra people (so they print the same on every
+// computer): a graduation cap for training, a tray with an arrow going in
+// for dumping, a clock for overtime.
+export function ExtraIcon({ kind }: { kind: ExtraKind }) {
+  if (kind === "dumping")
+    return (
+      <svg className="extra-icon" viewBox="0 0 24 18" aria-hidden="true">
+        <path d="M12 0.5v8" stroke="currentColor" strokeWidth="2.2" />
+        <path d="M7.6 5.4 12 9.8l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+        <path d="M2 9.5h4.5l2 3h7l2-3H22V17H2z" fill="currentColor" />
+      </svg>
+    );
+  if (kind === "overtime")
+    return (
+      <svg className="extra-icon" viewBox="0 0 24 18" aria-hidden="true">
+        <circle cx="12" cy="9" r="7.6" fill="none" stroke="currentColor" strokeWidth="2" />
+        <path d="M12 4.6V9l3.2 2.2" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
   return (
-    <svg className="cap-icon" viewBox="0 0 24 18" aria-hidden="true">
+    <svg className="extra-icon" viewBox="0 0 24 18" aria-hidden="true">
       <path d="M12 1 1 6l11 5 11-5z" fill="currentColor" />
       <path d="M5 8.2v4.3c0 1.8 3.1 3.3 7 3.3s7-1.5 7-3.3V8.2L12 11.4z" fill="currentColor" />
       <path d="M21.6 6.6v5.6" stroke="currentColor" strokeWidth="1.4" />
@@ -643,12 +658,43 @@ export function CapIcon() {
   );
 }
 
-// The gold row above a line's trainees: "TRAINING · CREMER".
-export function TrainingDivider({ skill }: { skill: string }) {
+// The badge's "+1" halves, one per kind of extra people: gold "+1🎓"
+// training, light blue dumping, light green overtime.
+export function ExtraParts({ extras, className }: { extras: ExtraCount[]; className: string }) {
   return (
-    <div className="print-training-divider">
-      <CapIcon />
-      {skill ? `Training · ${skill}` : "Training"}
+    <>
+      {extras.map((e) => (
+        <span className={`${className} extra-${e.kind}`} key={e.kind}>
+          +{e.count}
+          <ExtraIcon kind={e.kind} />
+        </span>
+      ))}
+    </>
+  );
+}
+
+// "Badge + bubble": the extra people as "+1" bubbles on the badge's corner,
+// in the same colors.
+export function ExtraBubbles({ extras }: { extras: ExtraCount[] }) {
+  return (
+    <span className="crew-bubbles">
+      {extras.map((e) => (
+        <span className={`crew-bubble extra-${e.kind}`} key={e.kind}>
+          +{e.count}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// The row above a line's extra people: "TRAINING · CREMER" in gold,
+// "DUMPING" in light blue, "OVERTIME" in light green.
+export function ExtraDivider({ kind, skill }: { kind: ExtraKind; skill: string }) {
+  const label = EXTRA_KIND_LABELS[kind];
+  return (
+    <div className={`print-extra-divider extra-divider-${kind}`}>
+      <ExtraIcon kind={kind} />
+      {skill ? `${label} · ${skill}` : label}
     </div>
   );
 }
@@ -677,10 +723,10 @@ export function LineBoxContent({
 }) {
   // Roles on this line: a lead picked in its panel counts as its Line Leader.
   const roleMap = slotRoleMap(slot, allRoles);
-  // The crew, then the people training listed last.
+  // The crew, then the extra people (training, dumping, overtime) listed last.
   const rawNames = lineCrew(slot);
-  const training = traineeGroups(slot);
-  const traineeCount = training.reduce((n, g) => n + g.names.length, 0);
+  const groups = extraGroups(slot);
+  const extras = extraCounts(slot);
   // MLL > Line Leader > MLT > everyone else - same "highlight roles"
   // toggle that colors these names also controls whether they're
   // reordered to put the crew hierarchy first.
@@ -703,23 +749,21 @@ export function LineBoxContent({
     </>
   );
   let badge: ReactNode = null;
-  if (showBadge && traineeCount > 0 && style === "bubble") {
-    // The badge, with people training as a gold "+1" bubble on its corner.
+  if (showBadge && extras.length > 0 && style === "bubble") {
+    // The badge, with the extra people as "+1" bubbles on its corner.
     badge = (
       <span className={`print-crew-badge print-crew-badge-bubbled${tone ? ` print-crew-badge-${tone}` : ""}`}>
         {crew}
-        <span className="crew-bubble">+{traineeCount}</span>
+        <ExtraBubbles extras={extras} />
       </span>
     );
-  } else if (showBadge && traineeCount > 0) {
-    // One two-tone pill: the crew (in its usual color) and a gold "+1🎓".
+  } else if (showBadge && extras.length > 0) {
+    // One pill: the crew (in its usual color), then a "+1" half per kind of
+    // extra people, like a gold "+1🎓".
     badge = (
       <span className="print-crew-badge print-crew-badge-split">
         <span className={`print-crew-part${tone ? ` print-crew-badge-${tone}` : ""}`}>{crew}</span>
-        <span className="print-trainee-part">
-          +{traineeCount}
-          <CapIcon />
-        </span>
+        <ExtraParts extras={extras} className="print-extra-part" />
       </span>
     );
   } else if (showBadge) {
@@ -759,11 +803,11 @@ export function LineBoxContent({
             {name}
           </div>
         ))}
-        {training.map((group) => (
-          <Fragment key={group.skill}>
-            <TrainingDivider skill={group.skill} />
+        {groups.map((group) => (
+          <Fragment key={`${group.kind}:${group.skill}`}>
+            <ExtraDivider kind={group.kind} skill={group.skill} />
             {group.names.map((name) => (
-              <div className="print-assign-name-row print-assign-trainee" key={name}>
+              <div className={`print-assign-name-row print-assign-extra-${group.kind}`} key={name}>
                 {name}
               </div>
             ))}

@@ -3,6 +3,8 @@ import type {
   CommentBox,
   DailyBoard,
   Employee,
+  ExtraKind,
+  ExtraPerson,
   ListSection,
   LineSlot,
   PrintAssignSettings,
@@ -10,7 +12,7 @@ import type {
   TimeOffEntry,
 } from "../types";
 import { describeEntry, entriesOn, todayIso } from "../timeOffLogic";
-import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE, SKILL_LABELS } from "../types";
+import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE, EXTRA_KINDS, EXTRA_KIND_LABELS, SKILL_LABELS } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
 import UnassignedPanel from "./UnassignedPanel";
@@ -26,14 +28,20 @@ import {
   cleanEmployeeName,
   parseNames,
   crewBadgeTone,
+  describeExtras,
   dutyNeededFromTitle,
+  extraKind,
   lineCrew,
+  lineExtras,
   lineLead,
-  lineTrainees,
   slotCoverage,
   slotRoleMap,
   trainingSkillFor,
 } from "../assignmentLogic";
+
+// The extra people's kinds in the side panel (the page and printout draw
+// their own icons).
+const EXTRA_KIND_EMOJI: Record<ExtraKind, string> = { training: "🎓", dumping: "📥", overtime: "⏱" };
 
 interface Props {
   boards: DailyBoard[];
@@ -121,6 +129,8 @@ export default function LineAssignments({
 
   const [query, setQuery] = useState("");
   const [selection, setSelection] = useState<PageSelection | null>(null);
+  // What the next person marked as extra on a line is there for.
+  const [extraKindToAdd, setExtraKindToAdd] = useState<ExtraKind>("training");
 
   const placements = boardPlacements(board);
   const out = boardOut(board, timeOff);
@@ -276,7 +286,7 @@ export default function LineAssignments({
           return {
             ...s,
             assigned: merged.join(", "),
-            trainees: [...lineTrainees(targetSlot), ...lineTrainees(slot)],
+            trainees: [...lineExtras(targetSlot), ...lineExtras(slot)],
             lead: lineLead(targetSlot) ?? lineLead(slot) ?? "",
           };
         return s;
@@ -556,9 +566,11 @@ export default function LineAssignments({
     const slot = selection?.kind === "line" ? board.lineSlots.find((s) => s.id === selection.id) : undefined;
     if (slot) {
       const cov = slotCoverage(slot, roleMap);
-      const trainees = lineTrainees(slot);
+      const extras = lineExtras(slot);
       const crewNames = lineCrew(slot);
-      const setTrainees = (next: typeof trainees) => updateSlot(slot.id, { trainees: next });
+      const setExtras = (next: ExtraPerson[]) => updateSlot(slot.id, { trainees: next });
+      const changeExtra = (name: string, patch: Partial<ExtraPerson>) =>
+        setExtras(extras.map((x) => (nameKey(x.name) === nameKey(name) ? { ...x, ...patch } : x)));
       return (
         <div className="panel inspector">
           <div className="inspector-head">
@@ -600,12 +612,19 @@ export default function LineAssignments({
           )}
           <div className="inspector-label">
             Crew{" "}
-            {cov.trainees > 0 ? (
-              <span className="count-badge count-badge-split" title="+ people training (not counted in the ZBS)">
+            {cov.extras.length > 0 ? (
+              <span
+                className="count-badge count-badge-split"
+                title={`+ ${describeExtras(cov.extras)} (not counted in the ZBS)`}
+              >
                 <span className={`count-crew-part${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
                   {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
                 </span>
-                <span className="count-trainee-part">+{cov.trainees} 🎓</span>
+                {cov.extras.map((e) => (
+                  <span className={`extra-${e.kind}`} key={e.kind}>
+                    +{e.count} {EXTRA_KIND_EMOJI[e.kind]}
+                  </span>
+                ))}
               </span>
             ) : (
               <span className={`count-badge${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
@@ -645,51 +664,88 @@ export default function LineAssignments({
             </span>
           </label>
           <div className="training-panel">
-            <div className="inspector-label">🎓 Training on this line</div>
-            {trainees.map((t) => (
-              <div className="trainee-edit-row" key={nameKey(t.name)}>
-                <span className="trainee-edit-name">{t.name}</span>
-                <input
-                  list="training-skill-options"
-                  placeholder="On what? (Cremer, MLL…)"
-                  value={t.skill}
-                  onChange={(e) =>
-                    setTrainees(trainees.map((x) => (nameKey(x.name) === nameKey(t.name) ? { ...x, skill: e.target.value } : x)))
-                  }
-                />
-                <button
-                  className="btn small"
-                  title={`${t.name} goes back to the crew`}
-                  onClick={() => setTrainees(trainees.filter((x) => nameKey(x.name) !== nameKey(t.name)))}
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-            <select
-              className="inspector-select"
-              value=""
-              disabled={crewNames.length === 0}
-              onChange={(e) => {
-                const name = e.target.value;
-                if (name) setTrainees([...trainees, { name, skill: trainingSkillFor(name, employees) }]);
-              }}
-            >
-              <option value="">🎓 Mark someone on this line as training…</option>
-              {crewNames.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
+            <div className="inspector-label">Extra people on this line</div>
+            {extras.map((t) => {
+              const kind = extraKind(t);
+              return (
+                <div className={`trainee-edit-row extra-edit-${kind}`} key={nameKey(t.name)}>
+                  <span className="trainee-edit-name">{t.name}</span>
+                  <select
+                    value={kind}
+                    title={`Why ${t.name} is extra`}
+                    onChange={(e) => {
+                      const next = e.target.value as ExtraKind;
+                      // Back to training: start from their IP skill again.
+                      const skill = next === "training" && !t.skill.trim() ? trainingSkillFor(t.name, employees) : t.skill;
+                      changeExtra(t.name, { kind: next, skill });
+                    }}
+                  >
+                    {EXTRA_KINDS.map((k) => (
+                      <option key={k} value={k}>
+                        {EXTRA_KIND_EMOJI[k]} {EXTRA_KIND_LABELS[k]}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn small"
+                    title={`${t.name} goes back to the crew`}
+                    onClick={() => setExtras(extras.filter((x) => nameKey(x.name) !== nameKey(t.name)))}
+                  >
+                    ✕
+                  </button>
+                  {kind === "training" && (
+                    <input
+                      className="trainee-edit-skill"
+                      list="training-skill-options"
+                      placeholder="Training on what? (Cremer, MLL…)"
+                      value={t.skill}
+                      onChange={(e) => changeExtra(t.name, { skill: e.target.value })}
+                    />
+                  )}
+                </div>
+              );
+            })}
+            <div className="extra-add-row">
+              <select
+                value={extraKindToAdd}
+                title="What they're on the line for"
+                onChange={(e) => setExtraKindToAdd(e.target.value as ExtraKind)}
+              >
+                {EXTRA_KINDS.map((k) => (
+                  <option key={k} value={k}>
+                    {EXTRA_KIND_EMOJI[k]} {EXTRA_KIND_LABELS[k]}
+                  </option>
+                ))}
+              </select>
+              <select
+                className="inspector-select"
+                value=""
+                disabled={crewNames.length === 0}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  if (!name) return;
+                  const skill = extraKindToAdd === "training" ? trainingSkillFor(name, employees) : "";
+                  setExtras([...extras, { name, skill, kind: extraKindToAdd }]);
+                }}
+              >
+                <option value="">Mark someone on this line as {EXTRA_KIND_LABELS[extraKindToAdd].toLowerCase()}…</option>
+                {crewNames.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+            </div>
             <datalist id="training-skill-options">
               {[...Object.values(SKILL_LABELS), "MLL", "MLT", "Line Leader"].map((o) => (
                 <option key={o} value={o} />
               ))}
             </datalist>
-            {trainees.length > 0 && (
-              <p className="panel-hint">Listed last under a gold Training row, and not counted in the ZBS.</p>
-            )}
+            <p className="panel-hint">
+              {extras.length > 0
+                ? "Listed last under their own row (gold Training, light blue Dumping, light green Overtime), and not counted in the ZBS."
+                : "For people on the line beyond its ZBS: training, dumping or overtime."}
+            </p>
           </div>
           <select
             className="inspector-select"

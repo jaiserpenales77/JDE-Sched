@@ -19,8 +19,12 @@ export function ColorField({ label, value, onChange }: { label: string; value: s
 
 // The designs for a line's crew count and ZBS, with a tiny drawing of each.
 const CREW_DESIGNS: { style: CrewStyle; name: string; note: string }[] = [
-  { style: "badge", name: "Badge", note: "👥 count in the name bar, training as a gold +1 half. ZBS row below." },
-  { style: "bubble", name: "Badge + bubble", note: "The same badge, with training as a gold +1 bubble on its corner." },
+  {
+    style: "badge",
+    name: "Badge",
+    note: "👥 count in the name bar, extra people as a +1 half (gold training, blue dumping, green overtime). ZBS row below.",
+  },
+  { style: "bubble", name: "Badge + bubble", note: "The same badge, with extra people as +1 bubbles on its corner." },
   { style: "tally", name: "ZBS blocks", note: "No badge. The ZBS row shows a block per spot: white filled, outlined open, red extra." },
   { style: "badgeOnly", name: "Badge only", note: "The badge, with no ZBS row: one more row for names." },
 ];

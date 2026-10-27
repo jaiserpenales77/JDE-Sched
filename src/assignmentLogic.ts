@@ -1,5 +1,5 @@
-import type { DailyBoard, Employee, LineSlot, ListSection, TimeOffEntry, Trainee } from "./types";
-import { SKILL_KEYS, SKILL_LABELS } from "./types";
+import type { DailyBoard, Employee, ExtraKind, ExtraPerson, LineSlot, ListSection, TimeOffEntry } from "./types";
+import { EXTRA_KINDS, EXTRA_KIND_LABELS, SKILL_KEYS, SKILL_LABELS } from "./types";
 import { describeEntry, entriesOn } from "./timeOffLogic";
 import { nameKey, roleCategory, roleOf } from "./printLayout";
 
@@ -133,7 +133,7 @@ export function staffingOff(slot: LineSlot): "under" | "over" | null {
   if (slot.status !== "Scheduled") return null;
   const zbs = zbsRange(slot.subNote);
   if (!zbs) return null;
-  // People training are extra: they don't count against the ZBS.
+  // Extra people (training, dumping, overtime) don't count against the ZBS.
   const count = lineCrew(slot).length;
   return count < zbs.min ? "under" : count > zbs.max ? "over" : null;
 }
@@ -174,8 +174,9 @@ export function isRunning(slot: LineSlot): boolean {
   return slot.status !== "Not Scheduled" && slot.status !== "PM";
 }
 
-// The people on a line marked as training who are still on it, once each.
-export function lineTrainees(slot: LineSlot): Trainee[] {
+// The extra people on a line (training, dumping, overtime) who are still on
+// it, once each.
+export function lineExtras(slot: LineSlot): ExtraPerson[] {
   const onLine = new Set(parseNames(slot.assigned).map(nameKey));
   const seen = new Set<string>();
   return (slot.trainees ?? []).filter((t) => {
@@ -186,22 +187,54 @@ export function lineTrainees(slot: LineSlot): Trainee[] {
   });
 }
 
-// A line's crew: everyone on it except the people training.
-export function lineCrew(slot: LineSlot): string[] {
-  const training = new Set(lineTrainees(slot).map((t) => nameKey(t.name)));
-  return parseNames(slot.assigned).filter((n) => !training.has(nameKey(n)));
+// Why someone is extra (people marked before dumping and overtime were
+// training).
+export function extraKind(person: ExtraPerson): ExtraKind {
+  return person.kind && EXTRA_KINDS.includes(person.kind) ? person.kind : "training";
 }
 
-// Trainees grouped by what they're training on, in the order first marked.
-export function traineeGroups(slot: LineSlot): { skill: string; names: string[] }[] {
-  const groups: { skill: string; names: string[] }[] = [];
-  for (const t of lineTrainees(slot)) {
-    const skill = t.skill.trim();
-    const group = groups.find((g) => g.skill.toLowerCase() === skill.toLowerCase());
+// A line's crew: everyone on it except the extra people.
+export function lineCrew(slot: LineSlot): string[] {
+  const extra = new Set(lineExtras(slot).map((t) => nameKey(t.name)));
+  return parseNames(slot.assigned).filter((n) => !extra.has(nameKey(n)));
+}
+
+// The extra people in their rows: training (grouped by what they're
+// training on, in the order first marked), then dumping, then overtime.
+export interface ExtraGroup {
+  kind: ExtraKind;
+  skill: string;
+  names: string[];
+}
+
+export function extraGroups(slot: LineSlot): ExtraGroup[] {
+  const groups: ExtraGroup[] = [];
+  for (const t of lineExtras(slot)) {
+    const kind = extraKind(t);
+    const skill = kind === "training" ? t.skill.trim() : "";
+    const group = groups.find((g) => g.kind === kind && g.skill.toLowerCase() === skill.toLowerCase());
     if (group) group.names.push(t.name);
-    else groups.push({ skill, names: [t.name] });
+    else groups.push({ kind, skill, names: [t.name] });
   }
-  return groups;
+  return groups.sort((a, b) => EXTRA_KINDS.indexOf(a.kind) - EXTRA_KINDS.indexOf(b.kind));
+}
+
+// How many extra people of each kind a line has (kinds with nobody left out).
+export interface ExtraCount {
+  kind: ExtraKind;
+  count: number;
+}
+
+export function extraCounts(slot: LineSlot): ExtraCount[] {
+  const extras = lineExtras(slot);
+  return EXTRA_KINDS.map((kind) => ({ kind, count: extras.filter((t) => extraKind(t) === kind).length })).filter(
+    (c) => c.count > 0,
+  );
+}
+
+// "1 training, 2 overtime" - for tooltips.
+export function describeExtras(counts: ExtraCount[]): string {
+  return counts.map((c) => `${c.count} ${EXTRA_KIND_LABELS[c.kind].toLowerCase()}`).join(", ");
 }
 
 // What someone is most likely training on: the first skill marked "IP"
@@ -213,7 +246,7 @@ export function trainingSkillFor(name: string, employees: Employee[]): string {
 }
 
 // The lead picked for a line in its panel, if they're still on its crew
-// (not training); null = the leads come from Skills & Roles.
+// (not an extra person); null = the leads come from Skills & Roles.
 export function lineLead(slot: LineSlot): string | null {
   const key = nameKey(slot.lead ?? "");
   if (!key) return null;
@@ -235,11 +268,11 @@ export function slotRoleMap(slot: LineSlot, roleMap: Map<string, string>): Map<s
 }
 
 export interface SlotCoverage {
-  // The crew, not counting people training.
+  // The crew, not counting the extra people.
   count: number;
   target: number | null;
   warnings: string[];
-  trainees: number;
+  extras: ExtraCount[];
 }
 
 export function slotCoverage(slot: LineSlot, allRoles: Map<string, string>): SlotCoverage {
@@ -259,7 +292,7 @@ export function slotCoverage(slot: LineSlot, allRoles: Map<string, string>): Slo
       if (target !== null && names.length < target) warnings.push(`Short ${target - names.length} (ZBS ${target})`);
     }
   }
-  return { count: names.length, target, warnings, trainees: lineTrainees(slot).length };
+  return { count: names.length, target, warnings, extras: extraCounts(slot) };
 }
 
 // "Line 08", "Line 8 ", "line 12/9" -> "8", "8", "12"; "STRETCH" -> "stretch".

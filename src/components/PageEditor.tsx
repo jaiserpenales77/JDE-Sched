@@ -1,6 +1,15 @@
 import { Fragment, useRef, useState } from "react";
 import type { DragEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
-import type { BoxLayout, CommentBox, DailyBoard, LineSlot, ListSection, PrintAssignSettings, SectionStyle } from "../types";
+import type {
+  BoxLayout,
+  CommentBox,
+  DailyBoard,
+  ExtraKind,
+  LineSlot,
+  ListSection,
+  PrintAssignSettings,
+  SectionStyle,
+} from "../types";
 import {
   chunk,
   clamp,
@@ -19,18 +28,19 @@ import {
 } from "../printLayout";
 import {
   crewBadgeTone,
+  describeExtras,
   DRAG_MIME,
   dutyCrew,
+  extraGroups,
   lineCrew,
   noteWithoutZbs,
   parseNames,
   slotRoleMap,
   readDragPayload,
   staffingOff,
-  traineeGroups,
 } from "../assignmentLogic";
 import type { SlotCoverage } from "../assignmentLogic";
-import { CapIcon, CommentBoxContent, TallyRow, TrainingDivider } from "./PrintViews";
+import { CommentBoxContent, ExtraBubbles, ExtraDivider, ExtraParts, TallyRow } from "./PrintViews";
 import PersonPicker from "./PersonPicker";
 import type { ChipWarning, NameStatus } from "./NameMultiSelect";
 
@@ -172,11 +182,11 @@ export default function PageEditor({
     placeId: string,
     i: number,
     sectionStyle?: SectionStyle,
-    trainee = false,
+    extra: ExtraKind | null = null,
     roles: Map<string, string> = roleMap,
   ) {
     const warning = warningFor(name, placeId);
-    const roleClass = trainee ? "print-assign-trainee" : nameRoleClass(name, roles, settings.highlightRoles);
+    const roleClass = extra ? `print-assign-extra-${extra}` : nameRoleClass(name, roles, settings.highlightRoles);
     const classes = ["print-assign-name-row", "page-name", roleClass];
     if (warning) classes.push(warning.soft ? "page-name-soft" : "page-name-warn");
     if (isMatch(name)) classes.push("page-name-match");
@@ -233,12 +243,13 @@ export default function PageEditor({
   }
 
   function lineContent(slot: LineSlot) {
-    // The crew, then the people training listed last (as on the printout).
+    // The crew, then the extra people (training, dumping, overtime) listed
+    // last (as on the printout).
     const raw = lineCrew(slot);
     // Roles on this line: a lead picked in its panel counts as its Line Leader.
     const lineRoles = slotRoleMap(slot, roleMap);
     const names = settings.highlightRoles ? sortByRole(raw, lineRoles) : raw;
-    const training = traineeGroups(slot);
+    const groups = extraGroups(slot);
     const key = statusKey(slot.status);
     const cov = coverage(slot);
     // Same look as the printout: light red when a scheduled line is off its
@@ -272,11 +283,11 @@ export default function PageEditor({
           return <div className={`print-assign-note print-assign-${key}`}>{slot.subNote}</div>;
         })()}
         <div className="print-assign-names">
-          {names.map((n, i) => nameRow(n, slot.id, i, undefined, false, lineRoles))}
-          {training.map((group) => (
-            <Fragment key={group.skill}>
-              <TrainingDivider skill={group.skill} />
-              {group.names.map((n, i) => nameRow(n, slot.id, names.length + i, undefined, true))}
+          {names.map((n, i) => nameRow(n, slot.id, i, undefined, null, lineRoles))}
+          {groups.map((group) => (
+            <Fragment key={`${group.kind}:${group.skill}`}>
+              <ExtraDivider kind={group.kind} skill={group.skill} />
+              {group.names.map((n, i) => nameRow(n, slot.id, names.length + i, undefined, group.kind))}
             </Fragment>
           ))}
         </div>
@@ -292,24 +303,21 @@ export default function PageEditor({
           );
           const title = tips.length
             ? tips.join(" · ")
-            : `${cov.count} on the crew${cov.trainees ? ` + ${cov.trainees} training (not counted in the ZBS)` : ""}`;
+            : `${cov.count} on the crew${cov.extras.length ? ` + ${describeExtras(cov.extras)} (not counted in the ZBS)` : ""}`;
           if (settings.crewStyle === "tally") return null;
-          // With people training: a gold "+1" bubble on the badge's corner,
-          // or one two-tone pill, crew + gold "+1🎓".
-          if (cov.trainees > 0 && settings.crewStyle === "bubble")
+          // With extra people: "+1" bubbles on the badge's corner, or one
+          // pill, the crew then a "+1" half per kind (like a gold "+1🎓").
+          if (cov.extras.length > 0 && settings.crewStyle === "bubble")
             return (
               <span className={`page-box-badge page-box-badge-bubbled ${toneClass}`} title={title}>
                 {crew}
-                <span className="crew-bubble">+{cov.trainees}</span>
+                <ExtraBubbles extras={cov.extras} />
               </span>
             );
-          return cov.trainees > 0 ? (
+          return cov.extras.length > 0 ? (
             <span className="page-box-badge page-box-badge-split" title={title}>
               <span className={`page-crew-part ${toneClass}`}>{crew}</span>
-              <span className="page-trainee-part">
-                +{cov.trainees}
-                <CapIcon />
-              </span>
+              <ExtraParts extras={cov.extras} className="page-extra-part" />
             </span>
           ) : (
             <span className={`page-box-badge ${toneClass}`} title={title}>

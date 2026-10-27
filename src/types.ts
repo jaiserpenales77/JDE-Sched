@@ -33,18 +33,31 @@ export interface LineSlot {
   status: "" | "Scheduled" | "Not Scheduled" | "PM";
   subNote: string;
   assigned: string;
-  // People on this line who are training, and on what. They stay in
-  // assigned (so the rest of the app still sees them on the line); this
-  // only lists them separately, after the crew.
-  trainees?: Trainee[];
+  // Extra people on this line - training, dumping or overtime - and why.
+  // They stay in assigned (so the rest of the app still sees them on the
+  // line); this only lists them separately, after the crew, and leaves them
+  // out of the ZBS. (Saved as "trainees": training was the first kind.)
+  trainees?: ExtraPerson[];
   // The line's lead, picked in its panel ("" / absent = from Skills & Roles).
   lead?: string;
 }
 
-export interface Trainee {
+// Why someone extra is on a line.
+export const EXTRA_KINDS = ["training", "dumping", "overtime"] as const;
+export type ExtraKind = (typeof EXTRA_KINDS)[number];
+export const EXTRA_KIND_LABELS: Record<ExtraKind, string> = {
+  training: "Training",
+  dumping: "Dumping",
+  overtime: "Overtime",
+};
+
+export interface ExtraPerson {
   name: string;
-  // What they're training on: "Cremer", "MLL", ... ("" = not said).
+  // What they're training on: "Cremer", "MLL", ... ("" = not said). Only
+  // used for training.
   skill: string;
+  // Absent = training (everyone marked before dumping and overtime).
+  kind?: ExtraKind;
 }
 
 export interface ListSection {
@@ -171,9 +184,10 @@ export interface BoxLayout {
 }
 
 // Designs for a line's crew count and ZBS on Line Assignments:
-// "badge" - the 👥 badge in the name bar (a gold "+1🎓" half for people
-//   training), with the ZBS row below;
-// "bubble" - the same badge with training as a gold "+1" bubble on its corner;
+// "badge" - the 👥 badge in the name bar (a "+1" half for each kind of extra
+//   people: gold training, light blue dumping, light green overtime), with
+//   the ZBS row below;
+// "bubble" - the same badge with the extra people as "+1" bubbles on its corner;
 // "tally" - no badge; the ZBS row shows a block per ZBS spot and the count;
 // "badgeOnly" - the badge, without the ZBS row (more room for names).
 export const CREW_STYLES = ["badge", "bubble", "tally", "badgeOnly"] as const;
