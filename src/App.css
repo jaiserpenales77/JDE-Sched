@@ -2661,9 +2661,6 @@ tr.print-line-spacer td {
 .count-badge-split > span {
   padding: 0 6px;
 }
-.training-panel {
-  margin-top: 10px;
-}
 /* An extra person in the side panel: name, kind and ✕, with "Training on
    what?" under them for training; a stripe in the kind's color. */
 .trainee-edit-row {
@@ -2684,6 +2681,7 @@ tr.print-line-spacer td {
 .trainee-edit-name {
   flex: 1 1 40%;
   min-width: 0;
+  font-size: 13px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2929,6 +2927,281 @@ tr.print-line-spacer td {
 }
 .inspector-delete {
   margin-top: 12px;
+}
+
+/* A line's side panel, topped like its box on the board: a bar in the
+   line's status color with its name (click to rename), crew count, status
+   and note; then Crew, Line lead and Training · dumping · overtime, each
+   under its own heading; Transfer team and Delete line at the bottom. */
+.panel.line-inspector {
+  padding: 0;
+  overflow: hidden;
+}
+.line-bar {
+  background: var(--line-bar, #1f3864);
+  color: #fff;
+  padding: 10px 12px;
+}
+.line-bar-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.line-bar-name {
+  flex: 1;
+  min-width: 0;
+  margin-left: -6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+.line-bar-name:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.line-bar-name:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+}
+.line-bar .count-badge {
+  flex: none;
+  font-size: 12px;
+  line-height: 20px;
+}
+.line-bar .count-badge:not(.count-badge-off, .count-badge-idle),
+.line-bar .count-badge-split {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2937;
+}
+.line-bar-close {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: transparent;
+  color: #dbe4ff;
+  cursor: pointer;
+}
+.line-bar-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.line-bar-fields {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.line-bar-field {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 3px 8px 2px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.line-bar-field:focus-within {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+.line-bar-field span {
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.line-bar-field select,
+.line-bar-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0 0 2px;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+}
+.line-bar-field select:focus,
+.line-bar-field input:focus {
+  outline: none;
+}
+.line-bar-field option {
+  color: #111827;
+}
+.line-bar-field input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+.line-body {
+  padding: 12px;
+}
+.line-warnings {
+  margin-bottom: 10px;
+}
+.line-sec {
+  margin-bottom: 14px;
+}
+.line-sec-h {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+.line-sec-h::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.line-sec-ic {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+.line-sec-ic-crew {
+  background: color-mix(in srgb, #8b5cf6 25%, var(--panel));
+}
+.line-sec-ic-lead {
+  background: color-mix(in srgb, #16a34a 25%, var(--panel));
+}
+.line-sec-ic-extra {
+  background: color-mix(in srgb, #ffc000 25%, var(--panel));
+}
+.line-sec-h + .extra-add-row {
+  margin-top: 0;
+}
+/* Crew chips in the board's role colors (Customize Print Design's
+   highlight colors); the picked lead has a ⭐. */
+.name-chip.name-chip-role {
+  border-color: transparent;
+  color: #fff;
+}
+.name-chip-role button {
+  color: rgba(255, 255, 255, 0.75);
+}
+.name-chip-role button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+.name-chip-lead,
+.name-chip-leader {
+  background: var(--chip-leader, #005426);
+}
+.name-chip-mll {
+  background: var(--chip-mll, #002060);
+}
+.name-chip-mlt {
+  background: var(--chip-mlt, #002060);
+}
+.name-chip-role.name-chip-warn {
+  box-shadow: 0 0 0 2px var(--warn);
+}
+.name-chip-role.name-chip-soft {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.role-legend {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.role-legend b {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 4px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+/* The line's lead as a card; the whole card opens the pick list. */
+.lead-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+  cursor: pointer;
+}
+.lead-card:hover {
+  border-color: var(--accent);
+}
+.lead-card-picked {
+  border-color: color-mix(in srgb, var(--green) 45%, transparent);
+  background: color-mix(in srgb, var(--chip-leader, #005426) 22%, var(--panel));
+}
+.lead-star {
+  font-size: 16px;
+  color: var(--muted);
+}
+.lead-card-picked .lead-star {
+  color: #f5b301;
+}
+.lead-who {
+  flex: 1;
+  min-width: 0;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lead-who small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+  white-space: normal;
+}
+.lead-change {
+  flex: none;
+  font-size: 12px;
+  color: var(--accent);
+}
+.lead-card select,
+.line-foot-btn select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.line-tip {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.line-foot {
+  display: flex;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.line-foot-btn {
+  position: relative;
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+}
+.line-foot-btn-off {
+  opacity: 0.45;
 }
 .inspector-hint {
   margin: 6px 0 0;

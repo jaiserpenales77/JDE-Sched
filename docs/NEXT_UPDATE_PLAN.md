@@ -24,6 +24,34 @@ lead: their green row moves above the MLL's navy row.
 **Announcement:** "Line Assignments: the lead you pick for a line is now
 listed first, above the MLL."
 
+### 2. A line's side panel, redesigned ("board look", Line Assignments)
+
+Clicking a line opens a tidier side panel, in sections:
+
+- **Top bar** in the line's status color (like its box on the board): the
+  line's name (click it to rename), the 👥 crew badge, and Status and
+  Note fields.
+- **👥 Crew:** the crew chips in the board's role colors (picked lead green
+  with a ⭐ and first, MLL, MLT; Customize Print Design's highlight colors),
+  with a small Lead / MLL / MLT key.
+- **⭐ Line lead:** a card showing the lead (green once one is picked) with
+  **Change** to pick another.
+- **➕ Training · dumping · overtime:** as before, with a one-line tip.
+- **Transfer team** and **Delete line** as two buttons at the bottom.
+
+Nothing it does changes: the same choices, saved the same way, and other
+panels (date, duty boxes, comments) are unchanged.
+
+**Needs outside the app:** nothing.
+
+**How to check:** click a line: the panel has the colored top bar and the
+three sections; rename it from the top, pick a lead with Change, and try
+Transfer team.
+
+**Announcement:** "Line Assignments: the side panel for a line has a new,
+tidier look - the line's name, count, status and note at the top, then
+Crew, Line lead and Training · dumping · overtime."
+
 ---
 
 ## Running the update

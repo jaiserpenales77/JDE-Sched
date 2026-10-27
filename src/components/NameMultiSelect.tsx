@@ -8,6 +8,8 @@ export interface NameStatus {
   note?: string; // e.g. "also on Line 3" or "PTO / Absences"
 }
 
+export type ChipRole = "lead" | "leader" | "mll" | "mlt";
+
 export interface ChipWarning {
   text: string;
   // Informational only - e.g. an MLL/Line Lead covering two lines, which
@@ -29,6 +31,9 @@ interface Props {
   roleMap?: Map<string, string>;
   // A line's lead picked in its panel: their chip goes first.
   leadFirst?: string | null;
+  // Colors a chip like the name's row on the board: the picked lead (with a
+  // ⭐), Line Leader, MLL or MLT; null = a plain chip.
+  chipRole?: (name: string) => ChipRole | null;
   // Where each option already is today - groups the "+ Add employee"
   // list so people already on another line or out today are set apart.
   describe?: (name: string) => NameStatus;
@@ -46,6 +51,7 @@ export default function NameMultiSelect({
   onDropEmployee,
   roleMap,
   leadFirst = null,
+  chipRole,
   describe,
   chipWarning,
   isMatch,
@@ -111,7 +117,9 @@ export default function NameMultiSelect({
         {selected.length === 0 && <span className="name-chips-empty">No one assigned — drag someone here</span>}
         {displayed.map((name) => {
           const warning = chipWarning?.(name);
+          const role = chipRole?.(name) ?? null;
           const classes = ["name-chip"];
+          if (role) classes.push("name-chip-role", `name-chip-${role}`);
           if (warning) classes.push(warning.soft ? "name-chip-soft" : "name-chip-warn");
           if (isMatch?.(name)) classes.push("name-chip-match");
           return (
@@ -123,6 +131,7 @@ export default function NameMultiSelect({
               title={[warning?.text, slotId ? "Drag to another line to move this person" : ""].filter(Boolean).join(" — ")}
             >
               {warning && <span aria-hidden="true">{warning.soft ? "ℹ" : "⚠"}</span>}
+              {role === "lead" && <span aria-label="Line lead">⭐</span>}
               {name}
               <button type="button" onClick={() => removeName(name)} title={`Remove ${name}`}>
                 ✕

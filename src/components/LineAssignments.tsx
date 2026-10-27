@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { CSSProperties } from "react";
 import type {
   CommentBox,
   DailyBoard,
@@ -14,7 +15,7 @@ import type {
 import { describeEntry, entriesOn, todayIso } from "../timeOffLogic";
 import { COMMENT_FONT_OPTIONS, DEFAULT_SECTION_STYLE, EXTRA_KINDS, EXTRA_KIND_LABELS, SKILL_LABELS } from "../types";
 import NameMultiSelect from "./NameMultiSelect";
-import type { ChipWarning, NameStatus } from "./NameMultiSelect";
+import type { ChipRole, ChipWarning, NameStatus } from "./NameMultiSelect";
 import UnassignedPanel from "./UnassignedPanel";
 import PageEditor from "./PageEditor";
 import type { PageSelection } from "./PageEditor";
@@ -589,252 +590,307 @@ export default function LineAssignments({
           names: s.names.filter((n) => !onLine.has(nameKey(n))).sort((a, b) => a.localeCompare(b)),
         }))
         .filter((s) => s.names.length > 0);
+      const tone = crewBadgeTone(slot);
+      const lead = lineLead(slot);
+      const lineRoles = slotRoleMap(slot, roleMap);
+      // Chips colored like the line's rows on the board (with the board's
+      // highlight colors), the picked lead first with a ⭐.
+      const chipRole = (name: string): ChipRole | null => {
+        if (!printSettings.highlightRoles) return null;
+        if (lead && nameKey(name) === nameKey(lead)) return "lead";
+        const category = roleCategory(roleOf(name, lineRoles));
+        return category === "other" ? null : category;
+      };
+      const count = cov.target !== null ? `${cov.count}/${cov.target}` : cov.count;
+      const countBadge =
+        cov.extras.length > 0 ? (
+          <span className="count-badge count-badge-split" title={`+ ${describeExtras(cov.extras)} (not counted in the ZBS)`}>
+            <span className={`count-crew-part${tone ? ` count-badge-${tone}` : ""}`}>👥 {count}</span>
+            {cov.extras.map((e) => (
+              <span className={`extra-${e.kind}`} key={e.kind}>
+                +{e.count} {EXTRA_KIND_EMOJI[e.kind]}
+              </span>
+            ))}
+          </span>
+        ) : (
+          <span className={`count-badge${tone ? ` count-badge-${tone}` : ""}`}>👥 {count}</span>
+        );
+      const panelColors = {
+        "--line-bar": slot.status === "Scheduled" ? printSettings.scheduledColor : slot.status === "PM" ? printSettings.pmColor : printSettings.notScheduledColor,
+        "--chip-leader": printSettings.leaderColor,
+        "--chip-mll": printSettings.mllColor,
+        "--chip-mlt": printSettings.mltColor,
+      } as CSSProperties;
       return (
-        <div className="panel inspector">
-          <div className="inspector-head">
-            <h2>{slot.line || "Line"}</h2>
-            {close}
-          </div>
-          <label className="inspector-field">
-            Line name
-            <input value={slot.line} onChange={(e) => updateSlot(slot.id, { line: e.target.value })} />
-          </label>
-          <div className="inspector-row">
-            <label className="inspector-field">
-              Status
-              <select
-                value={slot.status}
-                onChange={(e) => updateSlot(slot.id, { status: e.target.value as LineSlot["status"] })}
-              >
-                <option value="">—</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Not Scheduled">Not Scheduled</option>
-                <option value="PM">PM</option>
-              </select>
-            </label>
-            <label className="inspector-field">
-              Note
+        <div className="panel inspector line-inspector" style={panelColors}>
+          {/* Topped like the line's box on the board: its name (click to
+              rename), crew count, status and note. */}
+          <div className="line-bar">
+            <div className="line-bar-top">
               <input
-                placeholder="e.g. ZBS - 6"
-                value={slot.subNote}
-                onChange={(e) => updateSlot(slot.id, { subNote: e.target.value })}
+                className="line-bar-name"
+                aria-label="Line name"
+                title="Click to rename the line"
+                value={slot.line}
+                onChange={(e) => updateSlot(slot.id, { line: e.target.value })}
               />
-            </label>
-          </div>
-          {cov.warnings.length > 0 && (
-            <ul className="slot-warnings">
-              {cov.warnings.map((w) => (
-                <li key={w}>⚠ {w}</li>
-              ))}
-            </ul>
-          )}
-          <div className="inspector-label">
-            Crew{" "}
-            {cov.extras.length > 0 ? (
-              <span
-                className="count-badge count-badge-split"
-                title={`+ ${describeExtras(cov.extras)} (not counted in the ZBS)`}
-              >
-                <span className={`count-crew-part${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
-                  {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
-                </span>
-                {cov.extras.map((e) => (
-                  <span className={`extra-${e.kind}`} key={e.kind}>
-                    +{e.count} {EXTRA_KIND_EMOJI[e.kind]}
-                  </span>
-                ))}
-              </span>
-            ) : (
-              <span className={`count-badge${crewBadgeTone(slot) ? ` count-badge-${crewBadgeTone(slot)}` : ""}`}>
-                {cov.target !== null ? `${cov.count}/${cov.target}` : cov.count}
-              </span>
-            )}
-          </div>
-          <NameMultiSelect
-            value={slot.assigned}
-            onChange={(next) => updateSlot(slot.id, { assigned: next })}
-            options={employeeNames}
-            slotId={slot.id}
-            onDropEmployee={(name, fromId) => movePerson(name, fromId, slot.id)}
-            roleMap={slotRoleMap(slot, roleMap)}
-            leadFirst={lineLead(slot)}
-            describe={describe}
-            chipWarning={(name) => warningFor(name, slot.id)}
-            isMatch={isMatch}
-          />
-          <label className="inspector-field">
-            Line lead
-            <select value={lineLead(slot) ?? ""} onChange={(e) => updateSlot(slot.id, { lead: e.target.value })}>
-              <option value="">From Skills &amp; Roles</option>
-              {crewNames.map((n) => {
-                const role = roleOf(n, roleMap);
-                return (
-                  <option key={n} value={n}>
-                    {n}
-                    {role ? ` (${role})` : ""}
-                  </option>
-                );
-              })}
-            </select>
-            <span className="duty-needed-hint">
-              {lineLead(slot)
-                ? "Shown as this line's Line Leader (green) at the top of the crew (before any MLL), on the page and the printout."
-                : "Anyone with Line Leader, MLL or MLT in Skills & Roles is highlighted, as before."}
-            </span>
-          </label>
-          <div className="training-panel">
-            <div className="inspector-label">Training, dumping &amp; overtime</div>
-            {extras.map((t) => {
-              const kind = extraKind(t);
-              // Someone from another shift (not on this roster): ✕ takes them
-              // off the line instead of leaving them in the crew.
-              const fromShift = rosterKeySet.has(nameKey(t.name)) ? undefined : shiftOf(t.name);
-              return (
-                <div className={`trainee-edit-row extra-edit-${kind}`} key={nameKey(t.name)}>
-                  <span className="trainee-edit-name" title={fromShift ? `${t.name} (${fromShift})` : t.name}>
-                    {t.name}
-                  </span>
-                  <select
-                    value={kind}
-                    title={`Why ${t.name} is extra`}
-                    onChange={(e) => {
-                      const next = e.target.value as ExtraKind;
-                      // Back to training: start from their IP skill again.
-                      const skill = next === "training" && !t.skill.trim() ? trainingSkillFor(t.name, employees) : t.skill;
-                      changeExtra(t.name, { kind: next, skill });
-                    }}
-                  >
-                    {EXTRA_KINDS.map((k) => (
-                      <option key={k} value={k}>
-                        {EXTRA_KIND_EMOJI[k]} {EXTRA_KIND_LABELS[k]}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    className="btn small"
-                    title={fromShift ? `Take ${t.name} off this line` : `${t.name} goes back to the crew`}
-                    onClick={() =>
-                      updateSlot(slot.id, {
-                        trainees: extras.filter((x) => nameKey(x.name) !== nameKey(t.name)),
-                        ...(fromShift
-                          ? { assigned: parseNames(slot.assigned).filter((n) => nameKey(n) !== nameKey(t.name)).join(", ") }
-                          : {}),
-                      })
-                    }
-                  >
-                    ✕
-                  </button>
-                  {fromShift && <span className="extra-from">From {fromShift}</span>}
-                  {kind === "training" && (
-                    <input
-                      className="trainee-edit-skill"
-                      list="training-skill-options"
-                      placeholder="Training on what? (Cremer, MLL…)"
-                      value={t.skill}
-                      onChange={(e) => changeExtra(t.name, { skill: e.target.value })}
-                    />
-                  )}
-                </div>
-              );
-            })}
-            <div className="extra-add-row">
-              <select
-                value={extraKindToAdd}
-                title="What they're on the line for"
-                onChange={(e) => setExtraKindToAdd(e.target.value as ExtraKind)}
-              >
-                {EXTRA_KINDS.map((k) => (
-                  <option key={k} value={k}>
-                    {EXTRA_KIND_EMOJI[k]} {EXTRA_KIND_LABELS[k]}
-                  </option>
-                ))}
-              </select>
-              {extraKindToAdd === "overtime" ? (
-                // Overtime comes from the other shifts: their names, by
-                // shift (in shift order), A-Z. Picking adds them to the line.
+              {countBadge}
+              <button className="line-bar-close" onClick={() => setSelection(null)} title="Done">
+                ✕
+              </button>
+            </div>
+            <div className="line-bar-fields">
+              <label className="line-bar-field">
+                <span>Status</span>
                 <select
-                  className="inspector-select"
-                  value=""
-                  disabled={overtimeChoices.length === 0}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    if (!name) return;
-                    updateSlot(slot.id, {
-                      assigned: [...parseNames(slot.assigned), name].join(", "),
-                      trainees: [...extras, { name, skill: "", kind: "overtime" }],
-                    });
-                  }}
+                  value={slot.status}
+                  onChange={(e) => updateSlot(slot.id, { status: e.target.value as LineSlot["status"] })}
                 >
-                  <option value="">{overtimeChoices.length ? "From another shift…" : "No other shift's names yet"}</option>
-                  {overtimeChoices.map((group) => (
-                    <optgroup key={group.label} label={group.label}>
-                      {group.names.map((n) => (
-                        <option key={n} value={n}>
-                          {n}
+                  <option value="">—</option>
+                  <option value="Scheduled">Scheduled</option>
+                  <option value="Not Scheduled">Not Scheduled</option>
+                  <option value="PM">PM</option>
+                </select>
+              </label>
+              <label className="line-bar-field">
+                <span>Note</span>
+                <input
+                  placeholder="e.g. ZBS - 6"
+                  value={slot.subNote}
+                  onChange={(e) => updateSlot(slot.id, { subNote: e.target.value })}
+                />
+              </label>
+            </div>
+          </div>
+          <div className="line-body">
+            {cov.warnings.length > 0 && (
+              <ul className="slot-warnings line-warnings">
+                {cov.warnings.map((w) => (
+                  <li key={w}>⚠ {w}</li>
+                ))}
+              </ul>
+            )}
+            <section className="line-sec">
+              <div className="line-sec-h">
+                <span className="line-sec-ic line-sec-ic-crew">👥</span>Crew
+              </div>
+              <NameMultiSelect
+                value={slot.assigned}
+                onChange={(next) => updateSlot(slot.id, { assigned: next })}
+                options={employeeNames}
+                slotId={slot.id}
+                onDropEmployee={(name, fromId) => movePerson(name, fromId, slot.id)}
+                roleMap={lineRoles}
+                leadFirst={lead}
+                chipRole={chipRole}
+                describe={describe}
+                chipWarning={(name) => warningFor(name, slot.id)}
+                isMatch={isMatch}
+              />
+              {printSettings.highlightRoles && (
+                <div className="role-legend">
+                  <span>
+                    <b style={{ background: printSettings.leaderColor }} />
+                    Lead
+                  </span>
+                  <span>
+                    <b style={{ background: printSettings.mllColor }} />
+                    MLL
+                  </span>
+                  <span>
+                    <b style={{ background: printSettings.mltColor }} />
+                    MLT
+                  </span>
+                </div>
+              )}
+            </section>
+            <section className="line-sec">
+              <div className="line-sec-h">
+                <span className="line-sec-ic line-sec-ic-lead">⭐</span>Line lead
+              </div>
+              {/* The whole card opens the pick list. */}
+              <label className={`lead-card${lead ? " lead-card-picked" : ""}`}>
+                <span className="lead-star">{lead ? "★" : "☆"}</span>
+                <span className="lead-who">
+                  {lead ?? "From Skills & Roles"}
+                  <small>{lead ? "Picked · listed first, in green" : "Leads from the roster are highlighted"}</small>
+                </span>
+                <span className="lead-change">Change ⌄</span>
+                <select aria-label="Line lead" value={lead ?? ""} onChange={(e) => updateSlot(slot.id, { lead: e.target.value })}>
+                  <option value="">From Skills &amp; Roles</option>
+                  {crewNames.map((n) => {
+                    const role = roleOf(n, roleMap);
+                    return (
+                      <option key={n} value={n}>
+                        {n}
+                        {role ? ` (${role})` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+            </section>
+            <section className="line-sec">
+              <div className="line-sec-h">
+                <span className="line-sec-ic line-sec-ic-extra">➕</span>Training · dumping · overtime
+              </div>
+              {extras.map((t) => {
+                const kind = extraKind(t);
+                // Someone from another shift (not on this roster): ✕ takes them
+                // off the line instead of leaving them in the crew.
+                const fromShift = rosterKeySet.has(nameKey(t.name)) ? undefined : shiftOf(t.name);
+                return (
+                  <div className={`trainee-edit-row extra-edit-${kind}`} key={nameKey(t.name)}>
+                    <span className="trainee-edit-name" title={fromShift ? `${t.name} (${fromShift})` : t.name}>
+                      {t.name}
+                    </span>
+                    <select
+                      value={kind}
+                      title={`Why ${t.name} is extra`}
+                      onChange={(e) => {
+                        const next = e.target.value as ExtraKind;
+                        // Back to training: start from their IP skill again.
+                        const skill = next === "training" && !t.skill.trim() ? trainingSkillFor(t.name, employees) : t.skill;
+                        changeExtra(t.name, { kind: next, skill });
+                      }}
+                    >
+                      {EXTRA_KINDS.map((k) => (
+                        <option key={k} value={k}>
+                          {EXTRA_KIND_EMOJI[k]} {EXTRA_KIND_LABELS[k]}
                         </option>
                       ))}
-                    </optgroup>
-                  ))}
-                </select>
-              ) : (
+                    </select>
+                    <button
+                      className="btn small"
+                      title={fromShift ? `Take ${t.name} off this line` : `${t.name} goes back to the crew`}
+                      onClick={() =>
+                        updateSlot(slot.id, {
+                          trainees: extras.filter((x) => nameKey(x.name) !== nameKey(t.name)),
+                          ...(fromShift
+                            ? { assigned: parseNames(slot.assigned).filter((n) => nameKey(n) !== nameKey(t.name)).join(", ") }
+                            : {}),
+                        })
+                      }
+                    >
+                      ✕
+                    </button>
+                    {fromShift && <span className="extra-from">From {fromShift}</span>}
+                    {kind === "training" && (
+                      <input
+                        className="trainee-edit-skill"
+                        list="training-skill-options"
+                        placeholder="Training on what? (Cremer, MLL…)"
+                        value={t.skill}
+                        onChange={(e) => changeExtra(t.name, { skill: e.target.value })}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+              <div className="extra-add-row">
                 <select
-                  className="inspector-select"
-                  value=""
-                  disabled={crewNames.length === 0}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    if (!name) return;
-                    const skill = extraKindToAdd === "training" ? trainingSkillFor(name, employees) : "";
-                    setExtras([...extras, { name, skill, kind: extraKindToAdd }]);
-                  }}
+                  value={extraKindToAdd}
+                  title="What they're on the line for"
+                  onChange={(e) => setExtraKindToAdd(e.target.value as ExtraKind)}
                 >
-                  <option value="">Pick someone…</option>
-                  {crewNames.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
+                  {EXTRA_KINDS.map((k) => (
+                    <option key={k} value={k}>
+                      {EXTRA_KIND_EMOJI[k]} {EXTRA_KIND_LABELS[k]}
                     </option>
                   ))}
                 </select>
-              )}
+                {extraKindToAdd === "overtime" ? (
+                  // Overtime comes from the other shifts: their names, by
+                  // shift (in shift order), A-Z. Picking adds them to the line.
+                  <select
+                    className="inspector-select"
+                    value=""
+                    disabled={overtimeChoices.length === 0}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      if (!name) return;
+                      updateSlot(slot.id, {
+                        assigned: [...parseNames(slot.assigned), name].join(", "),
+                        trainees: [...extras, { name, skill: "", kind: "overtime" }],
+                      });
+                    }}
+                  >
+                    <option value="">{overtimeChoices.length ? "From another shift…" : "No other shift's names yet"}</option>
+                    {overtimeChoices.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.names.map((n) => (
+                          <option key={n} value={n}>
+                            {n}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    className="inspector-select"
+                    value=""
+                    disabled={crewNames.length === 0}
+                    onChange={(e) => {
+                      const name = e.target.value;
+                      if (!name) return;
+                      const skill = extraKindToAdd === "training" ? trainingSkillFor(name, employees) : "";
+                      setExtras([...extras, { name, skill, kind: extraKindToAdd }]);
+                    }}
+                  >
+                    <option value="">Pick someone…</option>
+                    {crewNames.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <datalist id="training-skill-options">
+                {[...Object.values(SKILL_LABELS), "MLL", "MLT", "Line Leader"].map((o) => (
+                  <option key={o} value={o} />
+                ))}
+              </datalist>
+              <p className="line-tip">
+                ⓘ Overtime counts toward the ZBS; training and dumping don't.
+              </p>
+            </section>
+            <div className="line-foot">
+              {/* A button that opens the list of lines to move the crew to. */}
+              <label
+                className={`btn line-foot-btn${slot.assigned.trim() ? "" : " line-foot-btn-off"}`}
+                title={slot.assigned.trim() ? "Move this line's crew to another line" : "No team assigned to this line to transfer."}
+              >
+                🔀 Transfer team
+                <select
+                  aria-label="Transfer team to"
+                  value=""
+                  disabled={!slot.assigned.trim()}
+                  onChange={(e) => transferTeamTo(slot, e.target.value)}
+                >
+                  <option value="">🔀 Transfer team to…</option>
+                  {board.lineSlots
+                    .filter((s) => s.id !== slot.id)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.line}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <button
+                className="btn danger line-foot-btn"
+                onClick={() => {
+                  if (slot.assigned.trim() && !confirm(`Delete ${slot.line || "this line"} and its crew from the page?`)) return;
+                  removeSlot(slot.id);
+                  setSelection(null);
+                }}
+              >
+                🗑 Delete line
+              </button>
             </div>
-            <datalist id="training-skill-options">
-              {[...Object.values(SKILL_LABELS), "MLL", "MLT", "Line Leader"].map((o) => (
-                <option key={o} value={o} />
-              ))}
-            </datalist>
-            <p className="panel-hint">
-              {extras.length > 0
-                ? "Listed last under their own row (gold Training, light blue Dumping, light green Overtime). Overtime counts toward the ZBS; training and dumping don't."
-                : "Overtime counts toward the ZBS; training and dumping are on top of it."}
-              {extraKindToAdd === "overtime" && " Overtime is picked from the other shifts' names."}
-            </p>
           </div>
-          <select
-            className="inspector-select"
-            value=""
-            disabled={!slot.assigned.trim()}
-            title={!slot.assigned.trim() ? "No team assigned to this line to transfer." : undefined}
-            onChange={(e) => transferTeamTo(slot, e.target.value)}
-          >
-            <option value="">🔀 Transfer team to…</option>
-            {board.lineSlots
-              .filter((s) => s.id !== slot.id)
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.line}
-                </option>
-              ))}
-          </select>
-          <button
-            className="btn small danger inspector-delete"
-            onClick={() => {
-              if (slot.assigned.trim() && !confirm(`Delete ${slot.line || "this line"} and its crew from the page?`)) return;
-              removeSlot(slot.id);
-              setSelection(null);
-            }}
-          >
-            Delete line
-          </button>
         </div>
       );
     }
