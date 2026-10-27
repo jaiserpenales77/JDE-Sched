@@ -8,27 +8,7 @@ together.
 
 ## What's in the next update
 
-### 1. Overtime counts toward the ZBS (Line Assignments)
-
-People marked **Overtime** fill the line's ZBS spots: they're in the 👥
-count (4 crew + 1 on overtime on ZBS 5 is 5/5, not short), in the light
-red over/under check and in the "Short" warning. They keep their light
-green OVERTIME row, and the badge no longer shows a green "+1" for them.
-In the ZBS blocks design their spots fill in light green.
-
-Training and Dumping are unchanged: still on top of the ZBS, with their
-gold / light blue "+1". The side panel's section is now called
-**Training, dumping & overtime**, and its note says which ones count.
-
-**Needs outside the app:** nothing. Overtime marks already saved count
-toward the ZBS as soon as this is live.
-
-**How to check:** on a line at its ZBS, mark someone as Overtime: the
-badge stays at the same number (e.g. 4/4) and doesn't turn light red,
-and they move under the green OVERTIME row.
-
-**Announcement:** "Line Assignments: people marked Overtime now count
-toward the line's ZBS. Training and Dumping are still extra."
+Nothing yet. New changes are added here once they're built and tested.
 
 ---
 
@@ -57,6 +37,20 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-10-27 (later): overtime counts toward the ZBS (Line Assignments)
+
+People marked **Overtime** fill the line's ZBS spots: they're in the 👥
+count, the light red over/under check and the "Short" warning, and their
+spots fill in light green in the ZBS blocks design. They keep their light
+green OVERTIME row; the badge only shows a "+1" for Training and Dumping,
+which stay on top of the ZBS. The side panel's section is now called
+**Training, dumping & overtime**. Overtime marks saved earlier count from
+now on. Nothing changed in Firebase, and the Job Instruction stays at
+Rev. 2026-10-15.
+
+**Announcement:** "Line Assignments: people marked Overtime now count
+toward the line's ZBS. Training and Dumping are still extra."
 
 ### 2026-10-27: line lead pick, extra people for training, dumping or overtime (Line Assignments)
 
