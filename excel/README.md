@@ -31,7 +31,8 @@ holds the machinery.
 ## 4. Schedule
 
 - A title band with the shift (from 3. Lines), the date and the "as of" time,
-  a one-line summary (lines by status, work orders, the next changeover), and
+  a one-line summary (lines by status, the minor and major changeovers from
+  "as of" to the end of the shift, the next changeover), and
   a legend of the status colors, changeover types and row highlights.
 - Each line is a box: its name in the LINE column with its status right under
   it in the status's color (RUNNING green, PARTIAL SHIFT orange, OVERTIME

@@ -611,7 +611,7 @@ SCALARS = [
     "ov_notes", "capwarn", "status_text", "status_ok", "stale", "tamper", "short_warn", "line_col",
     "first_text", "last_text", "wo_twice", "wo_twice_k", "wo_twice_text", "status_ok0", "dec", "ex_k", "ex_pr",
     "notes", "asof", "shift", "nshift", "cx", "h0", "cu", "f0", "cc", "nco", "nco_k", "summary", "subtitle",
-    "warn_line",
+    "warn_line", "sh_end", "co_minor", "co_major",
 ]
 # Shift-clock table on Calc (estimated times): row CY_F holds the bottles of
 # each of the next 8 hours after the current one (as a share of a full hour),
@@ -683,7 +683,7 @@ W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "
           "hasnote", "hascot", "ncaps"] + [f"ns{i}" for i in range(1, NOTE_LINES + 1)]
          + [f"nt{i}" for i in range(1, NOTE_LINES + 1)] + [
           "nrows", "nbefore", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
-          "est", "estt", "nextco", "prog", "left", "capc"])
+          "est", "estt", "nextco", "cot_t", "prog", "left", "capc"])
 O = Band(W.end + 2, ["pn", "k", "nk", "cidx", "kk", "kind", "first", "last"] + [k for _, k in SCHED_COLS]
          + ["hl", "sched", "cchg", "capx", "o_status", "fw", "code", "ns", "stidx", "nidx", "r_pa", "r_br",
             "r_note", "r_pct", "r_cap"])
@@ -791,6 +791,8 @@ def window_v2(ws, c, A, s, r_):
                     f'/INDEX($C${CY_F}:$J${CY_F},{A["cm"]}))/24)),""))')
     ws[c["estt"]] = f'=IF({A["est"]}="","",{clock_text(A["est"], t0)})'
     ws[c["nextco"]] = (f'=IF({fw}=0,"",IF({A["est"]}="","",IF(COUNTIF({wr("lno")},{lno})>1,{A["est"]},"")))')
+    # when the changeover into this work order starts: the work order before it is done
+    ws[c["cot_t"]] = f'=IF(OR({keep}=0,{fw}=1),"",IF({cc}="","",IFERROR(IF({ix("est", kp)}="","",{ix("est", kp)}),"")))'
     # ---- what the report shows ----------------------------------------------
     pa = A["pa"]
     n = f"MAX(0,MIN(10,ROUND({pa}*10,0)))"
@@ -858,15 +860,33 @@ def clock_text(t, ref):
     return f'IF(INT({m})=INT({ref}),"",MONTH({m})&"/"&DAY({m})&" ")&{clock12(m)}'
 
 
+def shift_end_expr(s):
+    """The end of this copy's shift - the first one at or after as-of - or of
+    the shift it is at as-of when no shift is picked on 3. Lines. Shift k
+    (0, 1, 2) runs from SET_START + k x 8 hours."""
+    k = (f'IF({s["shift"]}="{SHIFTS[0]}",0,IF({s["shift"]}="{SHIFTS[1]}",1,IF({s["shift"]}="{SHIFTS[2]}",2,'
+         f'INT(MOD(({s["asof"]}-SET_START)*24,24)/8))))')
+    end = f"(INT({s['asof']})+MOD(SET_START+({k}+1)/3,1))"
+    return f"IF({end}<{s['asof']},{end}+1,{end})"
+
+
+def co_count(s, codes):
+    """Changeovers of these codes that start from as-of to the end of the shift."""
+    t = wr("cot_t")
+    return "+".join(f'COUNTIFS({t},">="&{s["asof"]},{t},"<"&{s["sh_end"]},{wr("co")},"{c}")' for c in codes)
+
+
 def summary_expr(s):
     st = f"Calc!${LB['st']}$5:${LB['st']}${4 + LINE_SLOTS}".replace("Calc!", "")
     short = {"READY LINE": "ready", "PM / CLEANING": "PM / cleaning"}
     parts = "".join(f'&IF(COUNTIF({st},"{name}")>0," · "&COUNTIF({st},"{name}")&" {short.get(name, name.lower())}","")'
                     for name in STATUS_NAMES)
     nco, k = s["nco"], s["nco_k"]
-    nxt = (f'IF({nco}>0,"   →  Next changeover: "&INDEX({wr("dname")},{k})&" at "&{clock_text(nco, s["asof"])},"")')
+    nxt = (f'IF({nco}>0,"  |  Next: "&INDEX({wr("dname")},{k})&" at "&{clock_text(nco, s["asof"])},"")')
+    cos = (f'"  |  Changeovers before end of shift ("&{clock_text(s["sh_end"], s["asof"])}&"): "&{s["co_minor"]}'
+           f'&" minor · "&{s["co_major"]}&" major"')
     return (f'IF({s["wo_count"]}=0,"No work orders yet - paste today\'s schedule on 1. Paste Schedule.",'
-            f'{s["line_count"]}&" lines"{parts}&" · "&{s["wo_count"]}&" work orders"&{nxt})')
+            f'{s["line_count"]}&" lines"{parts}&{cos}&{nxt})')
 
 
 def cotton_field(ws, s, nhf_row, fld_row):
@@ -947,6 +967,9 @@ def build_calc(wb):
         "h0": "Hour of the shift now (1-8)", "cu": "Share of this hour left", "f0": "Bottles this hour (share)",
         "cc": "Bottles in a whole shift (full hours)", "nco": "Next changeover (time)",
         "nco_k": "Window row of the next changeover", "summary": "4. Schedule summary line",
+        "sh_end": "End of the shift (This copy is for; else the one it is now)",
+        "co_minor": "Minor changeovers (S1, count) from as-of to the end of the shift",
+        "co_major": "Major changeovers (S3, S4) from as-of to the end of the shift",
         "subtitle": "4. Schedule subtitle", "warn_line": "Warnings on one line",
     }
     for i, n in enumerate(SCALARS):
@@ -1075,6 +1098,11 @@ def build_calc(wb):
         "cc": f"$J${CY_S}",
         "nco": f"MIN({wr('nextco')})",
         "nco_k": f"IF({s['nco']}=0,0,IFERROR(MATCH({s['nco']},{wr('nextco')},0),0))",
+        # the end of this copy's shift (the first one after as-of), or of the
+        # shift it is at as-of when no shift is picked on 3. Lines
+        "sh_end": shift_end_expr(s),
+        "co_minor": co_count(s, ("S1", "S1 Count Change")),
+        "co_major": co_count(s, ("S3", "S4")),
         "summary": summary_expr(s),
         "subtitle": (f'"This is the "&IF({s["shift"]}="","",{s["shift"]}&" ")&"schedule for "&{month_name(s["asof"])}'
                      f'&" "&DAY({s["asof"]})&", "&YEAR({s["asof"]})&" as of "&{clock12(s["asof"])}'),
@@ -2014,16 +2042,16 @@ def build_schedule(wb):
         alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
     ws.row_dimensions[2].height = 16
     # row 3: today in one line (or the warnings) | row highlight legend
-    ws.merge_cells("A3:M3")
+    ws.merge_cells("A3:N3")
     put(ws, "A3", f'=IF({SC["warn_line"]}<>"","⚠ "&{SC["warn_line"]},{SC["summary"]})',
         font=font(9.5, True, "262626"), alignment=Alignment(horizontal="left", vertical="center", indent=1,
                                                             shrink_to_fit=True))
     cf(ws, "A3", 'LEFT($A$3,1)="⚠"', "FFC7CE", font(9.5, True, "9C0006"))
-    ws.merge_cells(f"N3:{lc}3")
+    ws.merge_cells(f"O3:{lc}3")
     parts = []
     for lab, col in LEGEND_HL:
         parts += [("■ ", col, False), (lab + "   ", "262626", False)]
-    put(ws, "N3", rich(parts), font=font(BODY_PT),
+    put(ws, "O3", rich(parts), font=font(BODY_PT),
         alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
     ws.row_dimensions[3].height = 16
     # row 4: column titles (NEXT SHIFT names the shift)
@@ -2321,7 +2349,9 @@ HOW_ROWS = [
     ("gap",),
     ("head", "", "Reading 4. Schedule"),
     ("kv", "Top", "The title and the shift (This copy is for, on 3. Lines); which schedule it is and the time it is "
-                  "from (Schedule as of); one line with the lines by status, the work orders and the next changeover. "
+                  "from (Schedule as of); one line with the lines by status, how many minor (S1, count) and major (S3, S4) "
+                  "changeovers the running lines have from Schedule as of to the end of the shift, and the next "
+                  "changeover. "
                   "A red line in its place means something to check (see Something went wrong)."),
     ("kv", "LINE", "Each line is a box: its name, and right under it its status this shift, in the status's color "
                    "(below). A line with one work order shows its status by the color of its name."),
