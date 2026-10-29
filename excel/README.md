@@ -49,7 +49,8 @@ holds the machinery.
   a COTTON: row in the note box says Yes (Y / Yes / X in the file) or the
   file's value, and nothing for N or blank. 2. Check Columns shows the column
   it comes from, with an Override for a file that titles it differently.
-- Row highlights as in the app: allergen, oil, bulk A662 / A624.
+- Row highlights as in the app: allergen, oil, and dumping in light blue (bulk
+  items A662 / A624).
 
 ## Estimated times
 

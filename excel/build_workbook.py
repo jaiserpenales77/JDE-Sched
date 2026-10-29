@@ -1942,7 +1942,7 @@ SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "n
                  ("AK", "EST LOOK", None), ("AL", "NEXT LOOK", None), ("AM", "CAP CHG", "capx"),
                  ("AN", "CAP LOOK", None)]
 C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
-LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Bulk", "9DC3E6")]
+LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
 
 
 def look_codes(r):
@@ -2354,9 +2354,9 @@ HOW_ROWS = [
                    "(up to 4 lines; a longer remark ends with "
                    "... - the whole remark is on 1. Paste Schedule)."),
     ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to WO QTY. Highlights go allergen "
-                           "first, then oil, then bulk."),
+                           "first, then oil, then dumping."),
     ("swatch", C_OIL, "Oily product (the description contains OIL)."),
-    ("swatch", C_BULK, "Bulk item A662 or A624."),
+    ("swatch", C_BULK, "Dumping - the light blue rows: bulk item A662 or A624."),
     ("swatch", C_COUNT_CHANGED, "Red bold CT = the count changed from the work order before it (Minor · Count)."),
     ("gap",),
     ("head", "", "Changeover codes"),
