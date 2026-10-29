@@ -33,11 +33,13 @@ holds the machinery.
 - A title band with the shift (from 3. Lines), the date and the "as of" time,
   a one-line summary (lines by status, the minor and major changeovers from
   "as of" to the end of the shift, the next changeover), and
-  a legend of the status colors, changeover types and row highlights.
-- Each line is a box: its name in the LINE column with its status right under
-  it in the status's color (RUNNING green, PARTIAL SHIFT orange, OVERTIME
-  gold, READY LINE purple, PM / CLEANING blue, NOT SCHEDULED grey - the
-  printout's border colors), and its status next shift at the right edge.
+  three labelled legends: BORDER (line statuses), CHANGEOVER (changeover
+  types) and HIGHLIGHT (row colors).
+- Each line is a box with a border in its status color this shift, like the
+  printout's border legend (RUNNING green, PARTIAL SHIFT orange, OVERTIME
+  gold, READY LINE purple, PM / CLEANING blue, NOT SCHEDULED grey; navy with
+  no status): its name in the LINE column with its status right under it in
+  the same color, and its status next shift at the right edge.
   A line that isn't scheduled prints in grey.
 - PROGRESS / CHANGEOVER: ten dots and the % on the running work order; on the
   next ones the changeover type (Minor · S1, Minor · Count, MAJOR · S3,

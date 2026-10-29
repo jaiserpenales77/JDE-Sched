@@ -1970,7 +1970,7 @@ SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "n
                  ("AD", "RUNS", "sched"), ("AE", "EDGE", None), ("AF", "LINE LOOK", None), ("AG", "DATA LOOK", None),
                  ("AH", "CT LOOK", None), ("AI", "PROGRESS LOOK", None), ("AJ", "EE LOOK", None),
                  ("AK", "EST LOOK", None), ("AL", "NEXT LOOK", None), ("AM", "CAP CHG", "capx"),
-                 ("AN", "CAP LOOK", None)]
+                 ("AN", "CAP LOOK", None), ("AO", "BORDER", None), ("AP", "NEXT BORDER", None)]
 C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
 LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
 
@@ -1995,6 +1995,11 @@ def look_codes(r):
                f'IF($Z{r}=1,1,2))))*10+$AE{r})'),
         "AL": f'=IF($AE{r}=0,0,IF($W{r}=1,IF($AB{r}>0,$AB{r},7),IF($S{r}="note",9,8))*10+$AE{r})',
         "AN": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$AM{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
+        # the box border takes the line's status color: + status x1000 on the
+        # rows with a top or bottom border (edges 1-3), and always in NEXT SHIFT
+        # (its right side is the box's)
+        "AO": f"=IF(AND($AE{r}>=1,$AE{r}<=3),$V{r}*1000,0)",
+        "AP": f"=IF($AE{r}>0,$V{r}*1000,0)",
     }
 
 
@@ -2023,7 +2028,7 @@ def build_schedule(wb):
         font=font(TITLE_PT - 2, True, title_white), fill=navy,
         alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
     ws.merge_cells(f"{split}1:{lc}1")
-    parts = []
+    parts = [("BORDER  ", "FFD966", True)]
     for st, strong, _, _ in STATUSES:
         parts += [("■ ", strong if st != "PM / CLEANING" else "5B9BD5", False),
                   (st.capitalize().replace("Pm / cleaning", "PM / Cleaning") + "   ", title_white, False)]
@@ -2036,7 +2041,7 @@ def build_schedule(wb):
     put(ws, "A2", f"={SC['subtitle']}", font=font(10, True, C_TITLE, italic=True), fill=light,
         alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
     ws.merge_cells(f"{split}2:{lc}2")
-    parts = []
+    parts = [("CHANGEOVER  ", C_TITLE, True)]
     for _, lab, col in CO_LABELS:
         parts += [("● ", col, False), (lab.replace(" · ", " ") + "   ", col, lab.startswith("MAJOR"))]
     parts += [("CAP", C_CAP_CHANGED, True), (" = new cap ", "262626", False)]
@@ -2044,16 +2049,16 @@ def build_schedule(wb):
         alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
     ws.row_dimensions[2].height = 16
     # row 3: today in one line (or the warnings) | row highlight legend
-    ws.merge_cells("A3:N3")
+    ws.merge_cells("A3:M3")
     put(ws, "A3", f'=IF({SC["warn_line"]}<>"","⚠ "&{SC["warn_line"]},{SC["summary"]})',
         font=font(9.5, True, "262626"), alignment=Alignment(horizontal="left", vertical="center", indent=1,
                                                             shrink_to_fit=True))
     cf(ws, "A3", 'LEFT($A$3,1)="⚠"', "FFC7CE", font(9.5, True, "9C0006"))
-    ws.merge_cells(f"O3:{lc}3")
-    parts = []
-    for lab, col in LEGEND_HL:
-        parts += [("■ ", col, False), (lab + "   ", "262626", False)]
-    put(ws, "O3", rich(parts), font=font(BODY_PT),
+    ws.merge_cells(f"N3:{lc}3")
+    parts = [("HIGHLIGHT ", C_TITLE, True)]
+    for i, (lab, col) in enumerate(LEGEND_HL):
+        parts += [(" ■ ", col, False), (lab + ("" if i == len(LEGEND_HL) - 1 else " "), "262626", False)]
+    put(ws, "N3", rich(parts), font=font(BODY_PT),
         alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
     ws.row_dimensions[3].height = 16
     # row 4: column titles (NEXT SHIFT names the shift)
@@ -2115,58 +2120,65 @@ def build_schedule(wb):
 
 
 def add_conditional_formats(ws, last_row):
-    """Each range's rules test one look code (helper columns AE:AL), so
+    """Each range's rules test one look code (helper columns AE:AP), so
     exactly one rule is true for any cell and the result doesn't depend on how
-    a spreadsheet program merges several true rules. Each line is a card: a
-    navy frame around its rows, a colored LINE tab (name, then the status tag
-    on the line's color), and a blank row before the next line."""
+    a spreadsheet program merges several true rules. Each line is a box with a
+    border in its status color (the printout's border legend; navy when it has
+    none), a LINE tab (name, then the status tag on the line's color) and a
+    blank row before the next line."""
     r0 = SCHED_ROW0
-    frame, inner = side(C_FRAME), side(C_INNER)
+    inner = side(C_INNER)
     rng = lambda *cols: " ".join(f"{a}{r0}:{b}{last_row}" for a, b in cols)
+    st_colors = [(0, C_NO_STATUS, "262626", C_NO_STATUS)] + [
+        (i, strong, txt, tint) for i, (_, strong, txt, tint) in enumerate(STATUSES, start=1)]
+    frame_of = {st: side(C_FRAME if st == 0 else strong) for st, strong, _, _ in st_colors}
 
-    def box(edge, left=inner, right=inner, verticals=True):
-        top = frame if edge in (1, 2) else inner
-        bottom = frame if edge in (1, 3) else None
-        return Border(left=left if verticals else None, right=right if verticals else None, top=top, bottom=bottom)
-
-    def note_box(edge, left=None, right=None):
-        return Border(left=left, right=right, top=None, bottom=frame if edge == 3 else None)
+    def rules(where, code, v, fill_color, font_, note=False, last=False):
+        """The rules of look v in range where (code column code): one per edge
+        (1 first and last row of the box, 2 first, 3 last, 4 between) and, on
+        the edges with a box border, per status. A note row has no lines
+        between its columns and none above it. last = NEXT SHIFT, whose right
+        side is the box's on every row."""
+        off = "AP" if last else "AO"
+        for e in ((3, 4) if note else (1, 2, 3, 4)):
+            for st in (range(7) if (e <= 3 or last) else (0,)):
+                fr = frame_of[st]
+                right = fr if last else (None if note else inner)
+                left = inner if (last or not note) else None
+                if note:
+                    b = Border(left=left, right=right, top=None, bottom=fr if e == 3 else None)
+                else:
+                    b = Border(left=left, right=right, top=fr if e in (1, 2) else inner, bottom=fr if e in (1, 3) else None)
+                cf(ws, where, f"${code}{r0}+${off}{r0}={st * 1000 + v * 10 + e}", fill_color, font_, b)
 
     note_font = font(BODY_PT, False, C_NOTE_TEXT, italic=True)
     grey = font(BODY_PT, False, C_NOT_SCHED_TEXT)
     # LINE: the line's tab. Name on the line's tint, the status tag (and a
-    # line with one row) on its color.
-    st_colors = [(0, C_NO_STATUS, "262626", C_NO_STATUS)] + [
-        (i, strong, txt, tint) for i, (_, strong, txt, tint) in enumerate(STATUSES, start=1)]
+    # line with one row) on its color; the box's left side in the status color.
     for role, edges in ((1, (2,)), (4, (1,)), (2, (3, 4)), (3, (3, 4))):
         for st, strong, txt, tint in st_colors:
+            fr = frame_of[st]
             for e in edges:
-                top = frame if e in (1, 2) else None
-                bottom = frame if e in (1, 3) else None
-                b = Border(left=frame, right=inner, top=top, bottom=bottom)
+                b = Border(left=fr, right=inner, top=fr if e in (1, 2) else None, bottom=fr if e in (1, 3) else None)
                 if role in (2, 4):
                     fc, fo = strong, font(LINE_PT, True, txt if st else "262626")
                 else:
                     fc, fo = tint, font(LINE_PT, True, "1F3864" if role == 1 else "7F7F7F")
                 cf(ws, rng(("A", "A")), f"$AF{r0}={role * 100 + st * 10 + e}", fc, fo, b)
-    # data columns B:E, G:L: row highlight (allergen > oil > bulk), grey for a
-    # line that isn't scheduled, notes in cream with no lines between columns
+    # data columns B:E, G:H, J:L: row highlight (allergen > oil > dumping),
+    # grey for a line that isn't scheduled, notes in cream
     hl_fill = {1: None, 2: C_ALLERGEN, 3: C_OIL, 4: C_BULK, 5: None}
     data = rng(("B", "E"), ("G", "H"), ("J", "L"))
     for v in range(1, 6):
-        for e in range(1, 5):
-            cf(ws, data, f"$AG{r0}={v * 10 + e}", hl_fill[v], grey if v == 5 else None, box(e))
-    for e in (3, 4):
-        cf(ws, data, f"$AG{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+        rules(data, "AG", v, hl_fill[v], grey if v == 5 else None)
+    rules(data, "AG", 6, C_NOTE_FILL, note_font, note=True)
     # CT and CAP: as the data columns, in bold red on a count change (CT) and
     # bold orange on a cap change (CAP)
     for col, code, color in (("F", "AH", C_COUNT_CHANGED), ("I", "AN", C_CAP_CHANGED)):
         for v in list(range(1, 6)) + list(range(11, 15)):
-            for e in range(1, 5):
-                cf(ws, rng((col, col)), f"${code}{r0}={v * 10 + e}", hl_fill[v % 10 if v > 10 else v],
-                   font(BODY_PT, True, color) if v > 10 else grey if v == 5 else None, box(e))
-        for e in (3, 4):
-            cf(ws, rng((col, col)), f"${code}{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+            rules(rng((col, col)), code, v, hl_fill[v % 10 if v > 10 else v],
+                  font(BODY_PT, True, color) if v > 10 else grey if v == 5 else None)
+        rules(rng((col, col)), code, 6, C_NOTE_FILL, note_font, note=True)
     # PROGRESS / CHANGEOVER and LEFT / C.O.: green progress dots on the
     # running work order, the changeover type in its color on the next ones
     prog_fonts = {1: font(BODY_PT, True, "2E7D32"), 2: font(BODY_PT, False, "7F7F7F", italic=True),
@@ -2174,32 +2186,35 @@ def add_conditional_formats(ws, last_row):
     for i, (_, _, col) in enumerate(CO_LABELS, start=3):
         prog_fonts[i] = font(BODY_PT, i >= 5, col)
     for v, fo in prog_fonts.items():
-        for e in range(1, 5):
-            cf(ws, rng(("M", "N")), f"$AI{r0}={v * 10 + e}", None, fo, box(e))
-    for e in (3, 4):
-        cf(ws, rng(("M", "N")), f"$AI{r0}={90 + e}", C_NOTE_FILL, note_font, note_box(e))
+        rules(rng(("M", "N")), "AI", v, None, fo)
+    rules(rng(("M", "N")), "AI", 9, C_NOTE_FILL, note_font, note=True)
     # EE
     for v, fo in ((1, None), (5, grey)):
-        for e in range(1, 5):
-            cf(ws, rng(("O", "O")), f"$AJ{r0}={v * 10 + e}", None, fo, box(e))
-    for e in (3, 4):
-        cf(ws, rng(("O", "O")), f"$AJ{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+        rules(rng(("O", "O")), "AJ", v, None, fo)
+    rules(rng(("O", "O")), "AJ", 6, C_NOTE_FILL, note_font, note=True)
     # EST. TIME: the running work order's time in bold navy
     est_fonts = {1: font(BODY_PT, True, C_TITLE), 2: font(BODY_PT, False, "262626"),
                  3: font(BODY_PT, False, "7F7F7F", italic=True), 5: grey}
     for v, fo in est_fonts.items():
-        for e in range(1, 5):
-            cf(ws, rng(("P", "P")), f"$AK{r0}={v * 10 + e}", None, fo, box(e))
-    for e in (3, 4):
-        cf(ws, rng(("P", "P")), f"$AK{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
-    # NEXT SHIFT: a chip in the next shift's status color on the line's first row
-    for st, strong, txt, tint in st_colors[1:] + [(7, None, None, None)]:
+        rules(rng(("P", "P")), "AK", v, None, fo)
+    rules(rng(("P", "P")), "AK", 6, C_NOTE_FILL, note_font, note=True)
+    # NEXT SHIFT: a chip in the next shift's status color on the line's first
+    # row (looks 1-6, 7 = none), plain below it (8 work order, 9 note)
+    q = rng(("Q", "Q"))
+    for v, strong, txt, _ in st_colors[1:] + [(7, None, None, None)]:
         for e in (1, 2):
-            cf(ws, rng(("Q", "Q")), f"$AL{r0}={st * 10 + e}", strong, font(BODY_PT, True, txt) if txt else None,
-               box(e, right=frame))
-    for e in (3, 4):
-        cf(ws, rng(("Q", "Q")), f"$AL{r0}={80 + e}", None, None, box(e, right=frame))
-        cf(ws, rng(("Q", "Q")), f"$AL{r0}={90 + e}", None, None, note_box(e, left=inner, right=frame))
+            for st in range(7):
+                fr = frame_of[st]
+                cf(ws, q, f"$AL{r0}+$AP{r0}={st * 1000 + v * 10 + e}", strong,
+                   font(BODY_PT, True, txt) if txt else None,
+                   Border(left=inner, right=fr, top=fr, bottom=fr if e == 1 else None))
+    for v in (8, 9):
+        for e in (3, 4):
+            for st in range(7):
+                fr = frame_of[st]
+                top = None if v == 9 else inner
+                cf(ws, q, f"$AL{r0}+$AP{r0}={st * 1000 + v * 10 + e}", None, None,
+                   Border(left=inner, right=fr, top=top, bottom=fr if e == 3 else None))
 
 
 # ----------------------------------------------------------------------------
@@ -2354,9 +2369,12 @@ HOW_ROWS = [
                   "from (Schedule as of); one line with the lines by status, how many minor (S1, count) and major (S3, S4) "
                   "changeovers the running lines have from Schedule as of to the end of the shift, and the next "
                   "changeover. "
-                  "A red line in its place means something to check (see Something went wrong)."),
-    ("kv", "LINE", "Each line is a box: its name, and right under it its status this shift, in the status's color "
-                   "(below). A line with one work order shows its status by the color of its name."),
+                  "A red line in its place means something to check (see Something went wrong). On the right, the "
+                  "three legends: BORDER (the line statuses below), CHANGEOVER (the changeover types) and "
+                  "HIGHLIGHT (the row colors below)."),
+    ("kv", "LINE", "Each line is a box with a border in its status color this shift (the BORDER legend, below): its "
+                   "name, and right under it its status, in the same color. A line with one work order shows its "
+                   "status by the color of its name. A line with no status has a navy border."),
 ] + [("swatch", strong, desc) for (st, strong, _, _), desc in zip(STATUSES, [
     "RUNNING - the line runs this shift. Estimated times.",
     "PARTIAL SHIFT - the line runs part of the shift. Estimated times (as if it ran the whole shift).",
