@@ -48,13 +48,18 @@ holds the machinery.
   changeover minutes.
 - CAP as size-type (45-CRC), in bold orange when it differs from the work
   order before it (the app's Cap Change). CT in red bold on a count change.
-- A remark prints under its work order in a cream note box (wrapped, up to 4
-  lines). So does the cotton: the file's COT column isn't printed as a column -
-  a bold COTTON: row in the note box says Yes (Y / Yes / X in the file) or the
-  file's value on a line's running work order, and on the next ones what the
-  changeover does: Add Cotton, Remove Cotton, or Change Cotton (another value);
-  nothing when it stays the same. 2. Check Columns shows the column
-  it comes from, with an Override for a file that titles it differently.
+- Under a work order, in a cream note box: its **Changeover Notes** on one bold
+  row - what the changeover into it changes from the work order before it:
+  Cap / Count / Bottle Change (in one phrase, e.g. Cap, Count & Bottle
+  Change), Add / Remove / Change Cotton, Add / Remove / Change Desiccant, and
+  Dumping for a dumping work order (bulk A662 / A624). Only for changeovers
+  that start before the end of the shift (the same ones the summary counts);
+  a long list shrinks to fit. Then **Remarks:** and its remark (wrapped, up to
+  4 lines). The file's COT (cotton) column isn't printed as a column: Yes for
+  Y / Yes / X, none for N / No / 0 / blank, else the file's value (Change
+  Cotton (value)). 2. Check Columns shows the column it comes from, with an
+  Override for a file that titles it differently. A desiccant of N / No / 0 /
+  None counts as none.
 - Row highlights as in the app: allergen, oil, and dumping in light blue (bulk
   items A662 / A624).
 
@@ -139,7 +144,7 @@ From the web app:
 - A value too long for its column shrinks to fit (so nothing is cut off and no
   number turns into ####). Column widths are sized for real Excel, which gives
   text fewer pixels than LibreOffice; nothing on the report is smaller than
-  8.5 pt (Excel draws smaller Calibri without ClearType, much wider).
+  8 pt (Excel draws smaller Calibri without ClearType, much wider).
 - No conditional format changes a number format (in real Excel one meant for
   one column leaked into the next).
 - Excel's TRIM also turns runs of spaces inside a value into one space, and a
@@ -170,7 +175,7 @@ From the web app:
 From the JDE Packaging Schedule printout:
 
 - HOT WO and twin pack are not shown: the schedule file has no column for
-  them. COT (cotton) prints in the note box instead of a column.
+  them. COT (cotton) shows in the Changeover Notes instead of a column.
 - The estimated times come from the router rates, so they differ from the
   printout's (which were made another way). Line efficiency on 5. Settings can
   bring them closer.
