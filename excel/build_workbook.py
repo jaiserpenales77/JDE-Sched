@@ -84,7 +84,7 @@ the formula text (see NBSP / SEP below).
 
 Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
 ------------------------------------------------------------------------
-  A:B    scalars (label in A, value in B), rows 5-60, in SCALARS order:
+  A:B    scalars (label in A, value in B), rows 5-63, in SCALARS order:
          B5 auto header row, B6/B7 parsed header-row override + valid flag,
          B8 LEGEND row (1001 = none), B9 work orders in rows 1-1000, B10 work
          orders kept (max 600), B11 lines, B12 rows the report needs (work
@@ -109,7 +109,8 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          B51-B55 shift clock now (hours into the shift, hour 1-8, share of
          this hour left, its output share, a whole shift's output), B56/B57
          next changeover time and its window row, B58 summary line, B59
-         subtitle, B60 the warnings on one line
+         subtitle, B60 the warnings on one line, B61 the end of the shift,
+         B62/B63 minor / major changeovers from as-of to then
   A70:J72 shift clock: row 71 the output share of hour +1..+8, row 72 the
          running total S0..S8
   D:R    field table, rows 5-19 (one per import field, app order), and row
@@ -153,7 +154,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          CH233 EXACT mask (auto), CH236 overridden-fields mask,
          CH237 EXACT mask (with overrides)
   DA:DC  pasted rows 1-1000 (rows 5-1004): row no., trimmed Line, LEGEND flag
-  DE:GI  the window: every pasted row under the header down to row 1000
+  DE:GM  the window: every pasted row under the header down to row 1000
          (rows 5-1003), one row per pasted row HEADER_ROW+k: k, paste row,
          in range, line, row key (the 60 cells joined with U+241F, trimmed),
          duplicate, kept before the cap, running count, kept (the first 600),
@@ -164,7 +165,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          in '3. Lines', running (RUNNING / PARTIAL SHIFT / OVERTIME), status
          shown, highlight, % actual, bottles remaining, first kept row with
          the same WO # (EXACT), looks like a row of column titles, filled
-         cells of the row (only for the example row); then EW:GI: line
+         cells of the row (only for the example row); then EX:GM: line
          number, name shown, next shift, breaks, crew (from LB), the work
          order before it on the line, first-of-line flag, changeover code and
          minutes, cap change, cotton shown, remark, note flag, cotton flag, all
@@ -172,19 +173,20 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          wrapped in 4 lines (starts, texts), note rows, note rows before it,
          rate key, bottles per hour, bottles, full-hour equivalents, no rate,
          running total, the shift-clock steps (F2, whole shifts, rest, hour),
-         estimated time (number, text), next changeover, progress / changeover
+         estimated time (number, text), next changeover, when the changeover
+         into it starts, progress / changeover
          text, left / minutes text, CAP as size-type
-  GK:HX  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
+  GO:IB  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
          position, window row, note's window row, note line, row or note's
          window row, kind (row/note/spacer/""), first/last of line, then the
-         17 printed columns A:Q side by side (GS:HI), then the helpers
-  HZ:IS  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
+         17 printed columns A:Q side by side (GW:HM), then the helpers
+  ID:IW  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
          no., window row, name, work orders, line number, matching key, row
          on 3. Lines, name shown, status from the file, status typed, status
          shown, running, next shift, breaks, crew, note, the lines that are
          NOT IN YOUR LIST one after the other (flag, running count, name), and
          the line's row in the left table of '3. Lines'
-  IU:JA  3. Lines rows 1-100: line number, matching key (the number, or
+  IY:JE  3. Lines rows 1-100: line number, matching key (the number, or
          N:NAME without one), first row with the same key, status this shift
          and next (standard spelling), breaks, crew
 """
