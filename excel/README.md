@@ -48,14 +48,18 @@ holds the machinery.
   changeover minutes.
 - CAP as size-type (45-CRC), in bold orange when it differs from the work
   order before it (the app's Cap Change). CT in red bold on a count change.
-- Under a work order, in a cream note box: its **Changeover Notes** on one bold
-  row - what the changeover into it changes from the work order before it:
-  Cap / Count / Bottle Change (in one phrase, e.g. Cap, Count & Bottle
-  Change), Add / Remove / Change Cotton, Add / Remove / Change Desiccant, and
-  Dumping for a dumping work order (bulk A662 / A624). Only for changeovers
-  that start before the end of the shift (the same ones the summary counts);
-  a long list shrinks to fit. Then **Remarks:** and its remark (wrapped, up to
-  4 lines). The file's COT (cotton) column isn't printed as a column: Yes for
+- Under each work order, a thin notes row: one cell merged from WO to EST.
+  TIME, in 6.5 pt italics, cream when it has something. **Changeover Notes:**
+  what the changeover into it changes from the work order before it: Cap /
+  Count / Bottle Change (in one phrase, e.g. Cap, Count & Bottle Change), Add /
+  Remove / Change Cotton, Add / Remove / Change Desiccant, and Dumping for a
+  dumping work order (bulk A662 / A624) - only for changeovers that start
+  before the end of the shift (the same ones the summary counts). Then, after
+  a |, **Remarks:** and its remark. A long row shrinks to fit. (Merged cells,
+  font sizes and row heights can't follow the data, so the notes row is there
+  for every work order, blank when it has nothing to say.) The gap between
+  two lines is the last work order's empty notes row, or a blank row pair
+  when that work order has notes. The file's COT (cotton) column isn't printed as a column: Yes for
   Y / Yes / X, none for N / No / 0 / blank, else the file's value (Change
   Cotton (value)). 2. Check Columns shows the column it comes from, with an
   Override for a file that titles it differently. A desiccant of N / No / 0 /
@@ -143,8 +147,9 @@ From the web app:
   reordered.
 - A value too long for its column shrinks to fit (so nothing is cut off and no
   number turns into ####). Column widths are sized for real Excel, which gives
-  text fewer pixels than LibreOffice; nothing on the report is smaller than
-  8 pt (Excel draws smaller Calibri without ClearType, much wider).
+  text fewer pixels than LibreOffice; nothing on the report but the notes rows
+  (6.5 pt) is smaller than 8 pt (Excel draws smaller Calibri without
+  ClearType, much wider).
 - No conditional format changes a number format (in real Excel one meant for
   one column leaked into the next).
 - Excel's TRIM also turns runs of spaces inside a value into one space, and a
@@ -169,8 +174,8 @@ From the web app:
   (they hold other work orders on another day); columns can.
 - Limits (a red warning shows when exceeded): 600 work orders (the first 600
   rows with a Line, in paste order), pasted rows 1-1000, columns A-BH, 100
-  lines on 3. Lines, 700 rows on 4. Schedule (work orders, note rows and the
-  blank rows between lines), 5000 rows on 6. Line Rates.
+  lines on 3. Lines, 700 work orders and blank rows between lines on 4.
+  Schedule, 5000 rows on 6. Line Rates.
 
 From the JDE Packaging Schedule printout:
 
