@@ -3,10 +3,16 @@
 `JDE_Production_Schedule.xlsm` replaces the web app's **Production Schedule** tab with
 a single Excel workbook - no app. It works in Excel 2010 and newer (Windows),
 Excel for Mac and Excel on the web / Teams. Everything is worksheet formulas;
-one small macro (`JDENotes.FitNotes`, run by the workbook's events - no
-button) only hides the empty notes rows on 4. Schedule, so the work orders
-sit right under each other. Without macros (Excel on the web, or Enable
-Content not clicked) everything still works and those thin rows stay.
+a small macro (`JDENotes.FitNotes`, run by the workbook's events - no
+button) only tidies 4. Schedule: it hides the empty notes rows, so the work
+orders sit right under each other, and draws each line's banners - a rounded
+banner over the LINE cells (name and status, in the status color, centered)
+and a rounded pill in NEXT SHIFT; while they are on, the cell chips under them
+are switched off (`'4. Schedule'!AV1`). Before saving it takes both off
+(`JDENotes.Clean`) and puts them back after, so the saved file is always the
+plain layout: without macros (Excel on the web, or Enable Content not
+clicked) everything still works, with the cell-colored chips and the thin
+rows.
 
 It combines the app's report with the plant's **JDE Packaging Schedule** printout:
 each line's status this shift and next shift, the crew (EE), progress dots,
