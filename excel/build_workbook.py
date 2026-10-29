@@ -2009,12 +2009,11 @@ SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "n
                  ("AN", "CAP LOOK", None), ("AO", "BORDER", None), ("AP", "NEXT BORDER", None),
                  ("AQ", "LINE ROLE", "role"), ("AR", "BELOW BOX", None), ("AS", "TYPED", None),
                  ("AT", "NOTES LOOK", None), ("AU", "HIDE", None),
-                 ("AV", "BANNERS", None)]
+                 ("AW", "HL #", None)]
 NOTES_HELPERS = ("V", "W", "X", "AQ")          # also read on a notes row (status, first, last, role)
 TYPED_COL = "AS"
 NOTES_COL = "C"            # a notes row's text: one cell merged from SQ to EST. TIME
 HIDE_COL = "AU"            # 1 on a notes row the macro hides
-BANNERS_ON = "$AV$1"       # 1 while the macro's banners cover LINE and NEXT SHIFT (their chips are off)
 C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
 LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
 
@@ -2034,17 +2033,17 @@ def look_codes(r, cr):
         "AE": f"={edge}",
         # LINE: role (1 name, 2 status tag, 3 the rest, 4 a line with one work
         # order) x100 + status x10 + edge
-        # (under the macro's banners: the plain tab, role 3)
-        "AF": f"=IF($AE{r}=0,0,IF(N({BANNERS_ON})=1,3,$AQ{r})*100+$V{r}*10+$AE{r})",
+        "AF": f"=IF($AE{r}=0,0,$AQ{r}*100+$V{r}*10+$AE{r})",
         "AG": f"=IF($AE{r}=0,0,{data}*10+$AE{r})",
         "AH": f'=IF($AE{r}=0,0,IF(AND($U{r}=0,$Y{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
-        "AI": f"=IF($AE{r}=0,0,{prog}*10+$AE{r})",
-        "AJ": f'=IF($AE{r}=0,0,IF($U{r}=1,5,1)*10+$AE{r})',
-        "AK": (f'=IF($AE{r}=0,0,IF($U{r}=1,5,IF(OR($P{r}="no rate",$P{r}="no qty",$P{r}="—"),3,'
-               f'IF($Z{r}=1,1,2)))*10+$AE{r})'),
-        # (under the macro's pill: 10, the text in white)
-        "AL": (f'=IF($AE{r}=0,0,IF(OR($AQ{r}=2,$AQ{r}=4),IF(N({BANNERS_ON})=1,10,IF($AB{r}>0,$AB{r},7)),8)*10'
-               f'+$AE{r})'),
+        # PROGRESS, EE, EST. TIME: their look x10 + the row highlight (AW: 0
+        # none, 1 allergen, 2 oil, 3 dumping), x10 + edge
+        "AW": f'=IF(OR($S{r}<>"row",$U{r}=1),0,IF($T{r}="allergen",1,IF($T{r}="oil",2,IF($T{r}="bulk",3,0))))',
+        "AI": f"=IF($AE{r}=0,0,({prog}*10+$AW{r})*10+$AE{r})",
+        "AJ": f'=IF($AE{r}=0,0,(IF($U{r}=1,5,1)*10+$AW{r})*10+$AE{r})',
+        "AK": (f'=IF($AE{r}=0,0,(IF($U{r}=1,5,IF(OR($P{r}="no rate",$P{r}="no qty",$P{r}="—"),3,'
+               f'IF($Z{r}=1,1,2)))*10+$AW{r})*10+$AE{r})'),
+        "AL": f'=IF($AE{r}=0,0,IF(OR($AQ{r}=2,$AQ{r}=4),IF($AB{r}>0,$AB{r},7),8)*10+$AE{r})',
         "AN": f'=IF($AE{r}=0,0,IF(AND($U{r}=0,$AM{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
         # the box border takes the line's status color: + status x1000 on its
         # first and last rows, and always in NEXT SHIFT (its right side is the
@@ -2073,7 +2072,7 @@ def notes_codes(r, cr, remarks):
             f'IF(OR(AND($S{r}="notes",$C{r}="",NOT(AND(N($X{r})=1,{rm}=""))),$S{r - 1}="spacer"),1,0)')
     return {
         "AE": f'=IF($S{r}="notes",IF(AND(N($X{r})=1,{co}="",{rm}=""),0,4),0)',
-        "AF": f"=IF($AE{r}=0,0,IF(AND(N({BANNERS_ON})=0,$AQ{r}=4),4,3)*100+$V{r}*10+$AE{r})",
+        "AF": f"=IF($AE{r}=0,0,IF($AQ{r}=4,4,3)*100+$V{r}*10+$AE{r})",
         "AL": f"=IF($AE{r}=0,0,90+$AE{r})",
         "AP": f"=IF($AE{r}>0,$V{r}*1000,0)",
         "AS": f'=IF($C{r}&""<>Calc!${O[key]}${cr}&"",1,0)',
@@ -2248,7 +2247,7 @@ def add_conditional_formats(ws, last_row):
     # line with one work order) on its color; the box's left side in the
     # status color. (Role 3 / 4 at edge 3 or 4 is a work order's row or a
     # notes row - they look alike.)
-    for role, edges in ((1, (2, 4)), (2, (3, 4)), (3, (1, 2, 3, 4)), (4, (1, 2, 4))):
+    for role, edges in ((1, (2, 4)), (2, (3, 4)), (3, (2, 3, 4)), (4, (1, 2, 4))):
         for st, strong, txt, tint in st_colors:
             fr = frame_of[st]
             for e in edges:
@@ -2261,6 +2260,7 @@ def add_conditional_formats(ws, last_row):
     # data columns B:E, G:H, J:L: row highlight (allergen > oil > dumping),
     # grey for a line that isn't scheduled
     hl_fill = {1: None, 2: C_ALLERGEN, 3: C_OIL, 4: C_BULK, 5: None}
+    row_hl = [None, C_ALLERGEN, C_OIL, C_BULK]          # AW: the row highlight in PROGRESS to EST. TIME
     data = rng(("B", "E"), ("G", "H"), ("J", "L"))
     for v in range(1, 6):
         rules(data, "AG", v, hl_fill[v], grey if v == 5 else None)
@@ -2277,20 +2277,23 @@ def add_conditional_formats(ws, last_row):
     for i, (_, _, col) in enumerate(CO_LABELS, start=3):
         prog_fonts[i] = font(BODY_PT, i >= 5, col)
     for v, fo in prog_fonts.items():
-        rules(rng(("M", "N")), "AI", v, None, fo)
+        for h, hf in enumerate(row_hl):
+            rules(rng(("M", "N")), "AI", v * 10 + h, hf, fo)
     # EE
     for v, fo in ((1, None), (5, grey)):
-        rules(rng(("O", "O")), "AJ", v, None, fo)
+        for h, hf in enumerate(row_hl):
+            rules(rng(("O", "O")), "AJ", v * 10 + h, hf, fo)
     # EST. TIME: the running work order's time in bold navy
     est_fonts = {1: font(BODY_PT, True, C_TITLE), 2: font(BODY_PT, False, "262626"),
                  3: font(BODY_PT, False, "7F7F7F", italic=True), 5: grey}
     for v, fo in est_fonts.items():
-        rules(rng(("P", "P")), "AK", v, None, fo)
+        for h, hf in enumerate(row_hl):
+            rules(rng(("P", "P")), "AK", v * 10 + h, hf, fo)
     # NEXT SHIFT: a chip in the next shift's status color on the row of the
     # line's status tag (looks 1-6, 7 = none), plain on the other work order
     # rows (8) and the notes rows (9)
     q = rng(("Q", "Q"))
-    for v, strong, txt, _ in st_colors[1:] + [(7, None, None, None), (8, None, None, None), (10, None, "FFFFFF", None)]:
+    for v, strong, txt, _ in st_colors[1:] + [(7, None, None, None), (8, None, None, None)]:
         for e in (1, 2, 3, 4):
             for st in range(7):
                 fr = frame_of[st]
@@ -2312,62 +2315,33 @@ def add_conditional_formats(ws, last_row):
 # itself (no button); the workbook works the same without it.
 
 VBA_MODULE = """Option Explicit
-' 4. Schedule, tidied by the macro (it runs by itself - see ThisWorkbook):
-' - hides the notes rows that have nothing to say (hidden column {hide} says
-'   which), so the work orders sit right under each other;
-' - draws a banner over each line's LINE cells (its name and status, in the
-'   status color) and a pill in NEXT SHIFT, centered on the line.
-' Before saving it takes both off (Clean) and puts them back after, so the
-' saved file looks right without macros too (Excel on the web, or Enable
-' Content not clicked: everything still works, with the plain cell look).
-Private lastSig As String
-
-Private Function FillOf(ByVal k As Long) As Long
-    Select Case k
-{fills}
-        Case Else: FillOf = RGB({nofill})
-    End Select
-End Function
-
-Private Function TextOf(ByVal k As Long) As Long
-    Select Case k
-{texts}
-        Case Else: TextOf = RGB({notext})
-    End Select
-End Function
-
-Private Function Txt(ByVal x As Variant) As String
-    If IsError(x) Then Txt = "" Else Txt = CStr(x)
-End Function
-
-Private Function Num(ByVal x As Variant) As Double
-    If IsError(x) Then
-        Num = 0
-    ElseIf IsNumeric(x) Then
-        Num = CDbl(x)
-    Else
-        Num = 0
-    End If
-End Function
+' Hides the notes rows of 4. Schedule that have nothing to say (its hidden
+' column {hide} says which), so the work orders sit right under each other.
+' It runs by itself: when the file opens, when 4. Schedule recalculates or is
+' opened, and before printing (see ThisWorkbook). Before saving it shows them
+' again (Clean) and hides them after, so the saved file looks right without
+' macros too (Excel on the web, or Enable Content not clicked: everything
+' still works, those thin rows just stay).
+Private lastPattern As String
 
 Public Sub FitNotes(Optional ByVal always As Boolean = False)
-    Dim ws As Worksheet, i As Long, n As Long, sig As String, addr As String
-    Dim hide As Variant, nm As Variant, nx As Variant, st As Variant, ed As Variant
+    Dim ws As Worksheet, v As Variant, i As Long, pattern As String, addr As String
     Dim events As Boolean, screen As Boolean, wasSaved As Boolean
     On Error Resume Next
     Set ws = ThisWorkbook.Worksheets("{sched}")
     If ws Is Nothing Then Exit Sub
-    hide = ws.Range("{hide}{first}:{hide}{last}").Value
-    nm = ws.Range("A{first}:A{last}").Value
-    nx = ws.Range("Q{first}:Q{last}").Value
-    st = ws.Range("V{first}:V{last}").Value
-    ed = ws.Range("AE{first}:AE{last}").Value
+    v = ws.Range("{hide}{first}:{hide}{last}").Value
     If Err.Number <> 0 Then Exit Sub
-    n = UBound(hide, 1)
-    For i = 1 To n
-        sig = sig & Num(hide(i, 1)) & Num(ed(i, 1)) & Num(st(i, 1)) & Txt(nm(i, 1)) & "/" & Txt(nx(i, 1)) & ";"
+    For i = 1 To UBound(v, 1)
+        If IsError(v(i, 1)) Then
+            pattern = pattern & "0"
+        ElseIf v(i, 1) = 1 Then
+            pattern = pattern & "1"
+        Else
+            pattern = pattern & "0"
+        End If
     Next i
-    If sig = lastSig And Not always Then Exit Sub
+    If pattern = lastPattern And Not always Then Exit Sub
     wasSaved = ThisWorkbook.Saved
     events = Application.EnableEvents
     screen = Application.ScreenUpdating
@@ -2375,8 +2349,8 @@ Public Sub FitNotes(Optional ByVal always As Boolean = False)
     Application.ScreenUpdating = False
     ws.Unprotect
     ws.Rows("{first}:{last}").Hidden = False
-    For i = 1 To n
-        If Num(hide(i, 1)) = 1 Then
+    For i = 1 To Len(pattern)
+        If Mid$(pattern, i, 1) = "1" Then
             If Len(addr) > 200 Then
                 ws.Range(addr).EntireRow.Hidden = True
                 addr = ""
@@ -2386,15 +2360,14 @@ Public Sub FitNotes(Optional ByVal always As Boolean = False)
         End If
     Next i
     If Len(addr) > 0 Then ws.Range(addr).EntireRow.Hidden = True
-    DrawBanners ws, n, nm, nx, st, ed
-    ws.Protect DrawingObjects:=True, Contents:=True, Scenarios:=False, AllowFormattingColumns:=True
-    lastSig = sig
+    ws.Protect DrawingObjects:=False, Contents:=True, Scenarios:=False, AllowFormattingColumns:=True
+    lastPattern = pattern
     ThisWorkbook.Saved = wasSaved
     Application.ScreenUpdating = screen
     Application.EnableEvents = events
 End Sub
 
-' the file is saved without the macro's changes (see ThisWorkbook)
+' the file is saved with every row showing (see ThisWorkbook)
 Public Sub Clean()
     Dim ws As Worksheet, events As Boolean
     On Error Resume Next
@@ -2403,143 +2376,16 @@ Public Sub Clean()
     events = Application.EnableEvents
     Application.EnableEvents = False
     ws.Unprotect
-    RemoveBanners ws
-    ws.Range("{flag}").ClearContents
     ws.Rows("{first}:{last}").Hidden = False
     ws.Protect DrawingObjects:=False, Contents:=True, Scenarios:=False, AllowFormattingColumns:=True
-    lastSig = ""
+    lastPattern = ""
     Application.EnableEvents = events
-End Sub
-
-Private Sub RemoveBanners(ByVal ws As Worksheet)
-    Dim k As Long
-    For k = ws.Shapes.Count To 1 Step -1
-        If Left$(ws.Shapes(k).Name, 4) = "JDE_" Then ws.Shapes(k).Delete
-    Next k
-End Sub
-
-Private Sub DrawBanners(ByVal ws As Worksheet, ByVal n As Long, nm As Variant, nx As Variant, st As Variant, ed As Variant)
-    Dim i As Long, j As Long, k As Long, r0 As Long, r1 As Long, kind As Long, nextRow As Long
-    Dim boxTop As Double, boxH As Double, x As Double, w As Double, h As Double
-    Dim lineName As String, status As String, nextText As String, label As String
-    Dim shp As Shape
-    On Error Resume Next
-    RemoveBanners ws
-    ws.Range("{flag}").Value = 1
-    i = 1
-    Do While i <= n
-        If Num(ed(i, 1)) = 1 Or Num(ed(i, 1)) = 2 Then
-            ' a box: from its first row while the rows are in the box
-            j = i
-            Do While j < n
-                If Num(ed(j + 1, 1)) = 3 Or Num(ed(j + 1, 1)) = 4 Then j = j + 1 Else Exit Do
-            Loop
-            r0 = i + {first} - 1
-            r1 = j + {first} - 1
-            lineName = ""
-            status = ""
-            nextText = ""
-            nextRow = r0
-            For k = i To j
-                If Txt(nm(k, 1)) <> "" Then
-                    If lineName = "" Then
-                        lineName = Txt(nm(k, 1))
-                    ElseIf status = "" Then
-                        status = Txt(nm(k, 1))
-                    End If
-                End If
-                If nextText = "" And Txt(nx(k, 1)) <> "" Then
-                    nextText = Txt(nx(k, 1))
-                    nextRow = k + {first} - 1
-                End If
-            Next k
-            kind = Num(st(i, 1))
-            If status = "" Then status = Txt(ws.Range("AC" & r0).Value)
-            boxTop = ws.Cells(r0, 1).Top
-            boxH = ws.Cells(r1, 1).Top + ws.Cells(r1, 1).Height - boxTop
-            ' LINE: the line name and its status, in the status color
-            x = ws.Cells(r0, 1).Left
-            w = ws.Cells(r0, 1).Width
-            Set shp = ws.Shapes.AddShape({shape}, x + 1.5, boxTop + 1.5, w - 3, boxH - 3)
-            shp.Name = "JDE_line_" & r0
-            label = lineName
-            If status <> "" And boxH >= 21 Then label = lineName & vbLf & status
-            Banner shp, label, Len(lineName), kind, 9.5, 7.5
-            ' NEXT SHIFT: a pill in the middle of the box
-            If nextText <> "" Then
-                x = ws.Cells(r0, 17).Left
-                w = ws.Cells(r0, 17).Width
-                h = 12.5
-                If h > boxH - 3 Then h = boxH - 3
-                Set shp = ws.Shapes.AddShape({shape}, x + 2, boxTop + (boxH - h) / 2, w - 4, h)
-                shp.Name = "JDE_next_" & r0
-                Banner shp, nextText, Len(nextText), Num(ws.Range("AB" & nextRow).Value), 7.5, 7.5
-                shp.Adjustments.Item(1) = 0.5
-            End If
-            i = j + 1
-        Else
-            i = i + 1
-        End If
-    Loop
-End Sub
-
-' fill, no outline, bold text in the status's text color: the first part
-' big, the rest small, made smaller until it fits. (Numbers instead of the
-' Office library's named constants, and late binding for TextFrame2, so the
-' project needs no reference to it.)
-Private Sub Banner(ByVal shp As Shape, ByVal label As String, ByVal firstLen As Long, ByVal kind As Long, _
-                   ByVal bigSize As Double, ByVal smallSize As Double)
-    Dim tf As Object, tries As Long
-    On Error Resume Next
-    shp.Fill.Visible = -1
-    shp.Fill.Solid
-    shp.Fill.ForeColor.RGB = FillOf(kind)
-    shp.Line.Visible = 0
-    shp.Shadow.Visible = 0
-    shp.Placement = 1
-    shp.Adjustments.Item(1) = 0.18
-    Set tf = shp.TextFrame2
-    If tf Is Nothing Then
-        ' (no TextFrame2: the plain text frame)
-        With shp.TextFrame
-            .Characters.Text = label
-            .HorizontalAlignment = -4108
-            .VerticalAlignment = -4108
-            .Characters.Font.Bold = True
-            .Characters.Font.Size = smallSize
-            .Characters.Font.Color = TextOf(kind)
-            .Characters(1, firstLen).Font.Size = bigSize
-        End With
-        Exit Sub
-    End If
-    tf.WordWrap = 0
-    tf.AutoSize = 0
-    tf.MarginLeft = 1
-    tf.MarginRight = 1
-    tf.MarginTop = 0
-    tf.MarginBottom = 0
-    tf.VerticalAnchor = 3
-    tf.TextRange.Text = label
-    tf.TextRange.ParagraphFormat.Alignment = 2
-    tf.TextRange.ParagraphFormat.SpaceBefore = 0
-    tf.TextRange.ParagraphFormat.SpaceAfter = 0
-    tf.TextRange.Font.Name = "Calibri"
-    tf.TextRange.Font.Bold = -1
-    tf.TextRange.Font.Fill.ForeColor.RGB = TextOf(kind)
-    For tries = 1 To 10
-        tf.TextRange.Font.Size = smallSize
-        tf.TextRange.Characters(1, firstLen).Font.Size = bigSize
-        If tf.TextRange.BoundWidth <= shp.Width - 2 And tf.TextRange.BoundHeight <= shp.Height + 1 Then Exit For
-        bigSize = bigSize - 0.5
-        smallSize = smallSize - 0.5
-        If smallSize < 5 Then Exit For
-    Next tries
 End Sub
 """
 
 VBA_THISWORKBOOK = """Option Explicit
-' 4. Schedule is tidied by JDENotes (empty notes rows hidden, banners). The
-' file is saved without those changes, so it looks right without macros too.
+' 4. Schedule's empty notes rows are hidden by JDENotes.FitNotes. The file is
+' saved with them showing, so it looks right without macros too.
 
 Private Sub Workbook_Open()
     JDENotes.FitNotes True
@@ -2568,17 +2414,9 @@ End Sub
 """
 
 
-def vba_bin(shape=5):
-    """The macros (shape: the banners' AutoShape type - 5 rounded rectangle;
-    the tests use 1, a plain rectangle, which LibreOffice can draw)."""
+def vba_bin():
     from vba_project import vba_project_bin
-    rgb = lambda c: f"{int(c[0:2], 16)}, {int(c[2:4], 16)}, {int(c[4:6], 16)}"
-    fills = "\n".join(f"        Case {k}: FillOf = RGB({rgb(strong)})" for k, (_, strong, _, _) in enumerate(STATUSES, 1))
-    texts = "\n".join(f"        Case {k}: TextOf = RGB({rgb(txt)})" for k, (_, _, txt, _) in enumerate(STATUSES, 1))
-    fill_in = lambda t: (t.replace("{fills}", fills).replace("{texts}", texts)
-                         .replace("{nofill}", rgb(C_NO_STATUS)).replace("{notext}", rgb(C_TITLE))
-                         .replace("{flag}", BANNERS_ON.replace("$", "")).replace("{shape}", str(shape))
-                         .replace("{hide}", HIDE_COL).replace("{sched}", S_SCHED)
+    fill_in = lambda t: (t.replace("{hide}", HIDE_COL).replace("{sched}", S_SCHED)
                          .replace("{first}", str(SCHED_ROW0)).replace("{last}", str(SCHED_LAST)))
     return vba_project_bin([("ThisWorkbook", "document", fill_in(VBA_THISWORKBOOK)),
                             ("JDENotes", "module", fill_in(VBA_MODULE))])
@@ -2610,9 +2448,9 @@ HOW_ROWS = [
     ("kv", "For", "Anyone printing the Production Schedule (1st, 2nd or 3rd shift). About 5 minutes."),
     ("kv", "This file", "Replaces the Production Schedule tab of the JDE Sched web app and the JDE Packaging Schedule "
                         "printout, in one. It works in Excel 2010 and newer, Excel for Mac and Excel on the web / "
-                        "Teams. A small macro tidies 4. Schedule by itself - it hides the empty notes rows and "
-                        "draws the LINE and NEXT SHIFT banners; click Enable Content when Excel asks. Without it "
-                        "(Excel on the web, or macros off) everything still works, in the plain cell look."),
+                        "Teams. One small macro hides the empty notes rows on 4. Schedule by itself - click Enable "
+                        "Content when Excel asks. Without it (Excel on the web, or macros off) everything still "
+                        "works; those thin rows just stay."),
     ("kv", "Mac", "The keys below are for Windows. On a Mac use Cmd instead of Ctrl (Cmd+C, Cmd+V, Cmd+Z, Cmd+Y, "
                   "Cmd+S, Cmd+P, Cmd+H). Today's date is Control+; and the time Cmd+; on a Mac."),
     ("gap",),
@@ -2747,8 +2585,7 @@ HOW_ROWS = [
     ("kv", "LINE", "Each line is a box with a border in its status color this shift (the BORDER legend, below): in "
                    "the middle of the box its name, and right under it its status, in the same color. A line with "
                    "one work order shows its status by the color of its name. A line with no status has a navy "
-                   "border. With macros on, a rounded banner in the status color covers the LINE cells of the "
-                   "box: the name, and its status under it."),
+                   "border."),
 ] + [("swatch", strong, desc) for (st, strong, _, _), desc in zip(STATUSES, [
     "RUNNING - the line runs this shift. Estimated times.",
     "PARTIAL SHIFT - the line runs part of the shift. Estimated times (as if it ran the whole shift).",
@@ -2771,8 +2608,7 @@ HOW_ROWS = [
                         "6. Line Rates (add them there); no qty = the work order has no WO Qty; a dash = a work "
                         "order above it on the line has no time, so this one can't have one either."),
     ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color, in the middle of "
-                         "the box on the same row as this shift's status (with macros on: a rounded pill in the "
-                         "middle of the box)."),
+                         "the box on the same row as this shift's status."),
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
     ("kv", "NOTES", "Thin rows under a work order, from SQ to EST. TIME, in small italics on cream. Changeover Notes: what the changeover into the work order changes from the one "
@@ -2781,7 +2617,7 @@ HOW_ROWS = [
                     "Dumping (bulk A662 / A624); only for changeovers that start before the end of the shift (the "
                     "summary's count at the top). Under it, on its own row, Remarks: and its remark. A long row "
                     "gets smaller to fit - the whole remark is on 1. Paste Schedule."),
-    ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to WO QTY. Highlights go allergen "
+    ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to EST. TIME. Highlights go allergen "
                            "first, then oil, then dumping."),
     ("swatch", C_OIL, "Oily product (the description contains OIL)."),
     ("swatch", C_BULK, "Dumping - the light blue rows: bulk item A662 or A624."),
@@ -2800,7 +2636,7 @@ HOW_ROWS = [
                                                  "after step 5. Empty sheet: Part A, steps 2a to 4b. Capacity "
                                                  "warning: see Limits below."),
     ("kv", "The sheets look empty", "Click Enable Editing on the yellow bar at the top."),
-    ("kv", "Thin empty rows under the work orders", "The macro that hides them (and draws the banners) is off. Click Enable Content on the "
+    ("kv", "Thin empty rows under the work orders", "The macro that hides them is off. Click Enable Content on the "
                                                     "yellow bar. A red bar saying Microsoft has blocked macros: close "
                                                     "the file, right-click it > Properties > tick Unblock > OK, and "
                                                     "open it again (or ask IT to make the shared folder a Trusted "
