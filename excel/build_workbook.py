@@ -1382,7 +1382,10 @@ def build_calc(wb):
         for oc, wc in row_from.items():
             v = ix(wc, k) if oc in ("o_wo", "o_qty", "o_crew") else ix(wc, k) + '&""'
             ws[f"{O[oc]}{r_}"] = f'=IF({is_row},{v},IF({is_note},{piece.get(oc, chr(34) * 2)},""))'
-        est = (f'IF({ix("sched", k)}=1,IF({ix("estt", k)}<>"",{ix("estt", k)},IF({ix("norate", k)}=1,"no rate","")),"")')
+        # no rate / no qty: this work order can't be timed; a dash: one above it
+        # on the line can't, so neither can it
+        est = (f'IF({ix("sched", k)}=1,IF({ix("estt", k)}<>"",{ix("estt", k)},IF({ix("norate", k)}=1,'
+               f'IF({ix("rate", k)}="","no rate","no qty"),"—")),"")')
         ws[f"{O['o_est']}{r_}"] = f'=IF({is_row},{est},"")'
         ws[f"{O['o_next']}{r_}"] = f'=IF(AND({inb(A["kind"])},{A["first"]}=1),{ix("nxt", kk)},"")'
         # helpers for the formats (4. Schedule's hidden columns) and the tests
@@ -1871,7 +1874,8 @@ def look_codes(r):
         "AH": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$Y{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
         "AI": f"=IF($AE{r}=0,0,{prog}*10+$AE{r})",
         "AJ": f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,1))*10+$AE{r})',
-        "AK": f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,IF($P{r}="no rate",3,IF($Z{r}=1,1,2))))*10+$AE{r})',
+        "AK": (f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,IF(OR($P{r}="no rate",$P{r}="no qty",$P{r}="—"),3,'
+               f'IF($Z{r}=1,1,2))))*10+$AE{r})'),
         "AL": f'=IF($AE{r}=0,0,IF($W{r}=1,IF($AB{r}>0,$AB{r},7),IF($S{r}="note",9,8))*10+$AE{r})',
         "AN": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$AM{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
     }
@@ -2253,7 +2257,8 @@ HOW_ROWS = [
                         "(6. Line Rates) x the line efficiency (5. Settings), slower in the break and lunch hours on "
                         "lines with Breaks & lunch = Yes. Only RUNNING, PARTIAL SHIFT and OVERTIME lines get times; "
                         "the date is in front of a time that isn't today. no rate = the line and item are not on "
-                        "6. Line Rates (add them there)."),
+                        "6. Line Rates (add them there); no qty = the work order has no WO Qty; a dash = a work "
+                        "order above it on the line has no time, so this one can't have one either."),
     ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color."),
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
@@ -2325,7 +2330,8 @@ HOW_ROWS = [
     ("kv", "WARNING: see 2. Check Columns", "The box on 2. Check Columns says what is wrong (see the first row of "
                                             "this list)."),
     ("kv", "No estimated times", "Only lines that are RUNNING, PARTIAL SHIFT or OVERTIME (This shift on 3. Lines) "
-                                 "get them. no rate: add the line and item to 6. Line Rates."),
+                                 "get them. no rate: add the line and item to 6. Line Rates. A dash: the work order "
+                                 "above it has no rate (or no WO Qty)."),
     ("kv", "The estimated times look wrong", "Check Schedule as of (the time the % Complete was taken), the line's "
                                              "Breaks & lunch on 3. Lines, its bottles per hour on 6. Line Rates, and "
                                              "the line efficiency and changeover minutes on 5. Settings. A time after "
