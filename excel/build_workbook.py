@@ -61,12 +61,13 @@ Workbook-scope defined names
 
 '4. Schedule' rows 1-4: title band and shift, subtitle (shift, date, as of) +
 status legend, one-line summary (or the warnings) + changeover / row legend,
-column titles. From row 5, each line is a box: column A has the line name on
-its first row and its status tag on the 2nd row (a one-row line shows the
-status by the cell color); a remark prints on note rows under its work order
+column titles. From row 5, each line is a box: column A has the line name
+and right under it its status tag in the middle of the box (the tag on the
+middle row, with the NEXT SHIFT chip; a one-row line shows the status by the
+cell color); a remark prints on note rows under its work order
 (COTTON: / NOTE: in ITEM, the cotton and the remark wrapped in ITEM
 DESCRIPTION); a blank row follows
-each line. Hidden columns S:AN hold the helpers and the look codes the
+each line. Hidden columns S:AQ hold the helpers and the look codes the
 conditional formats test (one rule per code, so one rule is true per cell).
 
 Estimated times: per line, in Seq order, the work in full-hour equivalents
@@ -177,17 +178,20 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          estimated time (number, text), next changeover, when the changeover
          into it starts, progress / changeover
          text, left / minutes text, CAP as size-type
-  GQ:ID  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
+  GQ:IF  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
          position, window row, note's window row, note line, row or note's
          window row, kind (row/note/spacer/""), first/last of line, then the
-         17 printed columns A:Q side by side (GY:HO), then the helpers
-  IF:IY  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
+         17 printed columns A:Q side by side (GY:HO), then the helpers, the
+         line no. and the row's role in LINE / NEXT SHIFT (name, status tag,
+         other, one-row line)
+  IH:JD  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
          no., window row, name, work orders, line number, matching key, row
          on 3. Lines, name shown, status from the file, status typed, status
          shown, running, next shift, breaks, crew, note, the lines that are
          NOT IN YOUR LIST one after the other (flag, running count, name), and
-         the line's row in the left table of '3. Lines'
-  JA:JG  3. Lines rows 1-100: line number, matching key (the number, or
+         the line's row in the left table of '3. Lines', its box on
+         4. Schedule (first report row, rows, the name's row)
+  JF:JL  3. Lines rows 1-100: line number, matching key (the number, or
          N:NAME without one), first row with the same key, status this shift
          and next (standard spelling), breaks, crew
 """
@@ -687,14 +691,16 @@ W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "
          + [f"nt{i}" for i in range(1, NOTE_LINES + 1)] + [
           "nrows", "nbefore", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
           "est", "estt", "nextco", "cot_t", "prog", "left", "capc"])
+# (Calc rows 5-704 hold a window row and a report row: keep their XML under
+# 32 KB - the zip's compression window - or the file grows by about a fifth)
 O = Band(W.end + 2, ["pn", "k", "nk", "cidx", "kk", "kind", "first", "last"] + [k for _, k in SCHED_COLS]
          + ["hl", "sched", "cchg", "capx", "o_status", "fw", "code", "ns", "stidx", "nidx", "r_pa", "r_br",
-            "r_note", "r_pct", "r_cap"])
+            "r_note", "r_pct", "r_cap", "lo", "role"])
 # the lines in today's schedule, in report order (row n = the line with lno n):
 # its number and matching key, its row on 3. Lines, the name shown, statuses,
-# breaks and crew
+# breaks and crew, and where its box is on 4. Schedule
 LB = Band(O.end + 2, ["n", "lk", "name", "cnt", "lnum", "lkey", "lidx", "dname", "der", "ovst", "st", "sched",
-                      "nxt", "brk", "crew", "note", "miss", "mcum", "mname", "lrow"])
+                      "nxt", "brk", "crew", "note", "miss", "mcum", "mname", "lrow", "ltop", "lsz", "lnp"])
 # 3. Lines list rows: line number, matching key (the number, or the name when
 # it has none), the first list row with the same key, and its inputs read once
 LK = Band(LB.end + 2, ["num", "key", "first", "st", "nx", "brk", "crew"])
@@ -1474,19 +1480,28 @@ def build_calc(wb):
         ws[f"{O['first']}{r_}"] = f'=IF(AND({inb(A["kind"])},NOT({inb(prev_kind)})),1,0)'
         ws[f"{O['last']}{r_}"] = f'=IF(AND({inb(A["kind"])},NOT({inb(next_kind)})),1,0)'
         is_row, is_note, kk, k = f'{A["kind"]}="row"', f'{A["kind"]}="note"', A["kk"], A["k"]
-        # LINE: the name on the line's first row and its status tag right under
-        # it; blank below
+        # LINE: the name and right under it the status tag, in the middle of
+        # the line's box (the tag on the middle row); NEXT SHIFT on the tag's
+        # row. Role 1 name, 2 tag, 3 the rest, 4 a line with a single row
+        # (name and NEXT SHIFT; the status shows by the cell's color)
         name, tag = ix("dname", kk), ix("stshown", kk)
-        # (a line with a single row shows its status by the cell's color)
-        prev_first = f"N(${O['first']}{r_ - 1})" if r_ > 5 else "0"
-        ws[f"{O['o_line']}{r_}"] = (f'=IF({inb(A["kind"])},IF({A["first"]}=1,{name},IF({prev_first}=1,{tag},"")),"")')
+        lbr = lambda n: f"${LB[n]}$5:${LB[n]}${4 + LINE_SLOTS}"
+        lo = A["lo"]
+        ws[f"{O['lo']}{r_}"] = f'=IF({kk}=0,0,{ix("lno", kk)})'
+        # (past the 100 lines of the lines table: the name on the first row)
+        ws[f"{O['role']}{r_}"] = (f'=IF({lo}=0,0,IFERROR(IF(INDEX({lbr("lsz")},{lo})=1,4,'
+                                  f'IFERROR(MATCH({A["pn"]}-INDEX({lbr("lnp")},{lo}),{{0,1}},0),3)),'
+                                  f'IF({A["first"]}=1,1,3)))')
+        role = A["role"]
+        ws[f"{O['o_line']}{r_}"] = f'=IF(OR({role}=1,{role}=4),{name},IF({role}=2,{tag},""))'
         # work-order rows show the work order; note rows show NOTE: under the
         # item and a line of the remark under the description
         # (COTTON: row first when the work order has cotton, then the remark's lines)
+        # (note line ci - hc: 0 the cotton, 1-4 the remark's lines)
         hc, ci = ix("hascot", A["nk"]), A["cidx"]
-        line_i = "CHOOSE(" + f"{ci}-{hc}" + "," + ",".join(ix(f"nt{i}", A["nk"]) for i in range(1, NOTE_LINES + 1)) + ")"
-        piece = {"o_item": f'IF({hc}=1,IF({ci}=1,"COTTON:",IF({ci}=2,"NOTE:","")),IF({ci}=1,"NOTE:",""))',
-                 "o_desc": f'IF({hc}=1,IF({ci}=1,{ix("cotnote", A["nk"])},{line_i}),{line_i})'}
+        piece = {"o_item": f'IF({ci}-{hc}=0,"COTTON:",IF({ci}-{hc}=1,"NOTE:",""))',
+                 "o_desc": f"CHOOSE({ci}-{hc}+1,{ix('cotnote', A['nk'])},"
+                           + ",".join(ix(f"nt{i}", A["nk"]) for i in range(1, NOTE_LINES + 1)) + ")"}
         for oc, wc in row_from.items():
             v = ix(wc, k) if oc in ("o_wo", "o_qty", "o_crew") else ix(wc, k) + '&""'
             ws[f"{O[oc]}{r_}"] = f'=IF({is_row},{v},IF({is_note},{piece.get(oc, chr(34) * 2)},""))'
@@ -1495,7 +1510,7 @@ def build_calc(wb):
         est = (f'IF({ix("sched", k)}=1,IF({ix("estt", k)}<>"",{ix("estt", k)},IF({ix("norate", k)}=1,'
                f'IF({ix("rate", k)}="","no rate","no qty"),"—")),"")')
         ws[f"{O['o_est']}{r_}"] = f'=IF({is_row},{est},"")'
-        ws[f"{O['o_next']}{r_}"] = f'=IF(AND({inb(A["kind"])},{A["first"]}=1),{ix("nxt", kk)},"")'
+        ws[f"{O['o_next']}{r_}"] = f'=IF(OR({role}=2,{role}=4),{ix("nxt", kk)},"")'
         # helpers for the formats (4. Schedule's hidden columns) and the tests
         ws[f"{O['hl']}{r_}"] = f'=IF({is_row},{ix("hl", k)},"")'
         ws[f"{O['sched']}{r_}"] = f'=IF({inb(A["kind"])},{ix("sched", kk)},0)'
@@ -1551,6 +1566,14 @@ def build_calc(wb):
         ws[f"{LB['mname']}{r_}"] = f'=IFERROR(INDEX({nm},MATCH({A["n"]},{mc},0)),"")'
         # the row of the line in the left table of 3. Lines (where it is ticked)
         ws[f"{LB['lrow']}{r_}"] = f'=IF({lk}=0,"",IF({li}>0,{li}+3,""))'
+        # its box on 4. Schedule: first report row (the lines before it and a
+        # blank row after each), rows, and the name's row (the status tag right
+        # under it is the middle row)
+        ws[f"{LB['ltop']}{r_}"] = (f'=IF({lk}=0,0,COUNTIF({wr("lno")},"<"&{A["n"]})'
+                                   f'+SUMIFS({wr("nrows")},{wr("lno")},"<"&{A["n"]})+{A["n"]})')
+        ws[f"{LB['lsz']}{r_}"] = (f'=IF({lk}=0,0,MIN({A["cnt"]}+SUMIFS({wr("nrows")},{wr("lno")},{A["n"]}),'
+                                  f'{OUT_ROWS + 1}-{A["ltop"]}))')
+        ws[f"{LB['lnp']}{r_}"] = f'=IF({lk}=0,0,{A["ltop"]}+IF({A["lsz"]}<=1,0,INT({A["lsz"]}/2)-1))'
 
     # ---- 3. Lines list: matching key of each row ------------------------------
     put(ws, f"{LK['key']}3", "3. Lines rows", font=hdr)
@@ -1979,7 +2002,8 @@ SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "n
                  ("AD", "RUNS", "sched"), ("AE", "EDGE", None), ("AF", "LINE LOOK", None), ("AG", "DATA LOOK", None),
                  ("AH", "CT LOOK", None), ("AI", "PROGRESS LOOK", None), ("AJ", "EE LOOK", None),
                  ("AK", "EST LOOK", None), ("AL", "NEXT LOOK", None), ("AM", "CAP CHG", "capx"),
-                 ("AN", "CAP LOOK", None), ("AO", "BORDER", None), ("AP", "NEXT BORDER", None)]
+                 ("AN", "CAP LOOK", None), ("AO", "BORDER", None), ("AP", "NEXT BORDER", None),
+                 ("AQ", "LINE ROLE", "role")]
 C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
 LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
 
@@ -1987,23 +2011,23 @@ LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
 def look_codes(r):
     """The look codes of 4. Schedule row r (helper columns AE:AL)."""
     edge = f'IF(OR($S{r}="row",$S{r}="note"),IF($W{r}=1,IF($X{r}=1,1,2),IF($X{r}=1,3,4)),0)'
-    prev_first = f"N($W{r - 1})"
     data = (f'IF($S{r}="note",IF($D{r}="COTTON:",7,6),IF($U{r}=1,5,IF($T{r}="allergen",2,IF($T{r}="oil",3,'
             f'IF($T{r}="bulk",4,1)))))')
     prog = (f'IF($S{r}="note",9,IF($U{r}=1,8,IF($Z{r}=1,IF($M{r}="Not Started Yet",2,1),IF($AA{r}="S1",3,'
             f'IF($AA{r}="S1 Count Change",4,IF($AA{r}="S3",5,IF($AA{r}="S4",6,7)))))))')
     return {
         "AE": f"={edge}",
-        # LINE: 1 name, 2 status tag, 3 the rest, 4 a line with one row - x100,
-        # + status x10 + edge
-        "AF": f"=IF($AE{r}=0,0,IF($W{r}=1,IF($X{r}=1,4,1),IF({prev_first}=1,2,3))*100+$V{r}*10+$AE{r})",
+        # LINE: role (1 name, 2 status tag, 3 the rest, 4 a line with one row)
+        # x100 + status x10 + edge
+        "AF": f"=IF($AE{r}=0,0,$AQ{r}*100+$V{r}*10+$AE{r})",
         "AG": f"=IF($AE{r}=0,0,{data}*10+$AE{r})",
         "AH": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$Y{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
         "AI": f"=IF($AE{r}=0,0,{prog}*10+$AE{r})",
         "AJ": f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,1))*10+$AE{r})',
         "AK": (f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,IF(OR($P{r}="no rate",$P{r}="no qty",$P{r}="—"),3,'
                f'IF($Z{r}=1,1,2))))*10+$AE{r})'),
-        "AL": f'=IF($AE{r}=0,0,IF($W{r}=1,IF($AB{r}>0,$AB{r},7),IF($S{r}="note",9,8))*10+$AE{r})',
+        "AL": (f'=IF($AE{r}=0,0,IF(OR($AQ{r}=2,$AQ{r}=4),IF($AB{r}>0,$AB{r},7),IF($S{r}="note",9,8))*10'
+               f'+$AE{r})'),
         "AN": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$AM{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
         # the box border takes the line's status color: + status x1000 on the
         # rows with a top or bottom border (edges 1-3), and always in NEXT SHIFT
@@ -2166,7 +2190,7 @@ def add_conditional_formats(ws, last_row):
     grey = font(BODY_PT, False, C_NOT_SCHED_TEXT)
     # LINE: the line's tab. Name on the line's tint, the status tag (and a
     # line with one row) on its color; the box's left side in the status color.
-    for role, edges in ((1, (2,)), (4, (1,)), (2, (3, 4)), (3, (3, 4))):
+    for role, edges in ((1, (2, 4)), (4, (1,)), (2, (3, 4)), (3, (2, 3, 4))):
         for st, strong, txt, tint in st_colors:
             fr = frame_of[st]
             for e in edges:
@@ -2211,21 +2235,22 @@ def add_conditional_formats(ws, last_row):
     for v, fo in est_fonts.items():
         rules(rng(("P", "P")), "AK", v, None, fo)
     rules(rng(("P", "P")), "AK", 6, C_NOTE_FILL, note_font, note=True)
-    # NEXT SHIFT: a chip in the next shift's status color on the line's first
-    # row (looks 1-6, 7 = none), plain below it (8 work order, 9 note)
+    # NEXT SHIFT: a chip in the next shift's status color on the row of the
+    # line's status tag, the box's middle row (looks 1-6, 7 = none), plain on
+    # the other rows (8 work order, 9 note)
     q = rng(("Q", "Q"))
     for v, strong, txt, _ in st_colors[1:] + [(7, None, None, None)]:
-        for e in (1, 2):
+        for e in (1, 3, 4):
             for st in range(7):
                 fr = frame_of[st]
                 cf(ws, q, f"$AL{r0}+$AP{r0}={st * 1000 + v * 10 + e}", strong,
                    font(BODY_PT, True, txt) if txt else None,
-                   Border(left=inner, right=fr, top=fr, bottom=fr if e == 1 else None))
-    for v in (8, 9):
-        for e in (3, 4):
+                   Border(left=inner, right=fr, top=fr if e == 1 else inner, bottom=fr if e in (1, 3) else None))
+    for v, edges in ((8, (2, 3, 4)), (9, (3, 4))):
+        for e in edges:
             for st in range(7):
                 fr = frame_of[st]
-                top = None if v == 9 else inner
+                top = fr if e == 2 else None if v == 9 else inner
                 cf(ws, q, f"$AL{r0}+$AP{r0}={st * 1000 + v * 10 + e}", None, None,
                    Border(left=inner, right=fr, top=top, bottom=fr if e == 3 else None))
 
@@ -2363,8 +2388,9 @@ HOW_ROWS = [
                   "from it. A date without a time counts from the time it is now."),
     ("see", "", "You should see: today's date and time in the yellow box, and no red CHECK message next to it."),
     ("step", "7", "Click the tab 4. Schedule and check it. Then press Ctrl+S to save."),
-    ("see", "", "You should see: each line's name in the LINE column with its status right under it in the status's "
-                "color, the estimated times of the running lines, and the next shift's status at the right."),
+    ("see", "", "You should see: each line's name in the middle of the LINE column with its status right under it "
+                "in the status's color, the estimated times of the running lines, and the next shift's status at "
+                "the right, on the same row as this shift's."),
     ("tip", "TIP", "Statuses and crews stay in this file from day to day. Until today's date is in Schedule as of, "
                    "3. Lines and the top of 4. Schedule show a red CHECK message - it prints too - so yesterday's "
                    "statuses never go out by mistake."),
@@ -2385,9 +2411,10 @@ HOW_ROWS = [
                   "A red line in its place means something to check (see Something went wrong). On the right, the "
                   "three legends: BORDER (the line statuses below), CHANGEOVER (the changeover types) and "
                   "HIGHLIGHT (the row colors below)."),
-    ("kv", "LINE", "Each line is a box with a border in its status color this shift (the BORDER legend, below): its "
-                   "name, and right under it its status, in the same color. A line with one work order shows its "
-                   "status by the color of its name. A line with no status has a navy border."),
+    ("kv", "LINE", "Each line is a box with a border in its status color this shift (the BORDER legend, below): in "
+                   "the middle of the box its name, and right under it its status, in the same color. A line with "
+                   "one work order shows its status by the color of its name. A line with no status has a navy "
+                   "border."),
 ] + [("swatch", strong, desc) for (st, strong, _, _), desc in zip(STATUSES, [
     "RUNNING - the line runs this shift. Estimated times.",
     "PARTIAL SHIFT - the line runs part of the shift. Estimated times (as if it ran the whole shift).",
@@ -2409,7 +2436,8 @@ HOW_ROWS = [
                         "the date is in front of a time that isn't today. no rate = the line and item are not on "
                         "6. Line Rates (add them there); no qty = the work order has no WO Qty; a dash = a work "
                         "order above it on the line has no time, so this one can't have one either."),
-    ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color."),
+    ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color, in the middle of "
+                         "the box on the same row as this shift's status."),
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
     ("kv", "NOTE", "Under a work order, in a cream box: COTTON: (bold) - on the line's first work order its cotton "
@@ -2561,9 +2589,9 @@ HOW_ROWS = [
     ("kv", "Seq order", "Numbers sort as numbers (6.5 goes between 6 and 7). A row with no Seq stays right after "
                         "the row above it of the same line. Seq values that are not numbers go after the numbered "
                         "ones, in the order they were pasted."),
-    ("kv", "Long schedules", "The LINE name is shown once, on the first row of each line. Excel can't keep a "
-                             "line's rows together on one page, so a line that runs on to the next page has no name "
-                             "at the top of that page - use Fit Sheet on One Page if that matters."),
+    ("kv", "Long schedules", "The LINE name is shown once, in the middle of each line's box. Excel can't keep a "
+                             "line's rows together on one page, so a line that runs on to the next page may have "
+                             "its name on one page only - use Fit Sheet on One Page if that matters."),
     ("kv", "Limits", f"Up to {MAX_WO} work orders (the first {MAX_WO} under the column titles, in paste order), "
                      f"pasted rows 1 to {PASTE_ROWS}, columns A to BH, {LINE_SLOTS} lines on 3. Lines, {OUT_ROWS} "
                      f"rows on 4. Schedule (work orders, notes and the blank rows between lines), {RATE_ROWS} rows "

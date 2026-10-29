@@ -38,8 +38,9 @@ holds the machinery.
 - Each line is a box with a border in its status color this shift, like the
   printout's border legend (RUNNING green, PARTIAL SHIFT orange, OVERTIME
   gold, READY LINE purple, PM / CLEANING blue, NOT SCHEDULED grey; navy with
-  no status): its name in the LINE column with its status right under it in
-  the same color, and its status next shift at the right edge.
+  no status): in the middle of the box, its name in the LINE column with its
+  status right under it in the same color, and on that row its status next
+  shift at the right edge.
   A line that isn't scheduled prints in grey.
 - PROGRESS / CHANGEOVER: ten dots and the % on the running work order; on the
   next ones the changeover type (Minor · S1, Minor · Count, MAJOR · S3,
@@ -131,9 +132,9 @@ From the web app:
 - Seq values that are not numbers sort after the numbered ones, in paste order
   (the app compares them as text). Hex text such as `0x10` is not read as a
   number (JS `Number()` reads it as 16).
-- The LINE name is shown once, on the first row of each line. The app also
+- The LINE name is shown once, in the middle of each line's box. The app also
   keeps each line on one page; Excel can't, so a line that runs on to the next
-  page has no name at the top of that page. Columns can be hidden but not
+  page has its name on one of the pages only. Columns can be hidden but not
   reordered.
 - A value too long for its column shrinks to fit (so nothing is cut off and no
   number turns into ####). Column widths are sized for real Excel, which gives
