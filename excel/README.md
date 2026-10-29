@@ -45,7 +45,10 @@ holds the machinery.
 - CAP as size-type (45-CRC), in bold orange when it differs from the work
   order before it (the app's Cap Change). CT in red bold on a count change.
 - A remark prints under its work order in a cream note box (wrapped, up to 4
-  lines).
+  lines). So does the cotton: the file's COT column isn't printed as a column -
+  a COTTON: row in the note box says Yes (Y / Yes / X in the file) or the
+  file's value, and nothing for N or blank. 2. Check Columns shows the column
+  it comes from, with an Override for a file that titles it differently.
 - Row highlights as in the app: allergen, oil, bulk A662 / A624.
 
 ## Estimated times
@@ -159,8 +162,8 @@ From the web app:
 
 From the JDE Packaging Schedule printout:
 
-- HOT WO, twin pack and COT are not shown: the schedule file has no column for
-  them.
+- HOT WO and twin pack are not shown: the schedule file has no column for
+  them. COT (cotton) prints in the note box instead of a column.
 - The estimated times come from the router rates, so they differ from the
   printout's (which were made another way). Line efficiency on 5. Settings can
   bring them closer.

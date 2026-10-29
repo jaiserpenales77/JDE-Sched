@@ -64,7 +64,8 @@ status legend, one-line summary (or the warnings) + changeover / row legend,
 column titles. From row 5, each line is a box: column A has the line name on
 its first row and its status tag on the 2nd row (a one-row line shows the
 status by the cell color); a remark prints on note rows under its work order
-(NOTE: in ITEM, the text wrapped in ITEM DESCRIPTION); a blank row follows
+(COTTON: / NOTE: in ITEM, the cotton and the remark wrapped in ITEM
+DESCRIPTION); a blank row follows
 each line. Hidden columns S:AN hold the helpers and the look codes the
 conditional formats test (one rule per code, so one rule is true per cell).
 
@@ -111,7 +112,10 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          subtitle, B60 the warnings on one line
   A70:J72 shift clock: row 71 the output share of hour +1..+8, row 72 the
          running total S0..S8
-  D:R    field table, rows 5-19 (one per import field, app order):
+  D:R    field table, rows 5-19 (one per import field, app order), and row
+         20 for Cotton (the COT column - not an app field: found by its exact
+         title among the columns no field uses, or its Override on
+         2. Check Columns row 28; it takes no part in the header scan):
          D index, E key, F label, G 2^index, H override text, I override
          parsed (0 auto, -1 "-", -2 invalid, else column no. - from a letter
          A-BH, or from a column title: the first column of the header row
@@ -122,7 +126,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          R 1 = override worth a look (differs from automatic / displaces one
          / a letter for a field the titles don't give)
   S:T    column numbers 1-60 and letters A-BH (rows 5-64)
-  U      override text, normalization stage 1 (rows 5-19)
+  U      override text, normalization stage 1 (rows 5-20)
   V:W    EXACT header aliases (normalized) -> field index
   Y:CF   header scan, one column per pasted column 1-60, one row per pasted
          row 1-40, in six blocks:
@@ -163,7 +167,8 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          cells of the row (only for the example row); then EW:GI: line
          number, name shown, next shift, breaks, crew (from LB), the work
          order before it on the line, first-of-line flag, changeover code and
-         minutes, cap change, remark, note flag, all capitals, the remark
+         minutes, cap change, cotton shown, remark, note flag, cotton flag, all
+         capitals, the remark
          wrapped in 4 lines (starts, texts), note rows, note rows before it,
          rate key, bottles per hour, bottles, full-hour equivalents, no rate,
          running total, the shift-clock steps (F2, whole shifts, rest, hour),
@@ -241,6 +246,13 @@ FIELDS = [
     ("status", "Line Status"), ("desiccant", "Desiccant"),
 ]
 FI = {k: i + 1 for i, (k, _) in enumerate(FIELDS)}
+# Cotton (the JDE file's COT column): read like a field, but not one of the
+# app's - it takes no part in finding the header row or the other columns. It
+# is found by its exact title (normalized) among the columns no field uses,
+# or by its Override (2. Check Columns row 28), and prints in the note box.
+COT_FIDX = len(FIELDS) + 1                  # field table row FT_ROW0 + 15 (Calc row 20)
+COT_ALIASES = ["COT", "COTTON", "COTTONS", "COTTONBALL", "COTTONBALLS", "COTTONCOIL"]
+COT_CHECK_ROW = 12 + COT_FIDX               # 2. Check Columns row 28
 
 # Titles that definitely mean a field (src/importColumns.ts EXACT, normalized).
 EXACT = {
@@ -661,14 +673,14 @@ def scol(c):
 SCAN_FIRST, SCAN_LAST = scol(1), scol(PASTE_COLS)
 LN_BAND = Band(105, ["rn", "ln", "leg"])           # DA:DC, rows 5..1004
 FIELD_COLS = ["wo", "seq", "item", "desc", "count", "bulk", "bottle", "cap", "allergen", "remarks",
-              "qty_s", "qty", "pct_s", "pct", "stat", "desiccant"]
+              "qty_s", "qty", "pct_s", "pct", "stat", "desiccant", "cotton"]
 W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "ord0", "keep"] + FIELD_COLS +
          ["firstk", "isfirst", "cumf", "lno", "anch", "sk", "grp", "nv", "rank", "pos", "lidx", "sched",
           "stshown", "hl", "pa", "br", "wofk", "hdrlike", "nfill",
           # combined report (v2): the line's number, statuses and crew (from the
           # lines table LB), changeovers, notes, estimates
-          "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "note",
-          "hasnote", "ncaps"] + [f"ns{i}" for i in range(1, NOTE_LINES + 1)]
+          "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "cotnote", "note",
+          "hasnote", "hascot", "ncaps"] + [f"ns{i}" for i in range(1, NOTE_LINES + 1)]
          + [f"nt{i}" for i in range(1, NOTE_LINES + 1)] + [
           "nrows", "nbefore", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
           "est", "estt", "nextco", "prog", "left", "capc"])
@@ -742,7 +754,15 @@ def window_v2(ws, c, A, s, r_):
     cap_p, cap_c = f'TRIM({ix("cap", kp)}&"")', f'TRIM({A["cap"]}&"")'
     ws[c["capchg"]] = (f'=IF({keep}=0,0,IF({fw}=1,0,IF(OR({cap_p}="",{cap_c}=""),0,'
                        f'IF(UPPER({cap_p})=UPPER({cap_c}),0,1))))')
-    # a remark prints on a note row under its work order
+    # note rows under the work order: its cotton (COT column) on a COTTON: row -
+    # Yes for Y / Yes / X / 1, nothing for N / No / 0 / - / blank, else the
+    # value - then its remark on NOTE: rows
+    ct = f'TRIM({A["cotton"]}&"")'
+    u = f"UPPER({ct})"
+    no = ",".join(f'{u}="{v}"' for v in ("N", "NO", "0", "-", "FALSE", "NONE"))
+    yes = ",".join(f'{u}="{v}"' for v in ("Y", "YES", "X", "TRUE", "1"))
+    ws[c["cotnote"]] = f'=IF({keep}=0,"",IF({ct}="","",IF(OR({no}),"",IF(OR({yes}),"Yes",{ct}))))'
+    ws[c["hascot"]] = f'=IF({keep}=0,0,IF({A["cotnote"]}<>"",1,0))'
     ws[c["note"]] = f'=IF({keep}=0,"",TRIM({A["remarks"]}&""))'
     ws[c["hasnote"]] = f'=IF({keep}=0,0,IF({A["note"]}<>"",1,0))'
     note_lines(ws, c, A)
@@ -812,7 +832,7 @@ def note_lines(ws, c, A):
         else:
             tail = f'MID({T},{si},{b}-1)&"…"'
         ws[c[f"nt{i}"]] = f'=IF({si}="","",IF({rem}<={b},MID({T},{si},{rem}),{tail}))'
-    ws[c["nrows"]] = "=" + "+".join(f'({A[f"ns{i}"]}<>"")' for i in range(1, NOTE_LINES + 1))
+    ws[c["nrows"]] = "=" + "+".join([A["hascot"]] + [f'({A[f"ns{i}"]}<>"")' for i in range(1, NOTE_LINES + 1)])
 
 
 def hour_share(h):
@@ -847,6 +867,49 @@ def summary_expr(s):
     nxt = (f'IF({nco}>0,"   →  Next changeover: "&INDEX({wr("dname")},{k})&" at "&{clock_text(nco, s["asof"])},"")')
     return (f'IF({s["wo_count"]}=0,"No work orders yet - paste today\'s schedule on 1. Paste Schedule.",'
             f'{s["line_count"]}&" lines"{parts}&" · "&{s["wo_count"]}&" work orders"&{nxt})')
+
+
+def cotton_field(ws, s, nhf_row, fld_row):
+    """Field table row 20: the Cotton column (not one of the app's fields)."""
+    r = FT_ROW0 + COT_FIDX - 1
+    c = lambda col: f"{FT[col]}{r}"
+    for col in FT:
+        assert ws[c(col)].value is None, c(col)
+    ws[c("idx")] = COT_FIDX
+    ws[c("key")] = "cotton"
+    ws[c("label")] = "Cotton (COT)"
+    ovr = f"{CHECK}!$F${COT_CHECK_ROW}"
+    ws[c("raw")] = f'=IFERROR(UPPER(TRIM({ovr}&"")),"#")'
+    raw = c("raw")
+    ovpre = f"{FT_OVPRE}{r}"
+    ws[ovpre] = "=" + norm1_expr(raw)
+    ov_norm = norm2_expr(ovpre)
+    letter_no = f"MATCH(1,INDEX(--EXACT({LETTERS},{raw}),0),0)"
+    ws[c("parsed")] = (f'=IF({raw}="",0,IF(OR({raw}="-",{raw}="NONE"),-1,IFERROR({letter_no},'
+                       f'IF({ov_norm}="",-2,IFERROR(MATCH(1,INDEX(--EXACT({nhf_row},{ov_norm}),0),0),-2)))))')
+    parsed = c("parsed")
+    # a column a field already uses can't be the cotton too
+    taken = f"INDEX({fld_row},{parsed})>0"
+    ws[c("eff")] = f"=IF({parsed}<=0,IF({parsed}=-1,-1,0),IF({taken},0,{parsed}))"
+    aliases = "{" + ",".join(f'"{a}"' for a in COT_ALIASES) + "}"
+    ws[c("auto")] = (f"=IFERROR(MATCH(1,INDEX(ISNUMBER(MATCH({nhf_row},{aliases},0))*({fld_row}=0),0),0),0)")
+    auto, eff = c("auto"), c("eff")
+    ws[c("used")] = f"=IF({eff}>0,{eff},IF({eff}=-1,0,{auto}))"
+    used = c("used")
+    ws[c("auto_letter")] = f'=IF({auto}=0,"(not found)",INDEX({LETTERS},{auto}))'
+    ws[c("used_letter")] = f'=IF({used}=0,IF({eff}=-1,"(left out)","(none)"),INDEX({LETTERS},{used}))'
+    xh_t = ttrim(paste("HEADER_ROW", used) + '&""')
+    ws[c("hdr_text")] = f'=IF({used}=0,"",IFERROR({xh_t},""))'
+    x_e = paste(s["ex_pr"], used)
+    xe_t = ttrim(x_e + '&""')
+    ws[c("example")] = f'=IF(OR({used}=0,{s["ex_pr"]}=0),"",IFERROR(IF(ISNUMBER({x_e}),{x_e},{xe_t}),""))'
+    ws[c("note")] = (f'=IF({parsed}=-2,"\'"&IFERROR(TRIM({ovr}&""),"#")&"\' is not a column letter (A to BH) or a '
+                     f'column title in row "&HEADER_ROW&" - ignored",IF(AND({parsed}>0,{eff}=0),"Column "&INDEX('
+                     f'{LETTERS},{parsed})&" is already used by another field - ignored",IF({used}>0,"Found: '
+                     f'it prints in the note box under each work order (not as a column).",IF({eff}=-1,"Left out by '
+                     f'the Override.","No COT / Cotton column in this file - pick its title in Override if it has '
+                     f'another one."))))')
+    ws[c("ovflag")] = 0
 
 
 def build_calc(wb):
@@ -1120,6 +1183,8 @@ def build_calc(wb):
         ws[c("ovflag")] = (f'=IF(OR({differs},{leftout},{displaced},AND({ov_only},NOT({by_title}),{used_title}<>"")),'
                            f'1,0)')
 
+    cotton_field(ws, s, nhf_row, fld_row)
+
     # ---- column letters, aliases -----------------------------------------
     put(ws, f"{LET_NUM}3", "Columns", font=hdr)
     for c in range(1, PASTE_COLS + 1):
@@ -1239,7 +1304,8 @@ def build_calc(wb):
     for n in W.col:
         put(ws, f"{W[n]}4", n, font=hdr)
     field_of = {"wo": 2, "seq": 3, "item": 4, "desc": 5, "count": 6, "bulk": 7, "bottle": 8, "cap": 9,
-                "allergen": 10, "remarks": 11, "qty_s": 12, "pct_s": 13, "stat": 14, "desiccant": 15}
+                "allergen": 10, "remarks": 11, "qty_s": 12, "pct_s": 13, "stat": 14, "desiccant": 15,
+                "cotton": COT_FIDX}
     ln_rng = f"${LN_BAND['ln']}$5:${LN_BAND['ln']}${4 + PASTE_ROWS}"
     for k in range(1, WIN + 1):
         r_ = 4 + k
@@ -1377,8 +1443,11 @@ def build_calc(wb):
         ws[f"{O['o_line']}{r_}"] = (f'=IF({inb(A["kind"])},IF({A["first"]}=1,{name},IF({prev_first}=1,{tag},"")),"")')
         # work-order rows show the work order; note rows show NOTE: under the
         # item and a line of the remark under the description
-        line_i = "CHOOSE(" + A["cidx"] + "," + ",".join(ix(f"nt{i}", A["nk"]) for i in range(1, NOTE_LINES + 1)) + ")"
-        piece = {"o_item": f'IF({A["cidx"]}=1,"NOTE:","")', "o_desc": line_i}
+        # (COTTON: row first when the work order has cotton, then the remark's lines)
+        hc, ci = ix("hascot", A["nk"]), A["cidx"]
+        line_i = "CHOOSE(" + f"{ci}-{hc}" + "," + ",".join(ix(f"nt{i}", A["nk"]) for i in range(1, NOTE_LINES + 1)) + ")"
+        piece = {"o_item": f'IF({hc}=1,IF({ci}=1,"COTTON:",IF({ci}=2,"NOTE:","")),IF({ci}=1,"NOTE:",""))',
+                 "o_desc": f'IF({hc}=1,IF({ci}=1,{ix("cotnote", A["nk"])},{line_i}),{line_i})'}
         for oc, wc in row_from.items():
             v = ix(wc, k) if oc in ("o_wo", "o_qty", "o_crew") else ix(wc, k) + '&""'
             ws[f"{O[oc]}{r_}"] = f'=IF({is_row},{v},IF({is_note},{piece.get(oc, chr(34) * 2)},""))'
@@ -1471,7 +1540,9 @@ def build_calc(wb):
 def build_paste(wb):
     ws = wb.create_sheet(S_PASTE)
     ws.sheet_properties.tabColor = "FFC000"
-    for i, h in enumerate(EXPORT_HEADERS, start=1):
+    # the app's export columns, then the JDE file's COT (cotton) column - empty
+    # on the printout this sample comes from
+    for i, h in enumerate(EXPORT_HEADERS + ["COT"], start=1):
         put(ws, f"{L(i)}1", h, font=font(11, True))
     for r, row in enumerate(SAMPLE, start=2):
         # LINE .. % Complete in columns 1-13, Desiccant in its export column 18
@@ -1480,7 +1551,7 @@ def build_paste(wb):
                 ws.cell(r, i, v)
     # wide enough in real Excel (tighter than LibreOffice) for the sample's titles
     # and values in 11 pt
-    widths = [9, 10, 6, 10, 36, 7, 11, 11, 30, 9, 40, 13, 12, 18, 18, 14, 12, 11]
+    widths = [9, 10, 6, 10, 36, 7, 11, 11, 30, 9, 40, 13, 12, 18, 18, 14, 12, 11, 7]
     for i, w in enumerate(widths, start=1):
         ws.column_dimensions[L(i)].width = w
     fit_width(ws, "landscape")
@@ -1555,8 +1626,22 @@ def build_check(wb):
         ws.row_dimensions[r].height = 27
         put(ws, f"J{r}", f"=IF(Calc!${FT['used']}${cr}=0,1,0)")
         put(ws, f"K{r}", f'=IF(LEFT(H{r},5)="Found",1,0)')     # 1 = the Note is only information
+    # row 28: Cotton - not one of the app's fields; it prints as a note
+    r, cr = COT_CHECK_ROW, FT_ROW0 + COT_FIDX - 1
+    put(ws, f"B{r}", "Cotton (COT) - prints in the note box", font=font(10, italic=True), border=THIN_GRAY,
+        fill=fill(C_NOTE_FILL))
+    for col, key, al in (("C", "auto_letter", "center"), ("D", "hdr_text", "left"), ("E", "example", "left"),
+                         ("G", "used_letter", "center")):
+        put(ws, f"{col}{r}", f"=Calc!${FT[key]}${cr}", border=THIN_GRAY, font=font(10, col == "G"),
+            alignment=Alignment(horizontal=al))
+    put(ws, f"F{r}", None, fill=INPUT_FILL, border=THIN_BLACK, protection=UNLOCKED, font=font(11, True),
+        alignment=Alignment(horizontal="center"))
+    put(ws, f"H{r}", f"=Calc!${FT['note']}${cr}", border=THIN_GRAY, font=font(10, True, "C00000"),
+        alignment=Alignment(wrap_text=True, vertical="top"))
+    ws.row_dimensions[r].height = 27
+    put(ws, f"K{r}", f'=IF(OR(LEFT(H{r},5)="Found",LEFT(H{r},5)="No CO"),1,0)')
     cf(ws, "G13:G14", "$J13=1", "FFC7CE", font(10, True, "9C0006"))
-    cf(ws, "H13:H27", "$K13=1", None, font(10, True, "006100"))
+    cf(ws, f"H13:H{COT_CHECK_ROW}", "$K13=1", None, font(10, True, "006100"))
 
     put(ws, "B30", '="Your file\'s columns (header row "&HEADER_ROW&") - use this list to find the right title '
                    'or letter for an Override."', font=font(12, True))
@@ -1574,7 +1659,9 @@ def build_check(wb):
         put(ws, f"D{r}", f'=IF({SC["ex_pr"]}=0,"",IFERROR(IF(ISNUMBER({xe}),{xe},{xe_t}),""))',
             font=font(10), border=THIN_GRAY, alignment=Alignment(horizontal="left"))
         fld = f"Calc!${scol(c)}${R_FLD}"
-        put(ws, f"E{r}", f'=IF({fld}=0,"",INDEX(Calc!${FT["label"]}${FT_ROW0}:${FT["label"]}${FT_ROW0 + 14},{fld}))',
+        cot_used = f"Calc!${FT['used']}${FT_ROW0 + COT_FIDX - 1}"
+        put(ws, f"E{r}", (f'=IF({fld}=0,IF({cot_used}={c},"Cotton (note)",""),'
+                          f'INDEX(Calc!${FT["label"]}${FT_ROW0}:${FT["label"]}${FT_ROW0 + 14},{fld}))'),
             font=font(10, True), border=THIN_GRAY)
     cf(ws, f"B32:E{31 + PASTE_COLS}", '$E32<>""', "E2EFDA")
 
@@ -1593,7 +1680,7 @@ def build_check(wb):
                                "leave the field out. A column letter like C works too. Leave empty to let the "
                                "file find it.")
     ws.add_data_validation(dv)
-    dv.add("F13:F27")
+    dv.add(f"F13:F{COT_CHECK_ROW}")
     dv2 = DataValidation(type="whole", operator="between", formula1="1", formula2=str(PASTE_ROWS - 1), allow_blank=True,
                          showErrorMessage=True, errorTitle="Header row", error="Type a row number from 1 to 999.")
     ws.add_data_validation(dv2)
@@ -2262,7 +2349,9 @@ HOW_ROWS = [
     ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color."),
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
-    ("kv", "NOTE", "A work order's remark prints under it, in a cream box (up to 4 lines; a longer remark ends with "
+    ("kv", "NOTE", "Under a work order, in a cream box: COTTON: and its cotton from the COT column of your file (Yes "
+                   "for Y / Yes / X, else what the file says; nothing for N or blank), then NOTE: and its remark "
+                   "(up to 4 lines; a longer remark ends with "
                    "... - the whole remark is on 1. Paste Schedule)."),
     ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to WO QTY. Highlights go allergen "
                            "first, then oil, then bulk."),
@@ -2358,6 +2447,10 @@ HOW_ROWS = [
     ("kv", "Why an Override is needed", "This file goes by the column titles only. Unlike the web app it does not "
                                         "guess the Line or WO column from the values in it, and a title with unusual "
                                         "characters may not be recognised - the Override box is how you tell it."),
+    ("kv", "Cotton (COT)", "The COT column of your file is not printed as a column: a work order's cotton prints in "
+                           "its note box (COTTON: Yes, or what the file says). 2. Check Columns shows which column it "
+                           "is read from (row Cotton); if your file titles it differently, pick its title in that "
+                           "row's Override box."),
     ("kv", "Line rates", "6. Line Rates lists the bottles per hour of each line and item, from the Line Lead MDI "
                          "Router (Power BI). A new item: type a row under the last one (Line like LINE05, Item, "
                          "Description, Bottles per hour). A newer router list: paste it over A5:E with Paste "
@@ -2413,9 +2506,9 @@ HOW_ROWS = [
                                    "text shrinks to fit; columns can be hidden but not moved; the Line and WO "
                                    "columns are found by their titles only; pasting a new schedule does not clear "
                                    "the statuses (Part B, step 3 does)."),
-    ("kv", "Not like the JDE printout", "HOT WO, twin pack and COT are not shown: the schedule file has no column for "
-                                        "them. The estimated times are worked out from 6. Line Rates, so they can "
-                                        "differ a little from the printout's."),
+    ("kv", "Not like the JDE printout", "HOT WO and twin pack are not shown: the schedule file has no column for "
+                                        "them. COT prints in the note box (COTTON:) instead of a column. The "
+                                        "estimated times are worked out from 6. Line Rates."),
     ("kv", "Also not in this file", "The web app's Customize Print Design: the report title, the fonts and the "
                                     "colors are fixed here. Line Assignments (and the app's Print > Both) is not "
                                     "part of this file. Export Excel: see Send it as Excel."),
