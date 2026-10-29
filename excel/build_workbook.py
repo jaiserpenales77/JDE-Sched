@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build excel/JDE_Production_Schedule.xlsx - the Excel replacement for the
+"""Build excel/JDE_Production_Schedule.xlsm - the Excel replacement for the
 JDE Sched web app's Production Schedule tab (only that tab), combined with
 the plant's JDE Packaging Schedule printout: line statuses this shift and
 next shift, crew, progress dots, changeover types and minutes, and an
@@ -7,7 +7,7 @@ estimated finish time for every work order (bottles per hour from the Line
 Lead MDI Router, excel/line_rates.csv).
 
     python3 excel/build_workbook.py          (run from the repo root)
-    python3 excel/build_workbook.py --demo   (JDE_Production_Schedule_DEMO.xlsx)
+    python3 excel/build_workbook.py --demo   (JDE_Production_Schedule_DEMO.xlsm)
 
 The output is deterministic: the same script always writes byte-identical
 files (fixed document timestamps and zip entry dates).
@@ -16,7 +16,9 @@ Behaviour is ported from the app's code - src/importColumns.ts (reading any
 schedule layout), src/scheduleLogic.ts (grouping, Seq order, calculated
 columns, changeover codes, highlights, line status) and
 src/components/PrintViews.tsx + src/App.css (the printed report). Every
-calculation is a worksheet formula; there are no macros. Only Excel 2007
+calculation is a worksheet formula. One small macro (VBA_MODULE below, run by
+the workbook's events) only hides 4. Schedule's empty notes rows; without
+macros everything still works, those rows just stay visible. Only Excel 2007
 functions are used, and every formula that compares a whole range sits inside
 SUMPRODUCT, LOOKUP(2,1/(...)), MATCH(1,INDEX(...,0),0) or COUNTIF/COUNTIFS, so
 nothing depends on dynamic arrays or Excel 365's implicit-intersection rules.
@@ -219,7 +221,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.worksheet.pagebreak import Break
 from openpyxl.worksheet.properties import PageSetupProperties
 
-OUT = Path(__file__).resolve().parent / "JDE_Production_Schedule.xlsx"
+OUT = Path(__file__).resolve().parent / "JDE_Production_Schedule.xlsm"
 FIXED_TIME = datetime(2026, 10, 7, 12, 0, 0)
 
 # ----------------------------------------------------------------------------
@@ -1687,7 +1689,7 @@ def build_check(wb):
         put(ws, f"K{r}", f'=IF(LEFT(H{r},5)="Found",1,0)')     # 1 = the Note is only information
     # row 28: Cotton - not one of the app's fields; it prints as a note
     r, cr = COT_CHECK_ROW, FT_ROW0 + COT_FIDX - 1
-    put(ws, f"B{r}", "Cotton (COT) - shows in the changeover notes", font=font(10, italic=True), border=THIN_GRAY,
+    put(ws, f"B{r}", "Cotton (COT) - in the notes rows", font=font(10, italic=True), border=THIN_GRAY,
         fill=fill(C_NOTE_FILL))
     for col, key, al in (("C", "auto_letter", "center"), ("D", "hdr_text", "left"), ("E", "example", "left"),
                          ("G", "used_letter", "center")):
@@ -2002,9 +2004,10 @@ SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "n
                  ("AK", "EST LOOK", None), ("AL", "NEXT LOOK", None), ("AM", "CAP CHG", "capx"),
                  ("AN", "CAP LOOK", None), ("AO", "BORDER", None), ("AP", "NEXT BORDER", None),
                  ("AQ", "LINE ROLE", "role"), ("AR", "BELOW BOX", None), ("AS", "TYPED", None),
-                 ("AT", "NOTES LOOK", None)]
+                 ("AT", "NOTES LOOK", None), ("AU", "HIDE", None)]
 NOTES_HELPERS = ("V", "W", "X", "AQ")          # also read on a notes row (status, first, last, role)
 TYPED_COL = "AS"
+HIDE_COL = "AU"            # 1 on a notes row the macro hides
 C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
 LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
 
@@ -2057,6 +2060,9 @@ def notes_codes(r, cr):
         "AP": f"=IF($AE{r}>0,$V{r}*1000,0)",
         "AS": f'=IF($B{r}&""<>Calc!${O["o_strip"]}${cr}&"",1,0)',
         "AT": f'=IF(AND($S{r}="notes",$B{r}<>""),1,0)',
+        # the macro hides it: an empty notes row inside a box (the last work
+        # order's stays: it is the gap to the next line), and a blank slot's
+        "AU": f'=IF(OR(AND($S{r}="notes",$B{r}="",N($X{r})<>1),$S{r - 1}="spacer"),1,0)',
     }
 
 
@@ -2288,6 +2294,89 @@ def add_conditional_formats(ws, last_row):
 
 
 # ----------------------------------------------------------------------------
+# The macro: hides the empty notes rows. ThisWorkbook's events run it by
+# itself (no button); the workbook works the same without it.
+
+VBA_MODULE = """Option Explicit
+' Hides the notes rows of 4. Schedule that have nothing to say (its hidden
+' column {hide} says which), so the work orders sit right under each other.
+' It runs by itself: when the file opens, when 4. Schedule recalculates or is
+' opened, and before printing (see ThisWorkbook). Without macros (Excel on
+' the web, or Enable Content not clicked) those rows just stay visible.
+Private lastPattern As String
+
+Public Sub FitNotes(Optional ByVal always As Boolean = False)
+    Dim ws As Worksheet, v As Variant, i As Long, pattern As String, addr As String
+    Dim events As Boolean, screen As Boolean
+    On Error Resume Next
+    Set ws = ThisWorkbook.Worksheets("{sched}")
+    If ws Is Nothing Then Exit Sub
+    v = ws.Range("{hide}{first}:{hide}{last}").Value
+    If Err.Number <> 0 Then Exit Sub
+    For i = 1 To UBound(v, 1)
+        If IsError(v(i, 1)) Then
+            pattern = pattern & "0"
+        ElseIf v(i, 1) = 1 Then
+            pattern = pattern & "1"
+        Else
+            pattern = pattern & "0"
+        End If
+    Next i
+    If pattern = lastPattern And Not always Then Exit Sub
+    events = Application.EnableEvents
+    screen = Application.ScreenUpdating
+    Application.EnableEvents = False
+    Application.ScreenUpdating = False
+    ws.Unprotect
+    ws.Rows("{first}:{last}").Hidden = False
+    For i = 1 To Len(pattern)
+        If Mid$(pattern, i, 1) = "1" Then
+            If Len(addr) > 200 Then
+                ws.Range(addr).EntireRow.Hidden = True
+                addr = ""
+            End If
+            If Len(addr) > 0 Then addr = addr & ","
+            addr = addr & "A" & (i + {first} - 1)
+        End If
+    Next i
+    If Len(addr) > 0 Then ws.Range(addr).EntireRow.Hidden = True
+    ws.Protect DrawingObjects:=False, Contents:=True, Scenarios:=False, AllowFormattingColumns:=True
+    lastPattern = pattern
+    Application.ScreenUpdating = screen
+    Application.EnableEvents = events
+End Sub
+"""
+
+VBA_THISWORKBOOK = """Option Explicit
+' 4. Schedule's empty notes rows are hidden by JDENotes.FitNotes.
+
+Private Sub Workbook_Open()
+    JDENotes.FitNotes True
+End Sub
+
+Private Sub Workbook_SheetActivate(ByVal Sh As Object)
+    If Sh.Name = "{sched}" Then JDENotes.FitNotes
+End Sub
+
+Private Sub Workbook_SheetCalculate(ByVal Sh As Object)
+    If Sh.Name = "{sched}" Then JDENotes.FitNotes
+End Sub
+
+Private Sub Workbook_BeforePrint(Cancel As Boolean)
+    JDENotes.FitNotes
+End Sub
+"""
+
+
+def vba_bin():
+    from vba_project import vba_project_bin
+    fill_in = lambda t: (t.replace("{hide}", HIDE_COL).replace("{sched}", S_SCHED)
+                         .replace("{first}", str(SCHED_ROW0)).replace("{last}", str(SCHED_LAST)))
+    return vba_project_bin([("ThisWorkbook", "document", fill_in(VBA_THISWORKBOOK)),
+                            ("JDENotes", "module", fill_in(VBA_MODULE))])
+
+
+# ----------------------------------------------------------------------------
 # How To Use
 
 HOW_ROWS = [
@@ -2295,7 +2384,7 @@ HOW_ROWS = [
     ("sub", "Load it, Set the Lines, Print it. Follow the steps in order. Do one step at a time."),
     ("gap",),
     ("head", "", "QUICK CARD - A Load, B Set the lines, C Print (this page prints on its own: post it at the computer)"),
-    ("qc", "A1", "Open YOUR shift's copy of this file. Yellow PROTECTED VIEW bar? Click Enable Editing."),
+    ("qc", "A1", "Open YOUR shift's copy of this file. Yellow bar? Click Enable Editing, then Enable Content."),
     ("qc", "A2", "Tab 1. Paste Schedule: click the corner triangle (above row 1), then Home > Clear > Clear All."),
     ("qc", "A3", "Today's schedule file: Data > Clear (if it has filter arrows), click its corner triangle, Ctrl+C."),
     ("qc", "A4", "Back in THIS file, 1. Paste Schedule: right-click A1 > Paste Options > Values (123)."),
@@ -2313,7 +2402,9 @@ HOW_ROWS = [
     ("kv", "For", "Anyone printing the Production Schedule (1st, 2nd or 3rd shift). About 5 minutes."),
     ("kv", "This file", "Replaces the Production Schedule tab of the JDE Sched web app and the JDE Packaging Schedule "
                         "printout, in one. It works in Excel 2010 and newer, Excel for Mac and Excel on the web / "
-                        "Teams. No macros."),
+                        "Teams. One small macro hides the empty notes rows on 4. Schedule by itself - click Enable "
+                        "Content when Excel asks. Without it (Excel on the web, or macros off) everything still "
+                        "works; those thin rows just stay."),
     ("kv", "Mac", "The keys below are for Windows. On a Mac use Cmd instead of Ctrl (Cmd+C, Cmd+V, Cmd+Z, Cmd+Y, "
                   "Cmd+S, Cmd+P, Cmd+H). Today's date is Control+; and the time Cmd+; on a Mac."),
     ("gap",),
@@ -2325,15 +2416,17 @@ HOW_ROWS = [
     ("gap",),
     ("head", "", "What you need"),
     ("text", "", "- YOUR SHIFT'S COPY of this file (golden rule 1), opened in Excel. If a yellow bar says PROTECTED "
-                 "VIEW, click Enable Editing first (otherwise the sheets stay empty)."),
+                 "VIEW, click Enable Editing first (otherwise the sheets stay empty); if one says SECURITY WARNING "
+                 "Macros have been disabled, click Enable Content."),
     ("text", "", "- Today's Excel schedule file (it ends in .xlsx, .xlsm or .xls). It is usually in the Downloads folder."),
     ("text", "", "- A printer."),
     ("gap",),
     ("head", "", "First time only (supervisor) - skip this if your shift's file already exists"),
     ("step", "1", "Put this file in your shared folder (Teams or network drive) and rename it "
-                  "JDE Schedule - MASTER - do not edit.xlsx. It is the clean spare."),
+                  "JDE Schedule - MASTER - do not edit.xlsm. It is the clean spare."),
     ("step", "2", "Open it and click File > Save As (on the web: File > Save a Copy). Name the copy for a shift, "
-                  "for example JDE Schedule - 1st Shift.xlsx. Do this 3 times: 1st, 2nd and 3rd Shift."),
+                  "for example JDE Schedule - 1st Shift.xlsm (keep the type Excel Macro-Enabled Workbook). Do "
+                  "this 3 times: 1st, 2nd and 3rd Shift."),
     ("step", "3", "In each shift's copy, on the tab 3. Lines: pick the shift in the yellow box This copy is for (top "
                   "left). Lines 1, 3, 4, 5, 7 and 8 to 12 are already listed - add or remove lines in column A, and "
                   "check Breaks & lunch: Yes for a line that stops for breaks and lunch (lines 1, 3, 5 and 7), No for "
@@ -2498,6 +2591,12 @@ HOW_ROWS = [
                                                  "after step 5. Empty sheet: Part A, steps 2a to 4b. Capacity "
                                                  "warning: see Limits below."),
     ("kv", "The sheets look empty", "Click Enable Editing on the yellow bar at the top."),
+    ("kv", "Thin empty rows under the work orders", "The macro that hides them is off. Click Enable Content on the "
+                                                    "yellow bar. A red bar saying Microsoft has blocked macros: close "
+                                                    "the file, right-click it > Properties > tick Unblock > OK, and "
+                                                    "open it again (or ask IT to make the shared folder a Trusted "
+                                                    "Location). The schedule is right either way - only the spacing "
+                                                    "differs."),
     ("kv", "Nothing changes after pasting", "Formulas > Calculation Options > Automatic, or press F9. (Excel takes "
                                             "this setting from the first file you open.)"),
     ("kv", "Paste is greyed out", "The copy was cancelled. Go back to today's file, press Ctrl+C again and paste "
@@ -2776,8 +2875,9 @@ def audit(wb):
     return len(texts)
 
 
-def deterministic_zip(data):
-    """Rewrite the package with fixed timestamps so rebuilds are identical."""
+def deterministic_zip(data, vba=None):
+    """Rewrite the package with fixed timestamps so rebuilds are identical
+    (and, given a vbaProject.bin, as a macro-enabled .xlsm)."""
     src = zipfile.ZipFile(io.BytesIO(data))
     out = io.BytesIO()
     stamp = FIXED_TIME.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -2789,19 +2889,33 @@ def deterministic_zip(data):
                 # empty <v></v> per formula cell would push Calc's rows past the
                 # 32 KB compression window
                 body = body.replace(b"</f><v></v>", b"</f>")
+            if vba is not None and info.filename == "[Content_Types].xml":
+                body = body.replace(b"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+                                    b"application/vnd.ms-excel.sheet.macroEnabled.main+xml")
+                body = re.sub(rb"(<Types[^>]*>)", rb'\1<Default Extension="bin" '
+                              rb'ContentType="application/vnd.ms-office.vbaProject"/>', body, count=1)
+            if vba is not None and info.filename == "xl/_rels/workbook.xml.rels":
+                body = body.replace(b"</Relationships>", b'<Relationship Id="rIdVBA" Type="http://schemas.microsoft'
+                                    b'.com/office/2006/relationships/vbaProject" Target="vbaProject.bin"/>'
+                                    b"</Relationships>")
             if info.filename == "docProps/core.xml":
                 body = re.sub(rb"(<dcterms:(created|modified)[^>]*>)[^<]*", lambda m: m.group(1) + stamp.encode(), body)
             zi = zipfile.ZipInfo(info.filename, date_time=(1980, 1, 1, 0, 0, 0))
             zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o644 << 16
             dst.writestr(zi, body, compresslevel=9)
+        if vba is not None:
+            zi = zipfile.ZipInfo("xl/vbaProject.bin", date_time=(1980, 1, 1, 0, 0, 0))
+            zi.compress_type = zipfile.ZIP_DEFLATED
+            zi.external_attr = 0o644 << 16
+            dst.writestr(zi, vba, compresslevel=9)
     return out.getvalue()
 
 
 # --demo: a copy ready to present - the JDE Packaging Schedule printout's
 # lines with its statuses and crews, 1st shift as of 5:15 AM today (so no CHECK
 # message on the day it's shown), opening on 4. Schedule.
-DEMO_OUT = OUT.with_name("JDE_Production_Schedule_DEMO.xlsx")
+DEMO_OUT = OUT.with_name("JDE_Production_Schedule_DEMO.xlsm")
 DEMO_LINES = {  # line: (this shift, next shift, crew)
     "LINE 1": ("NOT SCHEDULED", "NOT SCHEDULED", None), "LINE 3": ("RUNNING", "NOT SCHEDULED", 5),
     "LINE 5": ("RUNNING", "RUNNING", 6), "LINE 7": ("RUNNING", "NOT SCHEDULED", 7),
@@ -2859,6 +2973,11 @@ def main():
         ws.sheet_view.tabSelected = ws.title == S_HOW
     wb.security = WorkbookProtection(lockStructure=True)
     wb.calculation.fullCalcOnLoad = True
+    # the VBA project's document modules: the workbook (ThisWorkbook) and the
+    # sheets (Excel adds their empty modules)
+    wb.code_name = "ThisWorkbook"
+    for i, ws in enumerate(wb.worksheets, start=1):
+        ws.sheet_properties.codeName = f"Sheet{i}"
     wb.properties.creator = "JDE Sched"
     wb.properties.title = "JDE Production Schedule"
     wb.properties.created = FIXED_TIME
@@ -2869,7 +2988,7 @@ def main():
     out = DEMO_OUT if demo else OUT
     buf = io.BytesIO()
     wb.save(buf)
-    out.write_bytes(deterministic_zip(buf.getvalue()))
+    out.write_bytes(deterministic_zip(buf.getvalue(), vba_bin()))
     print(f"Wrote {out} ({out.stat().st_size // 1024} KB, {n} formulas audited)")
 
 

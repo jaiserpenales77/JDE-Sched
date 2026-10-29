@@ -1,8 +1,12 @@
 # JDE Production Schedule (Excel)
 
-`JDE_Production_Schedule.xlsx` replaces the web app's **Production Schedule** tab with
-a single Excel workbook - no app, no macros. It works in Excel 2010 and newer
-(Windows), Excel for Mac and Excel on the web / Teams.
+`JDE_Production_Schedule.xlsm` replaces the web app's **Production Schedule** tab with
+a single Excel workbook - no app. It works in Excel 2010 and newer (Windows),
+Excel for Mac and Excel on the web / Teams. Everything is worksheet formulas;
+one small macro (`JDENotes.FitNotes`, run by the workbook's events - no
+button) only hides the empty notes rows on 4. Schedule, so the work orders
+sit right under each other. Without macros (Excel on the web, or Enable
+Content not clicked) everything still works and those thin rows stay.
 
 It combines the app's report with the plant's **JDE Packaging Schedule** printout:
 each line's status this shift and next shift, the crew (EE), progress dots,
@@ -55,11 +59,12 @@ holds the machinery.
   Remove / Change Cotton, Add / Remove / Change Desiccant, and Dumping for a
   dumping work order (bulk A662 / A624) - only for changeovers that start
   before the end of the shift (the same ones the summary counts). Then, after
-  a |, **Remarks:** and its remark. A long row shrinks to fit. (Merged cells,
+  a |, **Remarks:** and its remark. A long row shrinks to fit. Merged cells,
   font sizes and row heights can't follow the data, so the notes row is there
-  for every work order, blank when it has nothing to say.) The gap between
-  two lines is the last work order's empty notes row, or a blank row pair
-  when that work order has notes. The file's COT (cotton) column isn't printed as a column: Yes for
+  for every work order; the macro hides the empty ones (hidden column AU says
+  which) when the file opens, when 4. Schedule recalculates or is opened, and
+  before printing. The gap between two lines is the last work order's empty
+  notes row (kept), or a blank row when that work order has notes. The file's COT (cotton) column isn't printed as a column: Yes for
   Y / Yes / X, none for N / No / 0 / blank, else the file's value (Change
   Cotton (value)). 2. Check Columns shows the column it comes from, with an
   Override for a file that titles it differently. A desiccant of N / No / 0 /
@@ -96,7 +101,7 @@ the 3. Lines list, the statuses and crews (with the "as of" date), the column
 overrides and the settings are saved in it. Keep the original next to them as
 a clean master. The printout's footer shows the file name.
 
-`JDE_Production_Schedule_DEMO.xlsx` is the same workbook set up for a
+`JDE_Production_Schedule_DEMO.xlsm` is the same workbook set up for a
 presentation: the printout's statuses and crews, 1st shift, as of 5:15 AM
 today, opening on 4. Schedule. Don't use it for real work - start from the
 main file.
@@ -107,12 +112,16 @@ The workbook is generated - don't edit it by hand and commit it, edit the script
 
 ```sh
 python3 excel/build_workbook.py      # from the repo root; needs Python 3 + openpyxl
-python3 excel/build_workbook.py --demo   # JDE_Production_Schedule_DEMO.xlsx: ready to present
+python3 excel/build_workbook.py --demo   # JDE_Production_Schedule_DEMO.xlsm: ready to present
 ```
 
 The build is deterministic (same script, same bytes) and checks every formula
 against the Excel 2007 function whitelist before saving. The Calc sheet layout
-and all defined names are documented at the top of `build_workbook.py`.
+and all defined names are documented at the top of `build_workbook.py`. The
+macro's source is in `build_workbook.py` (VBA_MODULE, VBA_THISWORKBOOK);
+`vba_project.py` writes it into the file's vbaProject.bin (standard library
+only: [MS-OVBA] compression and a [MS-CFB] compound file; no compiled code, so
+Excel compiles the source when it opens the file). The macro is not signed.
 `line_rates.csv` (LINE, ITEM, DESCRIPTION, BOTTLES PER HOUR, SOURCE) is the
 Router BPH of each line and item from the router's tProduct table, or the JDE
 router rate (10000 / JDE_Router) where there is no Router BPH.
