@@ -49,8 +49,10 @@ holds the machinery.
   order before it (the app's Cap Change). CT in red bold on a count change.
 - A remark prints under its work order in a cream note box (wrapped, up to 4
   lines). So does the cotton: the file's COT column isn't printed as a column -
-  a COTTON: row in the note box says Yes (Y / Yes / X in the file) or the
-  file's value, and nothing for N or blank. 2. Check Columns shows the column
+  a bold COTTON: row in the note box says Yes (Y / Yes / X in the file) or the
+  file's value on a line's running work order, and on the next ones what the
+  changeover does: Add Cotton, Remove Cotton, or Change Cotton (another value);
+  nothing when it stays the same. 2. Check Columns shows the column
   it comes from, with an Override for a file that titles it differently.
 - Row highlights as in the app: allergen, oil, and dumping in light blue (bulk
   items A662 / A624).

@@ -154,7 +154,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          CH233 EXACT mask (auto), CH236 overridden-fields mask,
          CH237 EXACT mask (with overrides)
   DA:DC  pasted rows 1-1000 (rows 5-1004): row no., trimmed Line, LEGEND flag
-  DE:GM  the window: every pasted row under the header down to row 1000
+  DE:GO  the window: every pasted row under the header down to row 1000
          (rows 5-1003), one row per pasted row HEADER_ROW+k: k, paste row,
          in range, line, row key (the 60 cells joined with U+241F, trimmed),
          duplicate, kept before the cap, running count, kept (the first 600),
@@ -165,10 +165,11 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          in '3. Lines', running (RUNNING / PARTIAL SHIFT / OVERTIME), status
          shown, highlight, % actual, bottles remaining, first kept row with
          the same WO # (EXACT), looks like a row of column titles, filled
-         cells of the row (only for the example row); then EX:GM: line
+         cells of the row (only for the example row); then EX:GO: line
          number, name shown, next shift, breaks, crew (from LB), the work
          order before it on the line, first-of-line flag, changeover code and
-         minutes, cap change, cotton shown, remark, note flag, cotton flag, all
+         minutes, cap change, cotton (its own, the one before it, the COTTON:
+         row: as it is / Add / Remove / Change Cotton), remark, note flag, cotton flag, all
          capitals, the remark
          wrapped in 4 lines (starts, texts), note rows, note rows before it,
          rate key, bottles per hour, bottles, full-hour equivalents, no rate,
@@ -176,17 +177,17 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          estimated time (number, text), next changeover, when the changeover
          into it starts, progress / changeover
          text, left / minutes text, CAP as size-type
-  GO:IB  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
+  GQ:ID  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
          position, window row, note's window row, note line, row or note's
          window row, kind (row/note/spacer/""), first/last of line, then the
-         17 printed columns A:Q side by side (GW:HM), then the helpers
-  ID:IW  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
+         17 printed columns A:Q side by side (GY:HO), then the helpers
+  IF:IY  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
          no., window row, name, work orders, line number, matching key, row
          on 3. Lines, name shown, status from the file, status typed, status
          shown, running, next shift, breaks, crew, note, the lines that are
          NOT IN YOUR LIST one after the other (flag, running count, name), and
          the line's row in the left table of '3. Lines'
-  IY:JE  3. Lines rows 1-100: line number, matching key (the number, or
+  JA:JG  3. Lines rows 1-100: line number, matching key (the number, or
          N:NAME without one), first row with the same key, status this shift
          and next (standard spelling), breaks, crew
 """
@@ -681,7 +682,7 @@ W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "
           "stshown", "hl", "pa", "br", "wofk", "hdrlike", "nfill",
           # combined report (v2): the line's number, statuses and crew (from the
           # lines table LB), changeovers, notes, estimates
-          "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "cotnote", "note",
+          "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "cotv", "cotprev", "cotnote", "note",
           "hasnote", "hascot", "ncaps"] + [f"ns{i}" for i in range(1, NOTE_LINES + 1)]
          + [f"nt{i}" for i in range(1, NOTE_LINES + 1)] + [
           "nrows", "nbefore", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
@@ -756,14 +757,22 @@ def window_v2(ws, c, A, s, r_):
     cap_p, cap_c = f'TRIM({ix("cap", kp)}&"")', f'TRIM({A["cap"]}&"")'
     ws[c["capchg"]] = (f'=IF({keep}=0,0,IF({fw}=1,0,IF(OR({cap_p}="",{cap_c}=""),0,'
                        f'IF(UPPER({cap_p})=UPPER({cap_c}),0,1))))')
-    # note rows under the work order: its cotton (COT column) on a COTTON: row -
-    # Yes for Y / Yes / X / 1, nothing for N / No / 0 / - / blank, else the
-    # value - then its remark on NOTE: rows
+    # note rows under the work order: a COTTON: row, then its remark on NOTE:
+    # rows. The cotton (COT column) is Yes for Y / Yes / X / 1, none for N /
+    # No / 0 / - / blank, else the value. The line's first work order (the
+    # running one) shows its cotton; the next ones what the changeover does:
+    # Add Cotton, Remove Cotton, or Change Cotton (a different value).
     ct = f'TRIM({A["cotton"]}&"")'
-    u = f"UPPER({ct})"
-    no = ",".join(f'{u}="{v}"' for v in ("N", "NO", "0", "-", "FALSE", "NONE"))
-    yes = ",".join(f'{u}="{v}"' for v in ("Y", "YES", "X", "TRUE", "1"))
-    ws[c["cotnote"]] = f'=IF({keep}=0,"",IF({ct}="","",IF(OR({no}),"",IF(OR({yes}),"Yes",{ct}))))'
+    no = "{" + ",".join(f'"{v}"' for v in ("N", "NO", "0", "-", "FALSE", "NONE")) + "}"
+    yes = "{" + ",".join(f'"{v}"' for v in ("Y", "YES", "X", "TRUE", "1")) + "}"
+    # (MATCH of text is not case-sensitive)
+    ws[c["cotv"]] = (f'=IF({keep}=0,"",IF({ct}="","",IF(ISNUMBER(MATCH({ct},{no},0)),"",'
+                     f'IF(ISNUMBER(MATCH({ct},{yes},0)),"Yes",{ct}))))')
+    ws[c["cotprev"]] = f'=IF(OR({keep}=0,{fw}=1),"",{ix("cotv", kp)})'
+    cv, pv = A["cotv"], A["cotprev"]
+    ws[c["cotnote"]] = (f'=IF({keep}=0,"",IF({fw}=1,{cv},IF({cv}<>"",IF({pv}="","Add Cotton"&IF({cv}="Yes","",'
+                        f'" ("&{cv}&")"),IF(UPPER({cv})<>UPPER({pv}),"Change Cotton ("&{cv}&")","")),'
+                        f'IF({pv}<>"","Remove Cotton",""))))')
     ws[c["hascot"]] = f'=IF({keep}=0,0,IF({A["cotnote"]}<>"",1,0))'
     ws[c["note"]] = f'=IF({keep}=0,"",TRIM({A["remarks"]}&""))'
     ws[c["hasnote"]] = f'=IF({keep}=0,0,IF({A["note"]}<>"",1,0))'
@@ -1979,7 +1988,8 @@ def look_codes(r):
     """The look codes of 4. Schedule row r (helper columns AE:AL)."""
     edge = f'IF(OR($S{r}="row",$S{r}="note"),IF($W{r}=1,IF($X{r}=1,1,2),IF($X{r}=1,3,4)),0)'
     prev_first = f"N($W{r - 1})"
-    data = (f'IF($S{r}="note",6,IF($U{r}=1,5,IF($T{r}="allergen",2,IF($T{r}="oil",3,IF($T{r}="bulk",4,1)))))')
+    data = (f'IF($S{r}="note",IF($D{r}="COTTON:",7,6),IF($U{r}=1,5,IF($T{r}="allergen",2,IF($T{r}="oil",3,'
+            f'IF($T{r}="bulk",4,1)))))')
     prog = (f'IF($S{r}="note",9,IF($U{r}=1,8,IF($Z{r}=1,IF($M{r}="Not Started Yet",2,1),IF($AA{r}="S1",3,'
             f'IF($AA{r}="S1 Count Change",4,IF($AA{r}="S3",5,IF($AA{r}="S4",6,7)))))))')
     return {
@@ -2152,6 +2162,7 @@ def add_conditional_formats(ws, last_row):
                 cf(ws, where, f"${code}{r0}+${off}{r0}={st * 1000 + v * 10 + e}", fill_color, font_, b)
 
     note_font = font(BODY_PT, False, C_NOTE_TEXT, italic=True)
+    cotton_font = font(BODY_PT, True, C_NOTE_TEXT, italic=True)
     grey = font(BODY_PT, False, C_NOT_SCHED_TEXT)
     # LINE: the line's tab. Name on the line's tint, the status tag (and a
     # line with one row) on its color; the box's left side in the status color.
@@ -2172,13 +2183,15 @@ def add_conditional_formats(ws, last_row):
     for v in range(1, 6):
         rules(data, "AG", v, hl_fill[v], grey if v == 5 else None)
     rules(data, "AG", 6, C_NOTE_FILL, note_font, note=True)
+    rules(data, "AG", 7, C_NOTE_FILL, cotton_font, note=True)        # COTTON: rows in bold
     # CT and CAP: as the data columns, in bold red on a count change (CT) and
     # bold orange on a cap change (CAP)
     for col, code, color in (("F", "AH", C_COUNT_CHANGED), ("I", "AN", C_CAP_CHANGED)):
         for v in list(range(1, 6)) + list(range(11, 15)):
             rules(rng((col, col)), code, v, hl_fill[v % 10 if v > 10 else v],
                   font(BODY_PT, True, color) if v > 10 else grey if v == 5 else None)
-        rules(rng((col, col)), code, 6, C_NOTE_FILL, note_font, note=True)
+        for v in (6, 7):
+            rules(rng((col, col)), code, v, C_NOTE_FILL, note_font, note=True)
     # PROGRESS / CHANGEOVER and LEFT / C.O.: green progress dots on the
     # running work order, the changeover type in its color on the next ones
     prog_fonts = {1: font(BODY_PT, True, "2E7D32"), 2: font(BODY_PT, False, "7F7F7F", italic=True),
@@ -2399,8 +2412,11 @@ HOW_ROWS = [
     ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color."),
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
-    ("kv", "NOTE", "Under a work order, in a cream box: COTTON: and its cotton from the COT column of your file (Yes "
-                   "for Y / Yes / X, else what the file says; nothing for N or blank), then NOTE: and its remark "
+    ("kv", "NOTE", "Under a work order, in a cream box: COTTON: (bold) - on the line's first work order its cotton "
+                   "from the COT column of your file (Yes for Y / Yes / X, else what the file says; nothing for N or "
+                   "blank), on the next ones what the changeover does: Add Cotton (the work order before it has "
+                   "none), Remove Cotton (the one before it has cotton, this one none) or Change Cotton (another "
+                   "value); then NOTE: and its remark "
                    "(up to 4 lines; a longer remark ends with "
                    "... - the whole remark is on 1. Paste Schedule)."),
     ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to WO QTY. Highlights go allergen "
@@ -2497,8 +2513,9 @@ HOW_ROWS = [
     ("kv", "Why an Override is needed", "This file goes by the column titles only. Unlike the web app it does not "
                                         "guess the Line or WO column from the values in it, and a title with unusual "
                                         "characters may not be recognised - the Override box is how you tell it."),
-    ("kv", "Cotton (COT)", "The COT column of your file is not printed as a column: a work order's cotton prints in "
-                           "its note box (COTTON: Yes, or what the file says). 2. Check Columns shows which column it "
+    ("kv", "Cotton (COT)", "The COT column of your file is not printed as a column: the cotton prints in the note "
+                           "box - COTTON: Yes on the running work order, then Add Cotton / Remove Cotton where the "
+                           "next work order changes it. 2. Check Columns shows which column it "
                            "is read from (row Cotton); if your file titles it differently, pick its title in that "
                            "row's Override box."),
     ("kv", "Line rates", "6. Line Rates lists the bottles per hour of each line and item, from the Line Lead MDI "
@@ -2692,6 +2709,8 @@ def audit(wb):
             best = max(best, depth)
         if best > 60:
             problems.append(f"{where}: nesting {best}")
+        if depth != 0:
+            problems.append(f"{where}: unbalanced parentheses ({depth:+d})")
     if problems:
         raise SystemExit("Formula audit failed:\n" + "\n".join(problems[:50]))
     return len(texts)
