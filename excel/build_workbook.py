@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Build excel/JDE_Production_Schedule.xlsx - the Excel replacement for the
-JDE Sched web app's Production Schedule tab (only that tab).
+JDE Sched web app's Production Schedule tab (only that tab), combined with
+the plant's JDE Packaging Schedule printout: line statuses this shift and
+next shift, crew, progress dots, changeover types and minutes, and an
+estimated finish time for every work order (bottles per hour from the Line
+Lead MDI Router, excel/line_rates.csv).
 
     python3 excel/build_workbook.py          (run from the repo root)
+    python3 excel/build_workbook.py --demo   (JDE_Production_Schedule_DEMO.xlsx)
 
 The output is deterministic: the same script always writes byte-identical
 files (fixed document timestamps and zip entry dates).
@@ -22,8 +27,14 @@ Sheets (tab order)
   1. Paste Schedule   the data: today's file pasted at A1 (unprotected)
                       capacity A:BH (60 columns) x rows 1:1000
   2. Check Columns    header row + field -> column mapping, overrides, status
-  3. Lines            Scheduled / Status per line + today's lines
+  3. Lines            the shift of this copy, the "schedule as of" time, and
+                      per line: status this shift / next shift, breaks &
+                      lunch (Yes/No), crew; + today's lines
   4. Schedule         the printable report (formulas only, protected)
+  5. Settings         shift clock (1st shift start, break / lunch hours and
+                      their output share), line efficiency, changeover minutes
+  6. Line Rates       bottles per hour by line and item (unprotected), with a
+                      hidden key column F (line number | ITEM)
   Calc                hidden helper sheet (protected), layout below
 
 Workbook-scope defined names
@@ -35,18 +46,35 @@ Workbook-scope defined names
   COL_OVERRIDES        '2. Check Columns'!$F$13:$F$27  input, field order
   WO_COUNT             '2. Check Columns'!$E$9
   LINE_COUNT           '2. Check Columns'!$E$10
-  LINES_NAME / LINES_SCHEDULED / LINES_STATUS   '3. Lines'!$A/$B/$C$4:$103
-  LINES_CHECKED_ON     '3. Lines'!$K$1  input: date the ticks/statuses were
-                       checked (not today -> red CHECK on 3. Lines + 4. Schedule)
-  SCHED_KIND / SCHED_HL / SCHED_SCHEDULED / SCHED_STATUS
-                       '4. Schedule'!$T/$U/$V/$W$3:$702 (hidden helpers)
+  LINES_NAME / LINES_STATUS / LINES_NEXT / LINES_BREAKS / LINES_CREW
+                       '3. Lines'!$A/$B/$C/$D/$E$4:$103
+  LINES_SHIFT          '3. Lines'!$C$1  input: 1st / 2nd / 3rd Shift
+  LINES_CHECKED_ON     '3. Lines'!$L$1  input: schedule as of (date and time;
+                       not today -> red CHECK on 3. Lines + 4. Schedule)
+  SET_START, SET_BREAK1, SET_BREAK2, SET_LUNCH, SET_FBREAK, SET_FLUNCH,
+  SET_EFF, SET_CO_S1, SET_CO_CNT, SET_CO_S3, SET_CO_S4   '5. Settings'!$C$..
+  SCHED_KIND / SCHED_HL / SCHED_STATUS / SCHED_SCHEDULED
+                       '4. Schedule'!$S/$T/$AC/$AD$5:$704 (hidden helpers)
   '4. Schedule' also has a sheet-scoped _xlnm.Print_Area =
-  '4. Schedule'!$A$1:INDEX('4. Schedule'!$Q$1:$Q$702,Calc!$B$14) so the
-  printout stops at the last used row, and _xlnm.Print_Titles = rows 1:2.
+  '4. Schedule'!$A$1:INDEX('4. Schedule'!$Q$1:$Q$704,Calc!$B$14) so the
+  printout stops at the last used row, and _xlnm.Print_Titles = rows 1:4.
 
-'4. Schedule' column A has the line name once, bold, on the first row of each
-line, and the line's READY / PM / OT tag on its 2nd row (after the name for a
-one-row line); the line's other rows are blank there.
+'4. Schedule' rows 1-4: title band and shift, subtitle (shift, date, as of) +
+status legend, one-line summary (or the warnings) + changeover / row legend,
+column titles. From row 5, each line is a box: column A has the line name on
+its first row and its status tag on the 2nd row (a one-row line shows the
+status by the cell color); a remark prints on note rows under its work order
+(NOTE: in ITEM, the text wrapped in ITEM DESCRIPTION); a blank row follows
+each line. Hidden columns S:AN hold the helpers and the look codes the
+conditional formats test (one rule per code, so one rule is true per cell).
+
+Estimated times: per line, in Seq order, the work in full-hour equivalents
+(changeover minutes / 60 + bottles left / (bottles per hour x efficiency)) is
+added up from "schedule as of". On a line without breaks a full hour is a
+clock hour. On a line with breaks the shift clock (Calc rows 70-72) gives each
+of the next 8 hours its output share (lunch 4/7, break 6/7, else 1): the work
+fills what is left of the current hour, then whole 8-hour shifts, then the
+hours of the last one.
 
 No CHAR() above 127 and nothing below CHAR(32) except 9/10/13: the
 non-breaking space, the other non-ASCII characters column-title normalization
@@ -55,7 +83,7 @@ the formula text (see NBSP / SEP below).
 
 Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
 ------------------------------------------------------------------------
-  A:B    scalars (label in A, value in B), rows 5-46, in SCALARS order:
+  A:B    scalars (label in A, value in B), rows 5-60, in SCALARS order:
          B5 auto header row, B6/B7 parsed header-row override + valid flag,
          B8 LEGEND row (1001 = none), B9 work orders in rows 1-1000, B10 work
          orders kept (max 600), B11 lines, B12 rows the report needs (work
@@ -67,15 +95,22 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          in rows 1-40, B28/B29 kept rows that look like a row of column
          titles (old data left on the sheet) + the first one's paste row, B30 overrides worth a
          look, B31 capacity warnings, B32 status text, B33 status OK flag,
-         B34 3. Lines ticks/statuses not dated today, B35 4. Schedule typed on
-         (its A3:Q702 differ from Calc), B36 warning for '4. Schedule'!A1,
+         B34 3. Lines statuses not dated today, B35 4. Schedule typed on
+         (its A5:Q704 differ from Calc), B36 warnings for 4. Schedule,
          B37 Line column, B38/B39 first / last work order text, B40 kept
          rows whose WO # is on an earlier kept row (old rows left on the
          sheet), B41 window row of the first one, B42 its text, B43 status OK
          apart from those, B44 this computer's decimal separator (VALUE()
          follows the regional settings; "." is swapped for it first), B45/B46
          window row / paste row of the example row (the first work order, or
-         the first filled row under the titles when there is none)
+         the first filled row under the titles when there is none),
+         B47 note rows, B48 schedule as of, B49/B50 this / next shift,
+         B51-B55 shift clock now (hours into the shift, hour 1-8, share of
+         this hour left, its output share, a whole shift's output), B56/B57
+         next changeover time and its window row, B58 summary line, B59
+         subtitle, B60 the warnings on one line
+  A70:J72 shift clock: row 71 the output share of hour +1..+8, row 72 the
+         running total S0..S8
   D:R    field table, rows 5-19 (one per import field, app order):
          D index, E key, F label, G 2^index, H override text, I override
          parsed (0 auto, -1 "-", -2 invalid, else column no. - from a letter
@@ -114,7 +149,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          CH233 EXACT mask (auto), CH236 overridden-fields mask,
          CH237 EXACT mask (with overrides)
   DA:DC  pasted rows 1-1000 (rows 5-1004): row no., trimmed Line, LEGEND flag
-  DE:EX  the window: every pasted row under the header down to row 1000
+  DE:GI  the window: every pasted row under the header down to row 1000
          (rows 5-1003), one row per pasted row HEADER_ROW+k: k, paste row,
          in range, line, row key (the 60 cells joined with U+241F, trimmed),
          duplicate, kept before the cap, running count, kept (the first 600),
@@ -122,19 +157,31 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          number), first kept row of the line, first-of-line flag, line
          count, line no., Seq anchor (LOOKUP(2,1/...)), Seq key, Seq group
          (0 blank, 1 number, 2 text), Seq value, rank, report position, row
-         in '3. Lines', scheduled, status from the file, status typed on
-         '3. Lines', status shown, highlight, % actual, bottles remaining,
-         first kept row with the same WO # (EXACT), looks like a row of
-         column titles (Line = the header's Line title, or a Line / WO #
-         title after a light normalization), filled cells of the row (only
-         worked out when there is no work order - for the example row)
-  EZ:FY  the report, 700 rows (rows 5-704): position, window row, kind
-         (row/spacer/""), first/last of line, then the 18 printed columns
-         A:R side by side (FE:FV), highlight, scheduled, count-change flag
-  GA:GK  today's lines 1-100 (rows 5-104) for '3. Lines': no., window row,
-         name, work orders, status, scheduled, note, then the lines that are
-         NOT IN YOUR LIST one after the other (flag, running count, name),
-         and the line's row in the left table of '3. Lines'
+         in '3. Lines', running (RUNNING / PARTIAL SHIFT / OVERTIME), status
+         shown, highlight, % actual, bottles remaining, first kept row with
+         the same WO # (EXACT), looks like a row of column titles, filled
+         cells of the row (only for the example row); then EW:GI: line
+         number, name shown, next shift, breaks, crew (from LB), the work
+         order before it on the line, first-of-line flag, changeover code and
+         minutes, cap change, remark, note flag, all capitals, the remark
+         wrapped in 4 lines (starts, texts), note rows, note rows before it,
+         rate key, bottles per hour, bottles, full-hour equivalents, no rate,
+         running total, the shift-clock steps (F2, whole shifts, rest, hour),
+         estimated time (number, text), next changeover, progress / changeover
+         text, left / minutes text, CAP as size-type
+  GK:HX  the report, 700 rows (rows 5-704 = 4. Schedule rows 5-704):
+         position, window row, note's window row, note line, row or note's
+         window row, kind (row/note/spacer/""), first/last of line, then the
+         17 printed columns A:Q side by side (GS:HI), then the helpers
+  HZ:IS  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
+         no., window row, name, work orders, line number, matching key, row
+         on 3. Lines, name shown, status from the file, status typed, status
+         shown, running, next shift, breaks, crew, note, the lines that are
+         NOT IN YOUR LIST one after the other (flag, running count, name), and
+         the line's row in the left table of '3. Lines'
+  IU:JA  3. Lines rows 1-100: line number, matching key (the number, or
+         N:NAME without one), first row with the same key, status this shift
+         and next (standard spelling), breaks, crew
 """
 
 import io
@@ -146,7 +193,7 @@ from datetime import datetime
 from pathlib import Path
 
 from openpyxl import Workbook
-from openpyxl.formatting.rule import DataBarRule, Rule
+from openpyxl.formatting.rule import Rule
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
 from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.utils import get_column_letter as L
@@ -177,9 +224,13 @@ LINE_SLOTS = 100       # 3. Lines rows
 NBSP = " "
 SEP = "␟"         # joins the cells of a row for the duplicate check
 
-S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_CALC = (
-    "How To Use", "1. Paste Schedule", "2. Check Columns", "3. Lines", "4. Schedule", "Calc")
+S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_CALC = (
+    "How To Use", "1. Paste Schedule", "2. Check Columns", "3. Lines", "4. Schedule", "5. Settings",
+    "6. Line Rates", "Calc")
 PASTE, CHECK, LINES, SCHED = "'1. Paste Schedule'", "'2. Check Columns'", "'3. Lines'", "'4. Schedule'"
+SETTINGS, RATES = "'5. Settings'", "'6. Line Rates'"
+RATE_ROWS = 5000        # 6. Line Rates rows 5:5004
+RATES_CSV = Path(__file__).resolve().parent / "line_rates.csv"
 
 # Import fields, in the app's order (src/importColumns.ts IMPORT_FIELDS).
 FIELDS = [
@@ -212,85 +263,103 @@ EXACT = {
 
 # Sample work orders = src/seedData.ts seedWorkOrders (line status and
 # desiccant are blank there). Text columns stay text, like the app's export.
+# Sample work orders (the JDE Packaging Schedule printout of Oct 29, 2026, as a
+# JDE paste would have them; % Complete read from its progress dots).
+# (line, wo, seq, item, description, count, bulk, bottle, cap, allergen,
+#  remarks, WO qty, % complete, desiccant)
 SAMPLE = [
-    ("VPKL01", "2682056", "2", "13612", "NM COQ10 200MG", "90", "A640AB", "225", "CAP 45MM CT YELLOW 116 NV", "N", "", 19780, 0),
-    ("VPKL03", "2682467", "5", "4251", "VITAMIN D 1000IU SG", "650", "BU001565", "300", "CAP 45MM CT YELL 116 V", "N", "", 45802, 0),
-    ("VPKL05", "2682229", "11", "2883", "MAGNESIUM 400MG LSG", "150", "BU001299", "500", "CAP 45MM CT YELL 116 V", "N", "", 22233, 79.34),
-    ("VPKL05", "2683002", "12", "2883", "MAGNESIUM 400MG LSG", "150", "BU001299", "500", "CAP 45MM CT YELL 116 V", "N", "", 28920, 0),
-    ("VPKL05", "2679111", "13", "13176", "SUPER B + C SUPPORT", "300", "A633", "625", "CAP 53MM CT YELLOW 116 V", "N", "Label currently is PK002584 but needs new label PK002875 once in system", 10399, 0),
-    ("VPKL07", "2682249", "6", "HL000430", "FISH OIL 1200MG BPLESS SAMS", "240", "A420PE", "950", "CAP 53MM CT YELLOW 116 V", "N", "", 23618, 17.78),
-    ("VPKL08", "2681041", "9", "1717", "CHEWABLE VIT C 500MG", "150", "704AS", "625", "CAP 53MM CT YELLOW 116 V", "M", "", 30967, 61.85),
-    ("VPKL08", "2679117", "10", "1717", "CHEWABLE VIT C 500MG", "150", "704AS", "625", "CAP 53MM CT YELLOW 116 V", "N", "", 27404, 0),
-    ("VPKL09", "2681071", "6", "4294", "FISH OIL 1200MG", "150", "A419PE", "500", "CAP 45MM CT YELL 116 V", "N", "", 20132, 0),
-    ("VPKL09", "2681067", "7", "2895", "MAGNESIUM CITRATE SG", "120", "A685AC", "400", "CAP 45MM CT YELL 116 V", "N", "", 20174, 0),
-    ("VPKL09", "2682430", "8", "2729", "SUPER B COMP W/C & FOL ACID", "360", "BU001588", "400", "CAP 45MM CT YELL 116 V", "N", "", 20171, 0),
-    ("VPKL10", "2682127", "10", "2727", "SUPER B-COMP W/FOLIC BIOTIN& C", "140", "704AS", "225", "CAP 45MM CT YELL 116 V", "N", "", 33270, 0),
-    ("VPKL10", "2682130", "11", "2727", "SUPER B-COMP W/FOLIC BIOTIN& C", "140", "BU001588", "225", "CAP 45MM CT YELL 116 V", "N", "", 40702, 9.43),
-    ("VPKL10", "2681559", "12", "4065", "SUPER B COMPLEX W/VIT C", "160", "BU001588", "225", "CAP 45MM CT YELL 116 V", "N", "", 38193, 0),
-    ("VPKL12", "2682211", "8", "2509", "VIT C 500MG S/G", "60", "A101AI", "225", "CAP 45MM CT YELL 116 V", "N", "", 53770, 7.14),
-    ("VPKL12", "2681653", "9", "HL000589", "MG GLYCINATE 300MG 2PC AMZN", "90", "BU001333", "225", "CAP 45MM CT YELL 116 V", "N", "", 23099, 0),
+    ('VPKL01', '2688636', '2', 'HL000669', 'VITAMIN D3 + K2 WMT', '60', 'A845', '150', 'CAP 38MM CT WHITE 116', 'N', '', 62567, 29.7, ''),
+    ('VPKL03', '2684428', '2', '2750SUB', 'PRENATAL MULTI W/DHA LSG SUB', '150', 'BU001268', '500', 'CAP 45MM CRC WHITE', 'N', '', 32901, 2.7, 'P-OR'),
+    ('VPKL03', '2685239', '3', '2750SUB', 'PRENATAL MULTI W/DHA LSG SUB', '150', 'BU001268', '500', 'CAP 45MM CRC WHITE', 'N', '', 29664, 0, 'P-OR'),
+    ('VPKL05', '2687675', '1', '3049', 'CHOLEST-OFF PLUS', '210', 'BU001375', '625', 'CAP 53MM CT YELLOW 116 V', 'N', '', 38094, 47.5, ''),
+    ('VPKL05', '2687975', '2', '3049', 'CHOLEST-OFF PLUS', '210', 'BU001375', '625', 'CAP 53MM CT YELLOW 116 V', 'N', 'Labels are short due to over-issuing to WO 2687675. Please request labels once the previous order is complete.', 22472, 0, ''),
+    ('VPKL05', '2687185', '3', '2883', 'MAGNESIUM 400MG LSG', '150', 'BU001299', '500', 'CAP 45MM CT YELL 116 V', 'N', '', 25393, 0, 'P'),
+    ('VPKL07', '2687203', '1', 'HL000430', 'FISH OIL 1200MG BPLESS SAMS', '240', 'A420PE', '950', 'CAP 53MM CT YELLOW 116 V', 'N', '', 23390, 70.1, ''),
+    ('VPKL07', '2686309', '2', 'HL000297', 'FISH OIL 2400MG SG NM COSTCO', '300', 'A419PE', '950', 'CAP 53MM CT YELLOW 116 V', 'N', '', 34811, 0, ''),
+    ('VPKL08', '2688841', '3', '3184', 'FISH OIL 600 MG BURP-LESS', '230', 'A593PE', '625', 'CAP 53MM CT YELLOW 116 V', 'N', '', 24159, 50.3, ''),
+    ('VPKL08', '2687178', '4', '2895', 'MAGNESIUM CITRATE SG', '120', 'A685AC', '400', 'CAP 45MM CT YELL 116 V', 'N', '', 19917, 0, ''),
+    ('VPKL08', '2688248', '5', '3076', 'ULTRA OMEGA-3 FISH OIL 1400MG', '100', 'BU001123', '400', 'CAP 45MM CT YELL 116 V', 'N', '', 19089, 0, 'P-LM'),
+    ('VPKL09', '2687168', '3', '2664', 'FISH OIL ONE PER DAY BURP-LESS', '120', 'A592AB', '400', 'CAP 45MM CT YELL 116 V', 'N', '', 15033, 26.8, ''),
+    ('VPKL09', '2687258', '4', '3006', 'TURMERIC 500MG', '120', 'A624', '300', 'CAP 45MM CT YELL 116 V', 'N', '', 26777, 0, ''),
+    ('VPKL09', '2687151', '5', '1882', 'VITAMIN E 400IU DLA', '300', '505AX', '300', 'CAP 45MM CT YELL 116 V', 'N', '', 28742, 0, ''),
+    ('VPKL10', '2686735', '3', '4375', 'FISH OIL MINIS', '60', 'BU001043', '150', 'CAP 38MM CT WHITE 116', 'N', '', 33250, 0, 'P-LM'),
+    ('VPKL10', '2687671', '4', '2837', 'POST NATAL MULTI S/G', '60', 'A826AB', '225', 'CAP 45MM CRC WHITE', 'N', '', 22836, 0, 'P-OR'),
+    ('VPKL10', '2686734', '5', '2517', 'CALCIUM 500MG W/D', '130', 'BU001106', '225', 'CAP 45MM CT YELL 116 V', 'N', '', 30634, 0, ''),
+    ('VPKL12', '2687974', '3', '2697', 'ULTRA OMEGA-3 FISH OIL 1400MG', '45', 'BU001123', '225', 'CAP 45MM CT YELL 116 V', 'N', 'PULL 4 SAMPLES FOR QA.', 22826, 25.5, 'P-LM'),
+    ('VPKL12', '2687473', '4', '4313', 'MAGNESIUM GLYCINATE CAPSULE', '60', 'BU001333', '225', 'CAP 45MM CT YELL 116 V', 'N', '', 42721, 0, ''),
+    ('VPKL12', '2686312', '5', '4345', 'VITAMIN D3 + K2', '30', 'A845', '150', 'CAP 38MM CT WHITE 116', 'N', '', 77667, 0, ''),
 ]
 # The app's Excel export columns (src/excel.ts SCHEDULE_HEADERS).
 EXPORT_HEADERS = ["LINE", "WO", "SEQ", "ITEM", "PRODUCT DESCRIPTION", "Count", "Bulk Item", "Bottle Size",
                   "CAP DESCRIPTION", "Allergen", "REMARKS", "WO Quantity", "% Complete", "% Actual Complete",
                   "Bottles Remaining", "CHANGEOVER", "Line Status", "Desiccant"]
 
-# Print look (src/seedData.ts defaultSchedulePrintSettings).
-TITLE = "PRODUCTION LINE SCHEDULE"
-C_HEADER, C_FORMULA, C_ALLERGEN, C_OIL, C_BULK = "D9D9D9", "FFF9DB", "F8CBAD", "FFF2CC", "BDD7EE"
-C_READY, C_PM, C_OT = "15803D", "1D4ED8", "FACC15"
-C_DIVIDER, C_SCHEDULED, C_COUNT_CHANGED, C_GRID = "000080", "00C805", "FF0000", "808080"
-# The line name repeated on the 2nd.. rows of a line: grey (on the green of a
-# ticked line: near black), not bold.
-C_LINE_REPEAT, C_LINE_REPEAT_ON_GREEN = "8C8C8C", "262626"
-C_PROGRESS = "43A047"   # the app's progress bar green (a little darker, it prints as a fading bar)
-# The app tints the LINE cell of a line with a status (color-mix 16% with white).
-C_TINT = {"READY": "DAEBE0", "PM": "DBE3F9", "OT": "FEF7DA"}
-# % ACTUAL COMPLETE on a work-order row: blank shows a dash, like the app's
-# ProgressBar. The dash is the cell's value (text), not a number format: a
-# number format inside a conditional format leaked into the next column
-# (BOTTLES REMAINING showed 459300.0%) in real Excel, so conditional formats
-# here never carry one.
-PA_DASH = "\u2014"
+# Row highlights and the count-change red (src/seedData.ts defaultSchedulePrintSettings).
+C_HEADER, C_ALLERGEN, C_OIL, C_BULK = "D9D9D9", "F8CBAD", "FFF2CC", "BDD7EE"
+C_COUNT_CHANGED = "FF0000"
 
-# 4. Schedule columns: (header, Calc output key, width % from PrintViews.tsx
-# DEFAULT_SCHEDULE_COLUMN_WIDTHS; STATUS is this workbook's own column).
-# Titles are the app's short printout titles (CT, BTL SIZE, ALLRG, WO QTY,
-# BTLS LEFT - DEFAULT_PRINT_COLUMN_TITLES), so a title doesn't make its column
-# wider than the numbers in it; REMARKS gets the room.
+# 4. Schedule columns: (title, Calc output key). The layout combines the app's
+# report with the JDE Packaging Schedule printout: short titles, quantities
+# with commas, progress dots and changeover types in one column, bottles left
+# or changeover minutes in the next, the crew (EE), an estimated finish time
+# for every work order and the line's next-shift status at the right edge.
+# Remarks (and the app's "Cap Change") print on their own row under the work
+# order, across the table, so they are never cut off.
 SCHED_COLS = [
-    ("LINE", "o_line", 6.5), ("WO", "o_wo", 5), ("SEQ", "o_seq", 3),
-    ("ITEM", "o_item", 5), ("PRODUCT DESCRIPTION", "o_desc", 14), ("CT", "o_count", 3),
-    ("BULK ITEM", "o_bulk", 5), ("BTL SIZE", "o_bottle", 4), ("CAP DESCRIPTION", "o_cap", 10),
-    ("ALLRG", "o_allergen", 3), ("REMARKS", "o_remarks", 12.5), ("WO QTY", "o_qty", 4),
-    ("% COMPLETE", "o_pct", 4), ("DESICCANT", "o_desiccant", 4), ("PROGRESS", "o_pa", 5),
-    ("BTLS LEFT", "o_br", 4), ("CHANGEOVER", "o_chg", 6),
+    ("LINE", "o_line"), ("WO", "o_wo"), ("SQ", "o_seq"), ("ITEM", "o_item"),
+    ("ITEM DESCRIPTION", "o_desc"), ("CT", "o_count"), ("BULK", "o_bulk"), ("BTL", "o_bottle"),
+    ("CAP", "o_cap"), ("A", "o_allergen"), ("DES", "o_desiccant"), ("WO QTY", "o_qty"),
+    ("PROGRESS / CHANGEOVER", "o_prog"), ("LEFT / C.O.", "o_left"), ("EE", "o_crew"),
+    ("EST. TIME", "o_est"), ("NEXT SHIFT", "o_next"),
 ]
-# Font sizes (points). "Fit all columns on one page" prints the sheet at about
-# 80 %, so these are the app's print sizes / 0.8: title 16, date 9, body 7,
-# line name 7.7 in the app. Nothing is smaller than the 8.5 pt body text:
-# real Excel draws Calibri below about 8 pt without ClearType and with much
-# wider glyphs, so 7 pt column titles broke mid-word. Titles and warnings are
-# 9 pt bold, a size Excel was seen to draw normally.
+# Font sizes (points). Nothing is smaller than the 8.5 pt body text: real
+# Excel draws Calibri below about 8 pt without ClearType and with much wider
+# glyphs, so small column titles broke mid-word.
 TITLE_PT, DATE_PT, HEADER_PT, BODY_PT, LINE_PT = 20, 11, 9, 8.5, 9
 ROW_HEIGHT = 12.0      # points: one line of 8.5 pt text
 # Column widths (Excel units). Excel gives a column of width w trunc(7w+0.49)
 # pixels, 5 of them padding, and draws Calibri with every letter rounded to
 # whole pixels - tighter than LibreOffice. Each column fits the longest word
-# of its title in 9 pt bold and a typical value
-# in 8.5 pt: WO 2682056, ITEM HL000430, BULK ITEM BU001565, a 6-digit
-# quantity. Longer values shrink to fit (SHRINK_COLS); the two description
-# columns take the room that's left.
+# of its title in 9 pt bold and a typical value in 8.5 pt (WO 2682056, ITEM
+# HL000430, BULK BU001565, a 6-digit quantity, ten progress dots and "100%",
+# "10/29 12:51 PM"). Longer values shrink to fit.
 SCHED_WIDTHS = {
-    "LINE": 8.5, "WO": 7.3, "SEQ": 4.4, "ITEM": 8.1, "PRODUCT DESCRIPTION": 21.0,
-    "CT": 4.2, "BULK ITEM": 8.3, "BTL SIZE": 5.0, "CAP DESCRIPTION": 19.6, "ALLRG": 6.2,
-    "REMARKS": 18.4, "WO QTY": 7.0, "% COMPLETE": 9.2, "DESICCANT": 9.4, "PROGRESS": 10.5,
-    "BTLS LEFT": 7.0, "CHANGEOVER": 11.6,
+    "LINE": 9.5, "WO": 7.3, "SQ": 3.6, "ITEM": 8.1, "ITEM DESCRIPTION": 25.0, "CT": 4.4, "BULK": 8.3,
+    "BTL": 4.6, "CAP": 7.0, "A": 3.0, "DES": 5.2, "WO QTY": 7.2, "PROGRESS / CHANGEOVER": 15.5,
+    "LEFT / C.O.": 7.6, "EE": 3.4, "EST. TIME": 12.2, "NEXT SHIFT": 12.0,
 }
-# Every report column shrinks a value that's too long for it, so nothing is
-# cut off and no number turns into ####; only REMARKS is cut at the cell edge
-# (shrinking a long remark makes it unreadably small; the app cuts it too).
-SHRINK_COLS = {key for _, key, _ in SCHED_COLS} - {"o_remarks"}
+SHRINK_COLS = {key for _, key in SCHED_COLS}     # every column: long values shrink to fit
+# Note rows: a work order's remark prints under it like a sticky note: NOTE:
+# under the item and the remark wrapped at word breaks in the ITEM DESCRIPTION
+# column, one line per row, up to NOTE_LINES rows (a formula's text can't
+# spill into the next cell as typed text can, and a row can't grow by itself,
+# so the wrapping is done by formula). Characters per line = the column's
+# pixels / NOTE_PX_PER_CHAR; a line that comes out a little too wide shrinks
+# to fit.
+NOTE_LINES = 4
+NOTE_PX_PER_CHAR = (5.0, 6.3)     # 8.5 pt italic: mixed case, all capitals
+
+# Line statuses (3. Lines This shift / Next shift), as on the JDE Packaging
+# Schedule's border legend: (status, strong color, text on it, light tint).
+# READY / PM / OT from the app (and a file's Line Status column) map to
+# READY LINE / PM / CLEANING / OVERTIME.
+STATUSES = [
+    ("RUNNING", "2E7D32", "FFFFFF", "E2F0D9"),
+    ("PARTIAL SHIFT", "ED7D31", "FFFFFF", "FBE5D6"),
+    ("OVERTIME", "FFC000", "000000", "FFF2CC"),
+    ("READY LINE", "7030A0", "FFFFFF", "E4DFEC"),
+    ("PM / CLEANING", "0070C0", "FFFFFF", "DDEBF7"),
+    ("NOT SCHEDULED", "8C8C8C", "FFFFFF", "EDEDED"),
+]
+STATUS_NAMES = [st for st, _, _, _ in STATUSES]
+# Statuses whose line is producing this shift: they get estimated times.
+RUN_STATUSES = ["RUNNING", "PARTIAL SHIFT", "OVERTIME"]
+C_TITLE, C_SUBTITLE, C_COLHEAD = "1F3864", "DDEBF7", "2E75B6"
+C_NOTE_FILL, C_NOTE_TEXT, C_NOT_SCHED_TEXT = "FFF8E1", "7F6000", "A6A6A6"
+# Changeover type labels (PROGRESS / CHANGEOVER column) and their text colors
+# (the app's on-screen colors: S1 green, Count Change amber, S3 purple, S4 red).
+CO_LABELS = [("S1", "Minor · S1", "2E7D32"), ("S1 Count Change", "Minor · Count", "B45309"),
+             ("S3", "MAJOR · S3", "7030A0"), ("S4", "MAJOR · S4", "C00000")]
 
 # ----------------------------------------------------------------------------
 # Formula helpers
@@ -487,7 +556,9 @@ def protect(ws, **allow):
 
 def cf(ws, rng, formula, fill_color=None, font_=None, border=None):
     # Conditional formats can only change bold/italic/colour, not the font or
-    # size - and never the number format (see PA_DASH).
+    # size - and never the number format: a number format inside a conditional
+    # format leaked into the next column in real Excel (a bottle count showed
+    # as 459300.0%).
     if font_ is not None:
         font_ = Font(bold=font_.bold, italic=font_.italic, color=font_.color)
     dxf = DifferentialStyle(font=font_, fill=fill(fill_color) if fill_color else None, border=border)
@@ -527,7 +598,13 @@ SCALARS = [
     "out_over", "lines_over", "miss_line", "miss_wo", "paste_empty", "no_header", "hdr_like", "hdr_like_row",
     "ov_notes", "capwarn", "status_text", "status_ok", "stale", "tamper", "short_warn", "line_col",
     "first_text", "last_text", "wo_twice", "wo_twice_k", "wo_twice_text", "status_ok0", "dec", "ex_k", "ex_pr",
+    "notes", "asof", "shift", "nshift", "cx", "h0", "cu", "f0", "cc", "nco", "nco_k", "summary", "subtitle",
+    "warn_line",
 ]
+# Shift-clock table on Calc (estimated times): row CY_F holds the bottles of
+# each of the next 8 hours after the current one (as a share of a full hour),
+# row CY_S their running total (S0..S8).
+CY_LABEL, CY_F, CY_S = 70, 71, 72
 SC = {n: f"Calc!$B${5 + i}" for i, n in enumerate(SCALARS)}       # for other sheets
 SL = {n: f"$B${5 + i}" for i, n in enumerate(SCALARS)}            # inside Calc
 
@@ -587,16 +664,189 @@ FIELD_COLS = ["wo", "seq", "item", "desc", "count", "bulk", "bottle", "cap", "al
               "qty_s", "qty", "pct_s", "pct", "stat", "desiccant"]
 W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "ord0", "keep"] + FIELD_COLS +
          ["firstk", "isfirst", "cumf", "lno", "anch", "sk", "grp", "nv", "rank", "pos", "lidx", "sched",
-          "der", "ovst", "stshown", "hl", "pa", "br", "wofk", "hdrlike", "nfill"])
-O = Band(W.end + 2, ["pn", "k", "kind", "first", "last"] + [k for _, k, _ in SCHED_COLS]
-         + ["hl", "sched", "cchg", "o_status"])
-LB = Band(O.end + 2, ["n", "lk", "name", "cnt", "st", "sc", "note", "miss", "mcum", "mname", "lrow"])
+          "stshown", "hl", "pa", "br", "wofk", "hdrlike", "nfill",
+          # combined report (v2): the line's number, statuses and crew (from the
+          # lines table LB), changeovers, notes, estimates
+          "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "note",
+          "hasnote", "ncaps"] + [f"ns{i}" for i in range(1, NOTE_LINES + 1)]
+         + [f"nt{i}" for i in range(1, NOTE_LINES + 1)] + [
+          "nrows", "nbefore", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
+          "est", "estt", "nextco", "prog", "left", "capc"])
+O = Band(W.end + 2, ["pn", "k", "nk", "cidx", "kk", "kind", "first", "last"] + [k for _, k in SCHED_COLS]
+         + ["hl", "sched", "cchg", "capx", "o_status", "fw", "code", "ns", "stidx", "nidx", "r_pa", "r_br",
+            "r_note", "r_pct", "r_cap"])
+# the lines in today's schedule, in report order (row n = the line with lno n):
+# its number and matching key, its row on 3. Lines, the name shown, statuses,
+# breaks and crew
+LB = Band(O.end + 2, ["n", "lk", "name", "cnt", "lnum", "lkey", "lidx", "dname", "der", "ovst", "st", "sched",
+                      "nxt", "brk", "crew", "note", "miss", "mcum", "mname", "lrow"])
+# 3. Lines list rows: line number, matching key (the number, or the name when
+# it has none), the first list row with the same key, and its inputs read once
+LK = Band(LB.end + 2, ["num", "key", "first", "st", "nx", "brk", "crew"])
 W0, WN = 5, 4 + WIN                                 # window rows
 O0, ON = 5, 4 + OUT_ROWS                            # output rows
 
 
 def wr(col):                                        # whole window column
     return f"${W[col]}${W0}:${W[col]}${WN}"
+
+
+SCHED_ROW0 = 5          # 4. Schedule: first work-order row (rows 1-4 are the title, summary and titles)
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+          "November", "December"]
+
+
+def status_expr(x):
+    """A status as typed on 3. Lines, in its standard spelling: RUNNING,
+    PARTIAL SHIFT, OVERTIME, READY LINE, PM / CLEANING, NOT SCHEDULED, NONE
+    (no status, not even from the file) or "" (empty). The app's READY / PM /
+    OT and Yes (Scheduled) still work; anything else is kept as typed."""
+    u = f'UPPER(TRIM({x}&""))'
+    has = lambda w: f'ISNUMBER(SEARCH("{w}",{u}))'
+    return (f'IF({u}="","",IF(OR({u}="NONE",{u}="-"),"NONE",IF({has("PARTIAL")},"PARTIAL SHIFT",'
+            f'IF(OR({u}="OT",{u}="TRIAL",{has("OVERTIME")}),"OVERTIME",IF(OR({has("NOT")},{u}="OFF",{u}="NO",'
+            f'{u}="DOWN"),"NOT SCHEDULED",IF({has("READY")},"READY LINE",IF(OR(LEFT({u},2)="PM",{has("CLEAN")}),'
+            f'"PM / CLEANING",IF(OR({has("RUN")},{u}="YES",{u}="Y",{u}="X"),"RUNNING",{u}))))))))')
+
+
+def changeover_expr(prev, cur):
+    """changeoverCode(previous work order, this one) - prev / cur map a field
+    name to its cell."""
+    b1, b2 = prev("bottle"), cur("bottle")
+    return (f'IF(OR({b1}="",{b2}=""),"",IF(NOT(EXACT({b1},{b2})),"S4",'
+            f'IF(NOT(EXACT({prev("bulk")},{cur("bulk")})),"S3",'
+            f'IF(NOT(EXACT({prev("count")},{cur("count")})),"S1 Count Change","S1"))))')
+
+
+def note_budget(caps=False):
+    """Characters in a line of a note (ITEM DESCRIPTION's pixels / NOTE_PX_PER_CHAR)."""
+    return int((int(7 * SCHED_WIDTHS["ITEM DESCRIPTION"] + 0.49) - 5) // NOTE_PX_PER_CHAR[1 if caps else 0])
+
+
+def window_v2(ws, c, A, s, r_):
+    """The combined report's per-work-order columns of the Calc window."""
+    keep, lno, rank = A["keep"], A["lno"], A["rank"]
+    ix = lambda n, k_: f"INDEX({wr(n)},{k_})"
+    # the work order before this one on its line (in Seq order)
+    ws[c["kprev"]] = f'=IF({keep}=0,0,IFERROR(MATCH({rank}-1,{wr("rank")},0),0))'
+    kp = A["kprev"]
+    ws[c["fw"]] = f'=IF({keep}=0,0,IF({kp}=0,1,IF({ix("lno", kp)}={lno},0,1)))'
+    fw = A["fw"]
+    co = changeover_expr(lambda n: ix(n, kp), lambda n: A[n])
+    ws[c["co"]] = f'=IF({keep}=0,"",IF({fw}=1,"",{co}))'
+    cc = A["co"]
+    ws[c["comin"]] = (f'=IF({cc}="","",IF({cc}="S1",SET_CO_S1,IF({cc}="S1 Count Change",SET_CO_CNT,'
+                      f'IF({cc}="S3",SET_CO_S3,SET_CO_S4))))')
+    # the app's "Cap Change": the cap differs from the work order before it
+    # (ends trimmed, inner spaces collapsed, any case); blank caps don't count
+    cap_p, cap_c = f'TRIM({ix("cap", kp)}&"")', f'TRIM({A["cap"]}&"")'
+    ws[c["capchg"]] = (f'=IF({keep}=0,0,IF({fw}=1,0,IF(OR({cap_p}="",{cap_c}=""),0,'
+                       f'IF(UPPER({cap_p})=UPPER({cap_c}),0,1))))')
+    # a remark prints on a note row under its work order
+    ws[c["note"]] = f'=IF({keep}=0,"",TRIM({A["remarks"]}&""))'
+    ws[c["hasnote"]] = f'=IF({keep}=0,0,IF({A["note"]}<>"",1,0))'
+    note_lines(ws, c, A)
+    ws[c["nbefore"]] = f'=IF({keep}=0,"",SUMIFS({wr("nrows")},{wr("rank")},"<"&{rank}))'
+    # ---- estimated time: this work order finishes (the line changes over) ----
+    ws[c["rkey"]] = f'=IF(OR({keep}=0,{A["lnum"]}=""),"",{A["lnum"]}&"|"&UPPER(TRIM({A["item"]}&"")))'
+    rate = f"INDEX({RATES}!$D$5:$D${4 + RATE_ROWS},MATCH({A['rkey']},{RATES}!$F$5:$F${4 + RATE_ROWS},0))"
+    ws[c["rate"]] = f'=IF({A["rkey"]}="","",IFERROR(IF(ISNUMBER({rate}),IF({rate}>0,{rate},""),""),""))'
+    ws[c["bott"]] = f'=IF({keep}=0,"",IF({A["br"]}<>"",{A["br"]},IF({A["qty"]}<>"",{A["qty"]},"")))'
+    # in full-hour units: changeover minutes + bottles / (rate x efficiency)
+    ws[c["fhe"]] = (f'=IF(OR({keep}=0,{A["sched"]}=0),"",IF(OR({A["rate"]}="",{A["bott"]}=""),"",'
+                    f'IFERROR(N({A["comin"]})/60+{A["bott"]}/({A["rate"]}*SET_EFF),"")))')
+    ws[c["norate"]] = f'=IF({keep}=0,0,IF({A["sched"]}=0,0,IF({A["fhe"]}="",1,0)))'
+    ws[c["cumfe"]] = (f'=IF(OR({keep}=0,{A["sched"]}=0),"",IF(COUNTIFS({wr("lno")},{lno},{wr("rank")},"<="&{rank},'
+                      f'{wr("norate")},1)>0,"",SUMIFS({wr("fhe")},{wr("lno")},{lno},{wr("rank")},"<="&{rank})))')
+    F, brk = A["cumfe"], A["brk"]
+    # breaks and lunch: what is left of this hour, then whole shifts, then the
+    # hour of the last shift it finishes in (see the shift clock on Calc)
+    ws[c["f2"]] = f'=IF({F}="","",{F}-{s["cu"]}*{s["f0"]})'
+    ws[c["cq"]] = f'=IF(OR({A["f2"]}="",{brk}=0),"",IF({A["f2"]}<=0,"",MAX(0,-INT(-{A["f2"]}/{s["cc"]})-1)))'
+    ws[c["cr"]] = f'=IF({A["cq"]}="","",{A["f2"]}-{A["cq"]}*{s["cc"]})'
+    ws[c["cm"]] = f'=IF({A["cr"]}="","",MIN(8,1+SUMPRODUCT(--($C${CY_S}:$J${CY_S}<{A["cr"]}))))'
+    t0 = s["asof"]
+    ws[c["est"]] = (f'=IF({F}="","",IFERROR(IF({brk}=0,{t0}+{F}/24,IF({A["f2"]}<=0,{t0}+{F}/{s["f0"]}/24,'
+                    f'{t0}+({s["cu"]}+8*{A["cq"]}+({A["cm"]}-1)+({A["cr"]}-INDEX($B${CY_S}:$I${CY_S},{A["cm"]}))'
+                    f'/INDEX($C${CY_F}:$J${CY_F},{A["cm"]}))/24)),""))')
+    ws[c["estt"]] = f'=IF({A["est"]}="","",{clock_text(A["est"], t0)})'
+    ws[c["nextco"]] = (f'=IF({fw}=0,"",IF({A["est"]}="","",IF(COUNTIF({wr("lno")},{lno})>1,{A["est"]},"")))')
+    # ---- what the report shows ----------------------------------------------
+    pa = A["pa"]
+    n = f"MAX(0,MIN(10,ROUND({pa}*10,0)))"
+    label = "".join(f'IF({cc}="{code}","{lab}",' for code, lab, _ in CO_LABELS) + '"—"' + ")" * len(CO_LABELS)
+    ws[c["prog"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({pa}="","Not Started Yet",REPT("●",{n})&REPT("○",10-{n})'
+                     f'&"  "&ROUND({pa}*100,0)&"%"),{label}))')
+    b = A["bott"]
+    ws[c["left"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({b}="","",IF({b}>=1000,ROUND({b}/1000,1)&"k",{b}&"")),'
+                     f'IF({A["comin"]}="","",{A["comin"]}&" min")))')
+    # CAP as size-type, like the printout: CAP 45MM CRC WHITE -> 45-CRC (the
+    # number right before MM and the word after it; anything else as it is)
+    t = f'TRIM({A["cap"]}&"")'
+    p_ = f'SEARCH("MM",{t})'
+    rest = f"TRIM(MID({t},{p_}+2,99))"
+    ty = f'LEFT({rest},FIND(" ",{rest}&" ")-1)'
+    sz = f'TRIM(RIGHT(SUBSTITUTE(LEFT({t},{p_}-1)," ",REPT(" ",30)),30))'
+    ws[c["capc"]] = (f'=IF({keep}=0,"",IFERROR(IF(OR({sz}="",{ty}="",NOT(ISNUMBER(-{sz}))),{t},{sz}&"-"&{ty}),'
+                     f'{t}))')
+
+
+def note_lines(ws, c, A):
+    """The remark wrapped into up to NOTE_LINES lines (window columns ns1.. =
+    where each line starts, nt1.. = its text) and the number of note rows."""
+    T, caps = A["note"], A["ncaps"]
+    bm, bc = note_budget(), note_budget(True)
+    b = f"IF({caps}=1,{bc},{bm})"
+    P = "{" + ",".join(str(i) for i in range(1, max(bm, bc) + 2)) + "}"
+    ws[c["ncaps"]] = f'=IF({A["hasnote"]}=0,0,IF(EXACT(UPPER({T}),{T}),1,0))'
+    for i in range(1, NOTE_LINES + 1):
+        si = A[f"ns{i}"]
+        rem = f"(LEN({T})-{si}+1)"
+        # the last space in the first b+1 characters (0 = none: cut the word)
+        lsp = f'IFERROR(LOOKUP(2,1/((MID({T},{si}-1+{P},1)=" ")*({P}<={b}+1)),{P}),0)'
+        if i == 1:
+            ws[c["ns1"]] = f'=IF({A["hasnote"]}=1,1,"")'
+        if i < NOTE_LINES:
+            ws[c[f"ns{i + 1}"]] = f'=IF({si}="","",IF({rem}<={b},"",IF({lsp}>1,{si}+{lsp},{si}+{b})))'
+            tail = f"IF({lsp}>1,MID({T},{si},{lsp}-1),MID({T},{si},{b}))"
+        else:
+            tail = f'MID({T},{si},{b}-1)&"…"'
+        ws[c[f"nt{i}"]] = f'=IF({si}="","",IF({rem}<={b},MID({T},{si},{rem}),{tail}))'
+    ws[c["nrows"]] = "=" + "+".join(f'({A[f"ns{i}"]}<>"")' for i in range(1, NOTE_LINES + 1))
+
+
+def hour_share(h):
+    """The share of a full hour's bottles made in hour h (1-8) of a shift on a
+    line with breaks and lunch: lunch wins over a break in the same hour."""
+    return f"IF({h}=SET_LUNCH,SET_FLUNCH,IF(OR({h}=SET_BREAK1,{h}=SET_BREAK2),SET_FBREAK,1))"
+
+
+def month_name(d):
+    return "CHOOSE(MONTH(" + d + ")," + ",".join(f'"{m}"' for m in MONTHS) + ")"
+
+
+def clock12(t):
+    """h:mm AM/PM without TEXT() (its codes differ between Excel languages)."""
+    return (f'(MOD(HOUR({t})+11,12)+1)&":"&RIGHT("0"&MINUTE({t}),2)&IF(HOUR({t})<12," AM"," PM")')
+
+
+def clock_text(t, ref):
+    """Time t to the nearest minute as "3:31 PM", with the month/day in front
+    ("10/30 2:05 AM") when it isn't the day of ref. Half a second is added to
+    the rounded minute so HOUR / MINUTE never land a hair below it."""
+    m = f"(ROUND({t}*1440,0)/1440+1/172800)"
+    return f'IF(INT({m})=INT({ref}),"",MONTH({m})&"/"&DAY({m})&" ")&{clock12(m)}'
+
+
+def summary_expr(s):
+    st = f"Calc!${LB['st']}$5:${LB['st']}${4 + LINE_SLOTS}".replace("Calc!", "")
+    short = {"READY LINE": "ready", "PM / CLEANING": "PM / cleaning"}
+    parts = "".join(f'&IF(COUNTIF({st},"{name}")>0," · "&COUNTIF({st},"{name}")&" {short.get(name, name.lower())}","")'
+                    for name in STATUS_NAMES)
+    nco, k = s["nco"], s["nco_k"]
+    nxt = (f'IF({nco}>0,"   →  Next changeover: "&INDEX({wr("dname")},{k})&" at "&{clock_text(nco, s["asof"])},"")')
+    return (f'IF({s["wo_count"]}=0,"No work orders yet - paste today\'s schedule on 1. Paste Schedule.",'
+            f'{s["line_count"]}&" lines"{parts}&" · "&{s["wo_count"]}&" work orders"&{nxt})')
 
 
 def build_calc(wb):
@@ -629,6 +879,12 @@ def build_calc(wb):
         "wo_twice_text": "Its text", "status_ok0": "Status OK apart from WOs listed twice",
         "dec": "Decimal separator of this computer", "ex_k": "Window row of the example row",
         "ex_pr": "Paste row of the example row",
+        "notes": "Note rows (remarks)", "asof": "Schedule as of (date and time)",
+        "shift": "This copy's shift", "nshift": "Next shift", "cx": "Hours into the current shift",
+        "h0": "Hour of the shift now (1-8)", "cu": "Share of this hour left", "f0": "Bottles this hour (share)",
+        "cc": "Bottles in a whole shift (full hours)", "nco": "Next changeover (time)",
+        "nco_k": "Window row of the next changeover", "summary": "4. Schedule summary line",
+        "subtitle": "4. Schedule subtitle", "warn_line": "Warnings on one line",
     }
     for i, n in enumerate(SCALARS):
         put(ws, f"A{5 + i}", labels[n])
@@ -639,8 +895,8 @@ def build_calc(wb):
     used_line, used_wo = ft("used", 1), ft("used", 2)
     line_hdr = ft("hdr_text", 1)
     twice = f'({wr("wofk")}>0)*({wr("wofk")}<{wr("kn")})'
-    lines_inputs = 'SUMPRODUCT(--(TRIM(LINES_SCHEDULED&"")<>""))+SUMPRODUCT(--(TRIM(LINES_STATUS&"")<>""))'
-    out_a, out_r = O["o_line"], O["o_chg"]       # the 17 report columns A:Q, side by side in Calc
+    lines_inputs = 'SUMPRODUCT(--(TRIM(LINES_STATUS&"")<>""))+SUMPRODUCT(--(TRIM(LINES_NEXT&"")<>""))'
+    out_a, out_r = O["o_line"], O["o_next"]      # the 17 report columns A:Q, side by side in Calc
     ov_pre = (f'IF({s["hdr_ov_ok"]}=1,"Header row override is set to "&{s["hdr_ov"]}&" (yellow box E5) - clear it '
               f'if today\'s file is different. ","")')
     wo_at = lambda k_, col: f"INDEX({wr(col)},{k_})"
@@ -652,9 +908,9 @@ def build_calc(wb):
         "wo_found": f"${W['ord0']}${WN}",
         "wo_count": f"MIN({s['wo_found']},{MAX_WO})",
         "line_count": f"${W['cumf']}${WN}",
-        "total": f"IF({s['wo_count']}=0,0,{s['wo_count']}+{s['line_count']}-1)",
+        "total": f"IF({s['wo_count']}=0,0,{s['wo_count']}+{s['line_count']}-1+{s['notes']})",
         "shown": f"MIN({s['total']},{OUT_ROWS})",
-        "print_last": f"2+{s['shown']}",
+        "print_last": f"{SCHED_ROW0 - 1}+{s['shown']}",
         "first_k": f"IFERROR(MATCH(1,{wr('keep')},0),0)",
         "first_pr": f"IF({s['first_k']}=0,0,INDEX({wr('pr')},{s['first_k']}))",
         "last_k": f"IFERROR(LOOKUP(2,1/({wr('keep')}=1),{wr('kn')}),0)",
@@ -683,7 +939,7 @@ def build_calc(wb):
             f'to {PASTE_ROWS} are read.","")'
             f'&IF({s["beyond_cols"]}>0," WARNING: there is data to the right of column BH on 1. Paste Schedule - '
             f'only columns A to BH are read.","")'
-            f'&IF({s["out_over"]}>0," WARNING: 4. Schedule has room for {OUT_ROWS} rows (work orders plus the blank rows '
+            f'&IF({s["out_over"]}>0," WARNING: 4. Schedule has room for {OUT_ROWS} rows (work orders, notes and the blank rows '
             f'between lines) - the last "&{s["out_over"]}&" row(s) are not shown.","")'
             f'&IF({s["lines_over"]}>0," WARNING: "&{s["line_count"]}&" lines found - 3. Lines can only list '
             f'{LINE_SLOTS} of them.","")'),
@@ -719,8 +975,8 @@ def build_calc(wb):
                           f'&" of 1. Paste Schedule"&IF({s["wo_twice"]}>1," (and "&({s["wo_twice"]}-1)&" more like it)",""))'),
         "stale": (f'IF(AND({lines_inputs}>0,NOT(AND(ISNUMBER(LINES_CHECKED_ON),'
                   f'INT(N(LINES_CHECKED_ON))=TODAY()))),1,0)'),
-        "tamper": (f'IFERROR(IF(SUMPRODUCT(--({SCHED}!$A$3:${L(len(SCHED_COLS))}${2 + OUT_ROWS}&""<>${out_a}${O0}:${out_r}${ON}&""))>0,'
-                   f'1,0),1)'),
+        "tamper": (f'IFERROR(IF(SUMPRODUCT(--({SCHED}!$A${SCHED_ROW0}:${L(len(SCHED_COLS))}${SCHED_ROW0 + OUT_ROWS - 1}'
+                   f'&""<>${out_a}${O0}:${out_r}${ON}&""))>0,1,0),1)'),
         # one short line each (the details are on 2. Check Columns / 3. Lines)
         "short_warn": (
             f'MID(IF({s["status_ok0"]}=1,IF({s["wo_twice"]}>0,CHAR(10)&"CHECK: WO twice - see 2. Check Columns",""),'
@@ -741,9 +997,39 @@ def build_calc(wb):
                        f'&" - row "&{s["first_pr"]}&" of 1. Paste Schedule")'),
         "last_text": (f'IF({s["last_k"]}=0,"","Line "&{wo_at(s["last_k"], "line")}&", WO "&{wo_at(s["last_k"], "wo")}'
                       f'&" - row "&{s["last_pr"]}&" of 1. Paste Schedule")'),
+        # ---- combined report (v2) ----
+        "notes": f"SUM({wr('nrows')})",
+        # a date typed without a time counts from the time it is now
+        "asof": ('IF(ISNUMBER(LINES_CHECKED_ON),IF(LINES_CHECKED_ON=INT(LINES_CHECKED_ON),'
+                 'LINES_CHECKED_ON+MOD(NOW(),1),LINES_CHECKED_ON),NOW())'),
+        "shift": 'TRIM(LINES_SHIFT&"")',
+        "nshift": (f'IF({s["shift"]}="{SHIFTS[0]}","{SHIFTS[1]}",IF({s["shift"]}="{SHIFTS[1]}","{SHIFTS[2]}",'
+                   f'IF({s["shift"]}="{SHIFTS[2]}","{SHIFTS[0]}","")))'),
+        "cx": f"MOD(({s['asof']}-SET_START)*24,8)",
+        "h0": f"INT({s['cx']})+1",
+        "cu": f"1-({s['cx']}-INT({s['cx']}))",
+        "f0": hour_share(s["h0"]),
+        "cc": f"$J${CY_S}",
+        "nco": f"MIN({wr('nextco')})",
+        "nco_k": f"IF({s['nco']}=0,0,IFERROR(MATCH({s['nco']},{wr('nextco')},0),0))",
+        "summary": summary_expr(s),
+        "subtitle": (f'"This is the "&IF({s["shift"]}="","",{s["shift"]}&" ")&"schedule for "&{month_name(s["asof"])}'
+                     f'&" "&DAY({s["asof"]})&", "&YEAR({s["asof"]})&" as of "&{clock12(s["asof"])}'),
+        "warn_line": f'SUBSTITUTE({s["short_warn"]},CHAR(10),"   |   ")',
     }
     for n in SCALARS:
         ws[s[n].replace("$", "")] = "=" + f[n]
+
+    # ---- shift clock: the next 8 hours after the current one ----------------
+    put(ws, f"A{CY_LABEL}", "Shift clock: share of a full hour's bottles in hour +1..+8 (row 71), running total "
+                           "S0..S8 (row 72)", font=hdr)
+    put(ws, f"A{CY_F}", "hour share")
+    put(ws, f"A{CY_S}", "running total")
+    ws[f"B{CY_S}"] = 0
+    for m in range(1, 9):
+        col, pcol = L(2 + m), L(1 + m)
+        ws[f"{col}{CY_F}"] = "=" + hour_share(f"(MOD({s['h0']}+{m - 1},8)+1)")
+        ws[f"{col}{CY_S}"] = f"={pcol}{CY_S}+{col}{CY_F}"
 
     # ---- field table -----------------------------------------------------
     put(ws, "D3", "Field table", font=hdr)
@@ -1016,19 +1302,20 @@ def build_calc(wb):
         ws[c["rank"]] = (f'=IF({A["keep"]}=0,"",COUNTIF({wr("lno")},"<"&{A["lno"]})+SUMPRODUCT(({wr("lno")}={A["lno"]})'
                          f'*(({wr("grp")}<{A["grp"]})+({wr("grp")}={A["grp"]})*(({wr("nv")}<{A["nv"]})'
                          f'+({wr("nv")}={A["nv"]})*({wr("kn")}<{A["kn"]}))))+1)')
-        ws[c["pos"]] = f'=IF({A["keep"]}=0,"",{A["rank"]}+{A["lno"]}-1)'
-        lines_names = ttrim('LINES_NAME&""')
-        ws[c["lidx"]] = (f'=IF({A["keep"]}=0,0,IFERROR(MATCH(1,INDEX(--({lines_names}={A["line"]}),0),0),0))')
-        sv = f'UPPER(TRIM(INDEX(LINES_SCHEDULED,{A["lidx"]})&""))'
-        ws[c["sched"]] = f'=IF({A["lidx"]}=0,0,IF(OR({sv}="YES",{sv}="Y",{sv}="X"),1,0))'
-        cnt = lambda st: f'COUNTIFS({wr("lno")},{A["lno"]},{wr("stat")},"{st}")>0'
-        ws[c["der"]] = (f'=IF({A["keep"]}=0,"",IF({cnt("Ready")},"READY",IF({cnt("PM")},"PM",'
-                        f'IF({cnt("OT")},"OT",""))))')
-        ws[c["ovst"]] = f'=IF({A["lidx"]}=0,"",UPPER(TRIM(INDEX(LINES_STATUS,{A["lidx"]})&"")))'
-        ov = A["ovst"]
-        # NONE (or -) on 3. Lines: no tag, even if the file's Line Status has one
-        ws[c["stshown"]] = (f'=IF({A["keep"]}=0,"",IF(OR({ov}="READY",{ov}="PM",{ov}="OT"),{ov},'
-                            f'IF(OR({ov}="NONE",{ov}="-"),"",{A["der"]})))')
+        # report position: work orders, a spacer between lines, and a note row
+        # under each work order with a remark (or a cap change)
+        ws[c["pos"]] = f'=IF({A["keep"]}=0,"",{A["rank"]}+{A["lno"]}-1+{A["nbefore"]})'
+        # the line's number, its row on 3. Lines, the name shown, statuses,
+        # breaks and crew: worked out once per line (Calc LB), by line number
+        lbv = lambda n, dflt: f'IFERROR(INDEX(${LB[n]}$5:${LB[n]}${4 + LINE_SLOTS},{A["lno"]}),{dflt})'
+        ws[c["lnum"]] = f'=IF({A["keep"]}=0,"",{lbv("lnum", chr(34) * 2)})'
+        ws[c["lidx"]] = f'=IF({A["keep"]}=0,0,{lbv("lidx", 0)})'
+        ws[c["dname"]] = f'=IF({A["keep"]}=0,"",{lbv("dname", A["line"])})'
+        ws[c["stshown"]] = f'=IF({A["keep"]}=0,"",{lbv("st", chr(34) * 2)})'
+        ws[c["sched"]] = f'=IF({A["keep"]}=0,0,{lbv("sched", 0)})'
+        ws[c["nxt"]] = f'=IF({A["keep"]}=0,"",{lbv("nxt", chr(34) * 2)})'
+        ws[c["brk"]] = f'=IF({A["keep"]}=0,1,{lbv("brk", 1)})'
+        ws[c["crew"]] = f'=IF({A["keep"]}=0,"",{lbv("crew", chr(34) * 2)})'
         al, de, bu = A["allergen"], A["desc"], A["bulk"]
         ws[c["hl"]] = (f'=IF({A["keep"]}=0,"",IF(AND({al}<>"",UPPER({al})<>"N"),"allergen",'
                        f'IF(ISNUMBER(SEARCH("oil",{de})),"oil",IF(OR(EXACT({bu},"A662"),EXACT({bu},"A624")),"bulk",""))))')
@@ -1049,50 +1336,68 @@ def build_calc(wb):
         # order to take the 2. Check Columns examples from
         row_cells = f"INDEX(PASTE_ALL,{A['pr']},1):INDEX(PASTE_ALL,{A['pr']},{PASTE_COLS})"
         ws[c["nfill"]] = (f'=IF(OR({s["first_k"]}>0,{A["valid"]}=0),0,IFERROR({count_content(row_cells)},0))')
+        window_v2(ws, c, A, s, r_)
 
-    # ---- report rows (4. Schedule rows 3..702) ------------------------------
-    put(ws, f"{O['pn']}3", f"Report: 4. Schedule rows 3-{2 + OUT_ROWS}", font=hdr)
+    # ---- report rows (4. Schedule rows 5..704) ------------------------------
+    put(ws, f"{O['pn']}3", f"Report: 4. Schedule rows {SCHED_ROW0}-{SCHED_ROW0 + OUT_ROWS - 1}", font=hdr)
     for n in O.col:
         put(ws, f"{O[n]}4", n, font=hdr)
-    out_from = {"o_wo": "wo", "o_seq": "seq", "o_item": "item", "o_desc": "desc", "o_count": "count",
-                "o_bulk": "bulk", "o_bottle": "bottle", "o_cap": "cap", "o_allergen": "allergen",
-                "o_remarks": "remarks", "o_qty": "qty", "o_pct": "pct", "o_desiccant": "desiccant",
-                "o_pa": "pa", "o_br": "br", "o_status": "stshown"}
+    # what a work-order row shows in each report column (window column)
+    row_from = {"o_wo": "wo", "o_seq": "seq", "o_item": "item", "o_desc": "desc", "o_count": "count",
+                "o_bulk": "bulk", "o_bottle": "bottle", "o_cap": "capc", "o_allergen": "allergen",
+                "o_desiccant": "desiccant", "o_qty": "qty", "o_prog": "prog", "o_left": "left", "o_crew": "crew"}
+    st_list = "{" + ",".join(f'"{n}"' for n in STATUS_NAMES) + "}"
     for p in range(1, OUT_ROWS + 1):
         r_ = 4 + p
         A = {n: f"${O[n]}{r_}" for n in O.col}
+        ix = lambda n, k_: f"INDEX({wr(n)},{k_})"
         ws[f"{O['pn']}{r_}"] = p
         ws[f"{O['k']}{r_}"] = f"=IFERROR(MATCH({A['pn']},{wr('pos')},0),0)"
-        ws[f"{O['kind']}{r_}"] = f'=IF({A["pn"]}>{s["total"]},"",IF({A["k"]}>0,"row","spacer"))'
-        prev_kind, next_kind, prev_k = f"${O['kind']}{r_ - 1}", f"${O['kind']}{r_ + 1}", f"${O['k']}{r_ - 1}"
-        ws[f"{O['first']}{r_}"] = f'=IF(AND({A["kind"]}="row",{prev_kind}<>"row"),1,0)'
-        ws[f"{O['last']}{r_}"] = f'=IF(AND({A["kind"]}="row",{next_kind}<>"row"),1,0)'
-        is_row = f'{A["kind"]}="row"'
-        # the line name once per line, like the app: on its first work-order
-        # row (a number stays a number, like every other column)
-        raw_line = paste(f'INDEX({wr("pr")},{A["k"]})', s["line_col"])
-        line_txt = f'INDEX({wr("line")},{A["k"]})'
-        name = f'IFERROR(IF(ISNUMBER({raw_line}),{raw_line},{line_txt}),{line_txt})'
-        # and the line's READY / PM / OT tag right under the name: on the
-        # line's 2nd row, or after the name when it has only one work order.
-        # The line's other rows are blank in LINE.
-        tag = f'INDEX({wr("stshown")},{A["k"]})'
+        # a note row: the row above is its work order or the note's line before
+        if r_ == 5:
+            ws[f"{O['nk']}{r_}"] = 0
+            ws[f"{O['cidx']}{r_}"] = 0
+        else:
+            pk, pc = f"${O['kk']}{r_ - 1}", f"${O['cidx']}{r_ - 1}"
+            ws[f"{O['nk']}{r_}"] = (f"=IF({A['k']}>0,0,IF(N({pk})=0,0,IF(N({pc})+1<=INDEX({wr('nrows')},{pk}),{pk},0)))")
+            ws[f"{O['cidx']}{r_}"] = f"=IF({A['nk']}=0,0,N({pc})+1)"
+        ws[f"{O['kk']}{r_}"] = f"=IF({A['k']}>0,{A['k']},{A['nk']})"
+        ws[f"{O['kind']}{r_}"] = (f'=IF({A["pn"]}>{s["total"]},"",IF({A["k"]}>0,"row",IF({A["nk"]}>0,"note",'
+                                  f'"spacer")))')
+        prev_kind, next_kind = f"${O['kind']}{r_ - 1}", f"${O['kind']}{r_ + 1}"
+        inb = lambda kd: f'OR({kd}="row",{kd}="note")'
+        ws[f"{O['first']}{r_}"] = f'=IF(AND({inb(A["kind"])},NOT({inb(prev_kind)})),1,0)'
+        ws[f"{O['last']}{r_}"] = f'=IF(AND({inb(A["kind"])},NOT({inb(next_kind)})),1,0)'
+        is_row, is_note, kk, k = f'{A["kind"]}="row"', f'{A["kind"]}="note"', A["kk"], A["k"]
+        # LINE: the name on the line's first row and its status tag right under
+        # it; blank below
+        name, tag = ix("dname", kk), ix("stshown", kk)
+        # (a line with a single row shows its status by the cell's color)
         prev_first = f"N(${O['first']}{r_ - 1})" if r_ > 5 else "0"
-        ws[f"{O['o_line']}{r_}"] = (f'=IF({is_row},IF({A["first"]}=1,IF(AND({A["last"]}=1,{tag}<>""),'
-                                    f'{name}&"  "&{tag},{name}),IF(AND({prev_first}=1,{tag}<>""),{tag},"")),"")')
-        for oc, wc in out_from.items():
-            ws[f"{O[oc]}{r_}"] = f'=IF({is_row},INDEX({wr(wc)},{A["k"]}),"")'
-        pa_v = f'INDEX({wr("pa")},{A["k"]})'
-        ws[f"{O['o_pa']}{r_}"] = f'=IF({is_row},IF({pa_v}="","{PA_DASH}",{pa_v}),"")'
-        g = lambda n, k_: f"INDEX({wr(n)},{k_})"
-        b1, b2 = g("bottle", prev_k), g("bottle", A["k"])
-        code = (f'IF(OR({b1}="",{b2}=""),"",IF(NOT(EXACT({b1},{b2})),"S4",'
-                f'IF(NOT(EXACT({g("bulk", prev_k)},{g("bulk", A["k"])})),"S3",'
-                f'IF(NOT(EXACT({g("count", prev_k)},{g("count", A["k"])})),"S1 Count Change","S1"))))')
-        ws[f"{O['o_chg']}{r_}"] = f'=IF(AND({is_row},{prev_kind}="row"),{code},"")'
-        ws[f"{O['hl']}{r_}"] = f'=IF({is_row},INDEX({wr("hl")},{A["k"]}),"")'
-        ws[f"{O['sched']}{r_}"] = f'=IF({is_row},INDEX({wr("sched")},{A["k"]}),0)'
-        ws[f"{O['cchg']}{r_}"] = f'=IF({A["o_chg"]}="S1 Count Change",1,0)'
+        ws[f"{O['o_line']}{r_}"] = (f'=IF({inb(A["kind"])},IF({A["first"]}=1,{name},IF({prev_first}=1,{tag},"")),"")')
+        # work-order rows show the work order; note rows show NOTE: under the
+        # item and a line of the remark under the description
+        line_i = "CHOOSE(" + A["cidx"] + "," + ",".join(ix(f"nt{i}", A["nk"]) for i in range(1, NOTE_LINES + 1)) + ")"
+        piece = {"o_item": f'IF({A["cidx"]}=1,"NOTE:","")', "o_desc": line_i}
+        for oc, wc in row_from.items():
+            v = ix(wc, k) if oc in ("o_wo", "o_qty", "o_crew") else ix(wc, k) + '&""'
+            ws[f"{O[oc]}{r_}"] = f'=IF({is_row},{v},IF({is_note},{piece.get(oc, chr(34) * 2)},""))'
+        est = (f'IF({ix("sched", k)}=1,IF({ix("estt", k)}<>"",{ix("estt", k)},IF({ix("norate", k)}=1,"no rate","")),"")')
+        ws[f"{O['o_est']}{r_}"] = f'=IF({is_row},{est},"")'
+        ws[f"{O['o_next']}{r_}"] = f'=IF(AND({inb(A["kind"])},{A["first"]}=1),{ix("nxt", kk)},"")'
+        # helpers for the formats (4. Schedule's hidden columns) and the tests
+        ws[f"{O['hl']}{r_}"] = f'=IF({is_row},{ix("hl", k)},"")'
+        ws[f"{O['sched']}{r_}"] = f'=IF({inb(A["kind"])},{ix("sched", kk)},0)'
+        ws[f"{O['cchg']}{r_}"] = f'=IF({is_row},IF({ix("co", k)}="S1 Count Change",1,0),0)'
+        ws[f"{O['capx']}{r_}"] = f'=IF({is_row},{ix("capchg", k)},0)'
+        ws[f"{O['o_status']}{r_}"] = f'=IF({inb(A["kind"])},{tag},"")'
+        ws[f"{O['fw']}{r_}"] = f'=IF({is_row},{ix("fw", k)},0)'
+        ws[f"{O['code']}{r_}"] = f'=IF({is_row},{ix("co", k)},"")'
+        ws[f"{O['ns']}{r_}"] = f'=IF({A["o_status"]}="NOT SCHEDULED",1,0)'
+        ws[f"{O['stidx']}{r_}"] = f"=IFERROR(MATCH({A['o_status']},{st_list},0),0)"
+        ws[f"{O['nidx']}{r_}"] = f"=IFERROR(MATCH({A['o_next']},{st_list},0),0)"
+        for oc, wc in (("r_pa", "pa"), ("r_br", "br"), ("r_note", "remarks"), ("r_pct", "pct"), ("r_cap", "cap")):
+            ws[f"{O[oc]}{r_}"] = f'=IF({is_row},{ix(wc, k)},"")'
 
     # ---- today's lines (for 3. Lines) ---------------------------------------
     put(ws, f"{LB['n']}3", "Lines in today's schedule", font=hdr)
@@ -1105,10 +1410,28 @@ def build_calc(wb):
         ws[f"{LB['lk']}{r_}"] = f"=IFERROR(MATCH({A['n']},{wr('cumf')},0),0)"
         ws[f"{LB['name']}{r_}"] = f'=IF({A["lk"]}=0,"",INDEX({wr("line")},{A["lk"]}))'
         ws[f"{LB['cnt']}{r_}"] = f'=IF({A["lk"]}=0,"",COUNTIF({wr("lno")},{A["n"]}))'
-        ws[f"{LB['st']}{r_}"] = f'=IF({A["lk"]}=0,"",INDEX({wr("stshown")},{A["lk"]}))'
-        ws[f"{LB['sc']}{r_}"] = f'=IF({A["lk"]}=0,"",IF(INDEX({wr("sched")},{A["lk"]})=1,"Yes",""))'
-        ws[f"{LB['note']}{r_}"] = (f'=IF({A["lk"]}=0,"",IF(INDEX({wr("lidx")},{A["lk"]})>0,"",'
-                                   f'"NOT IN YOUR LIST - type it in column A to tick it"))')
+        lk = A["lk"]
+        lkr = lambda n: f"${LK[n]}$5:${LK[n]}${4 + LINE_SLOTS}"
+        ws[f"{LB['lnum']}{r_}"] = f'=IF({lk}=0,"",{lnum_expr(A["name"])})'
+        ws[f"{LB['lkey']}{r_}"] = f'=IF({lk}=0,"",IF({A["lnum"]}<>"",{A["lnum"]},"N:"&UPPER(TRIM({A["name"]}&""))))'
+        ws[f"{LB['lidx']}{r_}"] = f'=IF({lk}=0,0,IFERROR(MATCH({A["lkey"]},{lkr("key")},0),0))'
+        li = A["lidx"]
+        ws[f"{LB['dname']}{r_}"] = f'=IF({lk}=0,"",IF({li}>0,TRIM(INDEX(LINES_NAME,{li})&""),{A["name"]}))'
+        cnt = lambda st: f'COUNTIFS({wr("lno")},{A["n"]},{wr("stat")},"{st}")>0'
+        # a file's Line Status (Ready / PM / OT) when 3. Lines leaves This shift empty
+        ws[f"{LB['der']}{r_}"] = (f'=IF({lk}=0,"",IF({cnt("Ready")},"READY LINE",IF({cnt("PM")},"PM / CLEANING",'
+                                  f'IF({cnt("OT")},"OVERTIME",""))))')
+        ws[f"{LB['ovst']}{r_}"] = f'=IF({li}=0,"",INDEX({lkr("st")},{li}))'
+        ov = A["ovst"]
+        ws[f"{LB['st']}{r_}"] = f'=IF({lk}=0,"",IF({ov}="NONE","",IF({ov}<>"",{ov},{A["der"]})))'
+        run = ",".join(f'{A["st"]}="{st}"' for st in RUN_STATUSES)
+        ws[f"{LB['sched']}{r_}"] = f'=IF({lk}=0,0,IF(OR({run}),1,0))'
+        nx = f"INDEX({lkr('nx')},{li})"
+        ws[f"{LB['nxt']}{r_}"] = f'=IF({li}=0,"",IF({nx}="NONE","",{nx}))'
+        ws[f"{LB['brk']}{r_}"] = f'=IF({li}=0,1,INDEX({lkr("brk")},{li}))'
+        ws[f"{LB['crew']}{r_}"] = f'=IF({li}=0,"",INDEX({lkr("crew")},{li}))'
+        ws[f"{LB['note']}{r_}"] = (f'=IF({lk}=0,"",IF({li}>0,"",'
+                                   f'"NOT IN YOUR LIST - type it in column A to set its status"))')
         # the lines that are NOT IN YOUR LIST, one after the other (3. Lines column N)
         ws[f"{LB['miss']}{r_}"] = f'=IF(AND({A["lk"]}>0,{A["note"]}<>""),1,0)'
         ws[f"{LB['mcum']}{r_}"] = f"={A['miss']}" if n_ == 1 else f"={LB['mcum']}{r_ - 1}+{A['miss']}"
@@ -1116,8 +1439,25 @@ def build_calc(wb):
         nm = f"${LB['name']}$5:${LB['name']}${4 + LINE_SLOTS}"
         ws[f"{LB['mname']}{r_}"] = f'=IFERROR(INDEX({nm},MATCH({A["n"]},{mc},0)),"")'
         # the row of the line in the left table of 3. Lines (where it is ticked)
-        ws[f"{LB['lrow']}{r_}"] = (f'=IF({A["lk"]}=0,"",IF(INDEX({wr("lidx")},{A["lk"]})>0,'
-                                   f'INDEX({wr("lidx")},{A["lk"]})+3,""))')
+        ws[f"{LB['lrow']}{r_}"] = f'=IF({lk}=0,"",IF({li}>0,{li}+3,""))'
+
+    # ---- 3. Lines list: matching key of each row ------------------------------
+    put(ws, f"{LK['key']}3", "3. Lines rows", font=hdr)
+    for n in LK.col:
+        put(ws, f"{LK[n]}4", n, font=hdr)
+    keys = f"${LK['key']}$5:${LK['key']}${4 + LINE_SLOTS}"
+    for i in range(1, LINE_SLOTS + 1):
+        r_ = 4 + i
+        A = {n: f"${LK[n]}{r_}" for n in LK.col}
+        nm = f'TRIM(INDEX(LINES_NAME,{i})&"")'
+        ws[f"{LK['num']}{r_}"] = f'=IF({nm}="","",{lnum_expr(nm)})'
+        ws[f"{LK['key']}{r_}"] = f'=IF({nm}="","",IF({A["num"]}<>"",{A["num"]},"N:"&UPPER({nm})))'
+        ws[f"{LK['first']}{r_}"] = f'=IF({A["key"]}="",{i},MATCH({A["key"]},{keys},0))'
+        ws[f"{LK['st']}{r_}"] = f"={status_expr(f'INDEX(LINES_STATUS,{i})')}"
+        ws[f"{LK['nx']}{r_}"] = f"={status_expr(f'INDEX(LINES_NEXT,{i})')}"
+        ws[f"{LK['brk']}{r_}"] = f'=IF(UPPER(TRIM(INDEX(LINES_BREAKS,{i})&""))="NO",0,1)'
+        ws[f"{LK['crew']}{r_}"] = (f'=IF(TRIM(INDEX(LINES_CREW,{i})&"")="","",IF(ISNUMBER(INDEX(LINES_CREW,{i})),'
+                                   f'INDEX(LINES_CREW,{i}),TRIM(INDEX(LINES_CREW,{i})&"")))')
     protect(ws)
     return ws
 
@@ -1131,7 +1471,8 @@ def build_paste(wb):
     for i, h in enumerate(EXPORT_HEADERS, start=1):
         put(ws, f"{L(i)}1", h, font=font(11, True))
     for r, row in enumerate(SAMPLE, start=2):
-        for i, v in enumerate(row, start=1):
+        # LINE .. % Complete in columns 1-13, Desiccant in its export column 18
+        for i, v in list(enumerate(row[:13], start=1)) + [(18, row[13])]:
             if v != "":
                 ws.cell(r, i, v)
     # wide enough in real Excel (tighter than LibreOffice) for the sample's titles
@@ -1262,187 +1603,369 @@ def build_check(wb):
     return ws
 
 
+# 3. Lines starts with the plant's lines (as named on the JDE Packaging
+# Schedule) and whether each has breaks and lunch: lines 1, 3, 5 and 7 do,
+# lines 8 to 12 run through them. Line 4 isn't known - it is set to Yes.
+LINE_LIST = [("LINE 1", "Yes"), ("LINE 3", "Yes"), ("LINE 4", "Yes"), ("LINE 5", "Yes"), ("LINE 7", "Yes"),
+             ("LINE 8", "No"), ("LINE 9", "No"), ("LINE 10", "No"), ("LINE 11", "No"), ("LINE 12", "No")]
+SHIFTS = ["1st Shift", "2nd Shift", "3rd Shift"]
+
+
 def build_lines(wb):
     ws = wb.create_sheet(S_LINES)
     ws.sheet_properties.tabColor = "00C805"
     ws.sheet_view.showGridLines = False
-    for col, w in {"A": 16, "B": 12, "C": 11, "D": 11, "E": 34, "F": 3, "G": 9, "H": 18, "I": 11, "J": 14,
-                   "K": 14, "L": 46, "M": 3, "N": 22}.items():
+    for col, w in {"A": 14, "B": 17, "C": 17, "D": 10, "E": 7, "F": 10, "G": 30, "H": 2, "I": 9, "J": 18,
+                   "K": 10, "L": 21, "M": 44, "N": 2, "O": 22}.items():
         ws.column_dimensions[col].width = w
-    put(ws, "A1", "3. Lines - Scheduled Lines", font=font(18, True))
-    # the date the ticks and statuses were last checked (stale ones are flagged)
-    ws.merge_cells("G1:J1")
-    put(ws, "G1", "Ticks and statuses checked on:", font=font(11, True),
+    put(ws, "A1", "3. Lines", font=font(18, True), alignment=Alignment(vertical="center"))
+    put(ws, "B1", "This copy is for:", font=font(11, True), alignment=Alignment(horizontal="right", vertical="center"))
+    put(ws, "C1", None, fill=INPUT_FILL, border=THIN_BLACK, protection=UNLOCKED, font=font(11, True),
+        alignment=Alignment(horizontal="center", vertical="center"))
+    ws.merge_cells("I1:K1")
+    put(ws, "I1", "Schedule as of (date and time):", font=font(11, True),
         alignment=Alignment(horizontal="right", vertical="center"))
-    put(ws, "K1", None, fill=INPUT_FILL, border=THIN_BLACK, protection=UNLOCKED, font=font(11, True),
-        number_format="mmm d, yyyy", alignment=Alignment(horizontal="center", vertical="center"))
-    # (no TEXT(): its date codes differ between Excel languages)
-    put(ws, "L1", (f'=IF({SC["stale"]}=0,"",IF(ISNUMBER(K1),"CHECK: the ticks and statuses below were last checked '
-                   f'on the date in the yellow box - not today.","CHECK: the ticks and statuses below have no date.")'
-                   f'&" Check them, then type today\'s date in the yellow box (Ctrl+;).")'),
+    put(ws, "L1", None, fill=INPUT_FILL, border=THIN_BLACK, protection=UNLOCKED, font=font(11, True),
+        number_format="m/d/yyyy h:mm AM/PM", alignment=Alignment(horizontal="center", vertical="center"))
+    put(ws, "M1", (f'=IF({SC["stale"]}=0,"",IF(ISNUMBER(L1),"CHECK: the statuses below were set for an earlier '
+                   f'day than today.","CHECK: there is no date in the yellow box."))&IF({SC["stale"]}=0,"",'
+                   f'" Check them, then put today\'s date and time in the yellow box (Ctrl+; then a space, then '
+                   f'Ctrl+Shift+;).")'),
         font=font(10, True, "C00000"), alignment=Alignment(wrap_text=True, vertical="center"))
-    cf(ws, "L1", '$L$1<>""', "FFC7CE", font(10, True, "9C0006"))
+    cf(ws, "M1", '$M$1<>""', "FFC7CE", font(10, True, "9C0006"))
     ws.row_dimensions[1].height = 54
-    dv0 = DataValidation(type="date", operator="greaterThan", formula1="36526", allow_blank=True,
-                         showErrorMessage=True, errorTitle="Date", error="Type a date, like 10/7/2026 - or press Ctrl+; "
-                                                                         "for today's date.",
-                         showInputMessage=True, promptTitle="Checked on",
-                         prompt="After checking the ticks and statuses, press Ctrl+; (semicolon) for today's date.")
+    dvs = DataValidation(type="list", formula1='"' + ",".join(SHIFTS) + '"', allow_blank=True,
+                         showErrorMessage=True, errorTitle="Shift", error="Pick 1st, 2nd or 3rd Shift.")
+    ws.add_data_validation(dvs)
+    dvs.add("C1")
+    dv0 = DataValidation(type="decimal", operator="greaterThan", formula1="36526", allow_blank=True,
+                         showErrorMessage=True, errorTitle="Date and time",
+                         error="Type a date and time, like 10/29/2026 5:15 AM - or press Ctrl+; then a space, "
+                               "then Ctrl+Shift+; for now.",
+                         showInputMessage=True, promptTitle="Schedule as of",
+                         prompt="When the % Complete in today's file was taken. Ctrl+; (date), a space, "
+                                "Ctrl+Shift+; (time). The estimated times count from here.")
     ws.add_data_validation(dv0)
-    dv0.add("K1")
-    ws.merge_cells("A2:E2")
-    put(ws, "A2", "Pick Yes for every line running this shift (green box on the printout). Pick READY, PM or OT to "
-                  "tag a line; leave Status empty to use the Line Status column of your file; NONE = no tag at all.",
+    dv0.add("L1")
+    ws.merge_cells("A2:G2")
+    put(ws, "A2", "This shift / Next shift: pick each line's status (it colors the line on 4. Schedule). Empty = "
+                  "the Line Status column of your file. Lines that are RUNNING, PARTIAL SHIFT or OVERTIME get "
+                  "estimated times. Breaks & lunch: Yes if the line stops for breaks and lunch.",
         font=font(10, italic=True, color="595959"), alignment=Alignment(wrap_text=True, vertical="top"))
-    ws.merge_cells("G2:L2")
-    put(ws, "G2", f'=IF(LINE_COUNT>{LINE_SLOTS},"WARNING: "&LINE_COUNT&" lines in today\'s schedule - only the first '
+    ws.merge_cells("I2:M2")
+    put(ws, "I2", f'=IF(LINE_COUNT>{LINE_SLOTS},"WARNING: "&LINE_COUNT&" lines in today\'s schedule - only the first '
                   f'{LINE_SLOTS} are listed here.","")', font=font(10, True, "C00000"),
         alignment=Alignment(wrap_text=True, vertical="top"))
     ws.row_dimensions[2].height = 42
-    left = ["Line", "Scheduled", "Status", "Work orders today", "Note"]
-    right = ["Its row on the left", "Lines in today's schedule", "Work orders", "Status shown (set in column C)",
-             "Ticked? (set in column B)", "Note"]
+    left = ["Line", "This shift", "Next shift", "Breaks & lunch", "Crew (EE)", "Work orders today", "Note"]
+    right = ["Its row on the left", "Lines in today's schedule", "Work orders", "This shift (shown)", "Note"]
     for i, h in enumerate(left):
-        put(ws, f"{L(1 + i)}3", h, font=font(10, True), fill=fill(C_HEADER), border=THIN_BLACK,
+        put(ws, f"{L(1 + i)}3", h, font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK,
             alignment=Alignment(wrap_text=True, vertical="center"))
     for i, h in enumerate(right):
-        put(ws, f"{L(7 + i)}3", h, font=font(10, True), fill=fill(C_HEADER), border=THIN_BLACK,
+        put(ws, f"{L(9 + i)}3", h, font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK,
             alignment=Alignment(wrap_text=True, vertical="center"))
-    put(ws, "N3", "Lines to add to column A", font=font(10, True), fill=fill(C_HEADER), border=THIN_BLACK,
+    put(ws, "O3", "Lines to add to column A", font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK,
         alignment=Alignment(wrap_text=True, vertical="center"))
     ws.row_dimensions[3].height = 42
-    sample_lines = []
-    for row in SAMPLE:
-        if row[0] not in sample_lines:
-            sample_lines.append(row[0])
-    keep = f"Calc!${W['keep']}${W0}:${W['keep']}${WN}"
-    line_rng = f"Calc!${W['line']}${W0}:${W['line']}${WN}"
     center = Alignment(horizontal="center", vertical="center")
-    all_names = ttrim(f'$A$4:$A${3 + LINE_SLOTS}&""')
     lb = lambda n: f"Calc!${LB[n]}$5:${LB[n]}${4 + LINE_SLOTS}"
+    lk = lambda n: f"Calc!${LK[n]}$5:${LK[n]}${4 + LINE_SLOTS}"
+    lidx = f"Calc!${W['lidx']}${W0}:${W['lidx']}${WN}"
     for i in range(LINE_SLOTS):
         r = 4 + i
+        name, brk = LINE_LIST[i] if i < len(LINE_LIST) else (None, None)
         # the input cells are yellow, like every cell that takes typing
-        put(ws, f"A{r}", sample_lines[i] if i < len(sample_lines) else None, font=font(11, True),
-            protection=UNLOCKED, border=THIN_GRAY, fill=INPUT_FILL)
-        put(ws, f"B{r}", None, protection=UNLOCKED, border=THIN_GRAY, alignment=center, font=font(11, True),
-            fill=INPUT_FILL)
-        put(ws, f"C{r}", None, protection=UNLOCKED, border=THIN_GRAY, alignment=center, font=font(11, True),
-            fill=INPUT_FILL)
-        a = ttrim(f'A{r}&""')
-        above = ttrim(f'$A$3:A{r - 1}&""')
-        put(ws, f"D{r}", f'=IF({a}="","",SUMPRODUCT(({line_rng}={a})*{keep}))', border=THIN_GRAY,
-            alignment=center, font=font(10))
-        # a Scheduled / Status left behind when only the name was cleared would
-        # be taken over by the next line typed in that row
-        put(ws, f"E{r}", f'=IF({a}="",IF(OR(TRIM(B{r}&"")<>"",TRIM(C{r}&"")<>""),"No line name - clear Scheduled '
-                         f'and Status",""),IF(SUMPRODUCT(--({above}={a}))>0,'
-                         f'"Listed twice - only the first one is used",IF(SUMPRODUCT(--({all_names}={a}))>1,'
-                         f'"Listed twice - this row is the one used",IF(D{r}=0,"Not in today\'s schedule",""))))',
+        put(ws, f"A{r}", name, font=font(11, True), protection=UNLOCKED, border=THIN_GRAY, fill=INPUT_FILL)
+        for col, val in (("B", None), ("C", None), ("D", brk), ("E", None)):
+            put(ws, f"{col}{r}", val, protection=UNLOCKED, border=THIN_GRAY, alignment=center, font=font(10, True),
+                fill=INPUT_FILL)
+        put(ws, f"F{r}", f'=IF(TRIM(A{r}&"")="","",COUNTIF({lidx},{i + 1}))', border=THIN_GRAY, alignment=center,
+            font=font(10))
+        at_k = f"INDEX({lk('key')},{i + 1})"
+        put(ws, f"G{r}", (f'=IF(TRIM(A{r}&"")="",IF(OR(TRIM(B{r}&"")<>"",TRIM(C{r}&"")<>"",TRIM(E{r}&"")<>""),'
+                          f'"No line name - clear this row",""),IF(INDEX({lk("first")},{i + 1})<{i + 1},'
+                          f'"Listed twice - only the first one is used",IF(F{r}=0,"Not in today\'s schedule","")))'),
             font=font(9, italic=True, color="7F7F7F"), border=THIN_GRAY)
         # right-hand lists: by position (ROW()-3), so they stay whole if a row is ever inserted or deleted
         at = lambda n: f"INDEX({lb(n)},ROW()-3)"
-        # which row of the left table to edit for this line
-        put(ws, f"G{r}", f'=IF({at("lrow")}="","","row "&{at("lrow")})', font=font(10, color="404040"),
+        put(ws, f"I{r}", f'=IF({at("lrow")}="","","row "&{at("lrow")})', font=font(10, color="404040"),
             alignment=center)
-        put(ws, f"H{r}", f"={at('name')}", font=font(11, True))
-        put(ws, f"I{r}", f"={at('cnt')}", alignment=center, font=font(10))
-        put(ws, f"J{r}", f"={at('st')}", alignment=center, font=font(10, True))
-        put(ws, f"K{r}", f"={at('sc')}", alignment=center, font=font(10, True))
-        put(ws, f"L{r}", f"={at('note')}", font=font(10, True, "C00000"))
-        put(ws, f"N{r}", f"={at('mname')}", font=font(11, True, "C00000"))
+        put(ws, f"J{r}", f"={at('name')}", font=font(11, True))
+        put(ws, f"K{r}", f"={at('cnt')}", alignment=center, font=font(10))
+        put(ws, f"L{r}", f"={at('st')}", alignment=center, font=font(10, True))
+        put(ws, f"M{r}", f"={at('note')}", font=font(10, True, "C00000"))
+        put(ws, f"O{r}", f"={at('mname')}", font=font(11, True, "C00000"))
     last = 3 + LINE_SLOTS
-    orphan = 'AND(TRIM($A4&"")="",OR(TRIM($B4&"")<>"",TRIM($C4&"")<>""))'
-    cf(ws, f"B4:C{last}", orphan, "FFC7CE", font(11, True, "9C0006"))      # first, so it wins
-    cf(ws, f"E4:E{last}", 'OR(LEFT($E4,7)="No line",LEFT($E4,12)="Listed twice")', None, font(9, True, "C00000"))
-    sched_yes = 'OR(UPPER(TRIM($B{r}&""))="YES",UPPER(TRIM($B{r}&""))="Y",UPPER(TRIM($B{r}&""))="X")'
-    cf(ws, f"A4:B{last}", sched_yes.format(r=4), "C6EFCE", font(11, True, "006100"))
-    for st, color, txt in [("READY", C_READY, "FFFFFF"), ("PM", C_PM, "FFFFFF"), ("OT", C_OT, "000000")]:
-        cf(ws, f"C4:C{last}", f'UPPER(TRIM($C4&""))="{st}"', color, font(11, True, txt))
-        cf(ws, f"J4:J{last}", f'$J4="{st}"', color, font(10, True, txt))
-    cf(ws, f"C4:C{last}", 'OR(UPPER(TRIM($C4&""))="NONE",TRIM($C4&"")="-")', "D9D9D9", font(11, True, "404040"))
-    cf(ws, f"K4:K{last}", '$K4="Yes"', "C6EFCE", font(10, True, "006100"))
-    cf(ws, f"L4:L{last}", '$L4<>""', "FFC7CE", font(10, True, "9C0006"))
-    cf(ws, f"N4:N{last}", '$N4<>""', "FFC7CE", font(11, True, "9C0006"))
-    dv1 = DataValidation(type="list", formula1='"Yes"', allow_blank=True, showErrorMessage=True,
-                         errorTitle="Scheduled", error="Pick Yes from the list, or leave it empty.")
-    dv2 = DataValidation(type="list", formula1='"READY,PM,OT,NONE"', allow_blank=True, showErrorMessage=True,
-                         errorTitle="Status", error="Pick READY, PM, OT or NONE from the list, or leave it empty.",
-                         showInputMessage=True, promptTitle="Status",
-                         prompt="READY, PM or OT tags the line. Empty: use the Line Status column of your file. "
-                                "NONE: no tag, even if your file has one.")
-    ws.add_data_validation(dv1)
-    ws.add_data_validation(dv2)
-    dv1.add(f"B4:B{last}")
-    dv2.add(f"C4:C{last}")
+    orphan = 'AND(TRIM($A4&"")="",OR(TRIM($B4&"")<>"",TRIM($C4&"")<>"",TRIM($E4&"")<>""))'
+    cf(ws, f"B4:E{last}", orphan, "FFC7CE", font(10, True, "9C0006"))      # first, so it wins
+    cf(ws, f"G4:G{last}", 'OR(LEFT($G4,7)="No line",LEFT($G4,12)="Listed twice")', None, font(9, True, "C00000"))
+    for st, strong, txt, _ in STATUSES:
+        cf(ws, f"B4:C{last}", f'UPPER(TRIM(B4&""))="{st}"', strong, font(10, True, txt))
+        cf(ws, f"L4:L{last}", f'$L4="{st}"', strong, font(10, True, txt))
+    cf(ws, f"D4:D{last}", 'UPPER(TRIM($D4&""))="NO"', "EDEDED", font(10, True, "404040"))
+    cf(ws, f"M4:M{last}", '$M4<>""', "FFC7CE", font(10, True, "9C0006"))
+    cf(ws, f"O4:O{last}", '$O4<>""', "FFC7CE", font(11, True, "9C0006"))
+    dv1 = DataValidation(type="list", formula1='"' + ",".join(STATUS_NAMES) + '"', allow_blank=True,
+                         showErrorMessage=True, errorStyle="warning", errorTitle="Status",
+                         error="Pick a status from the list (or leave it empty).",
+                         showInputMessage=True, promptTitle="Line status",
+                         prompt="RUNNING, PARTIAL SHIFT or OVERTIME: the line runs (estimated times). READY LINE, "
+                                "PM / CLEANING, NOT SCHEDULED: it doesn't. Empty: from your file.")
+    dv2 = DataValidation(type="list", formula1='"Yes,No"', allow_blank=True, showErrorMessage=True,
+                         errorTitle="Breaks & lunch", error="Pick Yes or No.")
+    dv3 = DataValidation(type="whole", operator="between", formula1="0", formula2="99", allow_blank=True,
+                         showErrorMessage=True, errorTitle="Crew", error="Type the number of people (0 to 99).")
+    for dv, rng in ((dv1, f"B4:C{last}"), (dv2, f"D4:D{last}"), (dv3, f"E4:E{last}")):
+        ws.add_data_validation(dv)
+        dv.add(rng)
     ws.freeze_panes = "A4"
     fit_width(ws, "landscape")
-    ws.print_area = f"A1:N{last}"
+    ws.print_area = f"A1:O{last}"
     ws.print_title_rows = "3:3"
     protect(ws, formatColumns=False, formatRows=False)
     return ws
 
 
+POS30 = "{" + ",".join(str(i) for i in range(1, 31)) + "}"
+
+
+def lnum_expr(x):
+    """The line number in a line's name: its last run of digits ("VPKL05" -> 5,
+    "LINE 12" -> 12, "LINE05" -> 5); "" when it has no digits. Lines are
+    matched by this number between the schedule, 3. Lines and 6. Line Rates,
+    so "VPKL03" from JDE and "LINE 3" typed on 3. Lines are the same line."""
+    t = f'TRIM({x}&"")'
+    last = f"LOOKUP(2,1/ISNUMBER(-MID({t},{POS30},1)),{POS30})"
+    start = f"IFERROR(LOOKUP(2,1/(({POS30}<{last})*ISERROR(-MID({t},{POS30},1))),{POS30}),0)"
+    return f'IFERROR(VALUE(MID({t},{start}+1,{last}-{start})),"")'
+
+
+SETTINGS_ROWS = [
+    # (name, label, value, number format, note)
+    ("head", "Shift clock - for the estimated times"),
+    ("SET_START", "1st shift starts at", 7.25 / 24, "h:mm AM/PM",
+     "2nd shift starts 8 hours later and 3rd shift 16 hours later (7:15 AM, 3:15 PM, 11:15 PM)."),
+    ("SET_BREAK1", "Break - hour of the shift", 2, "0", "1 = the first hour of the shift. 0 = no break."),
+    ("SET_BREAK2", "Second break - hour of the shift", 6, "0", "0 = no second break."),
+    ("SET_LUNCH", "Lunch - hour of the shift", 4, "0", "0 = no lunch."),
+    ("SET_FBREAK", "Bottles in a break hour", 6 / 7, "0%",
+     "Of a full hour. From the Line Lead MDI Router: the Break (15 min) rate is 86% of the full-hour rate."),
+    ("SET_FLUNCH", "Bottles in a lunch hour", 4 / 7, "0%", "Of a full hour. The router's Lunch (30 min) rate is 57%."),
+    ("gap",),
+    ("head", "Estimated times"),
+    ("SET_EFF", "Line efficiency", 1, "0%",
+     "Lower it (for example 85%) if lines usually run slower than the router rate. 100% = the router rate."),
+    ("SET_CO_S1", "Changeover minutes: Minor - S1", 15, "0", "Same setup, different item."),
+    ("SET_CO_CNT", "Changeover minutes: Minor - count change", 15, "0", "Same bottle and bulk, different count."),
+    ("SET_CO_S3", "Changeover minutes: MAJOR - S3", 40, "0", "Different bulk item."),
+    ("SET_CO_S4", "Changeover minutes: MAJOR - S4", 45, "0", "Different bottle size."),
+]
+
+
+def build_settings(wb):
+    ws = wb.create_sheet(S_SET)
+    ws.sheet_properties.tabColor = "7F7F7F"
+    ws.sheet_view.showGridLines = False
+    for col, w in {"A": 2, "B": 40, "C": 14, "D": 90}.items():
+        ws.column_dimensions[col].width = w
+    put(ws, "B1", "5. Settings", font=font(18, True))
+    put(ws, "B2", "Set once by the supervisor. Only the yellow cells can be changed. The estimated times on "
+                  "4. Schedule use these and the bottles per hour on 6. Line Rates.",
+        font=font(10, italic=True, color="595959"))
+    names = {}
+    r = 4
+    for row in SETTINGS_ROWS:
+        if row[0] == "gap":
+            r += 1
+            continue
+        if row[0] == "head":
+            ws.merge_cells(f"B{r}:D{r}")
+            put(ws, f"B{r}", row[1], font=font(12, True, "FFFFFF"), fill=fill(C_TITLE),
+                alignment=Alignment(vertical="center", indent=1))
+            ws.row_dimensions[r].height = 20
+            r += 1
+            continue
+        name, label, value, fmt, note = row
+        put(ws, f"B{r}", label, font=font(11, True), border=THIN_GRAY)
+        put(ws, f"C{r}", value, number_format=fmt, fill=INPUT_FILL, border=THIN_BLACK, protection=UNLOCKED,
+            font=font(11, True), alignment=Alignment(horizontal="center"))
+        put(ws, f"D{r}", note, font=font(10, color="404040"), border=THIN_GRAY)
+        names[name] = f"{SETTINGS}!$C${r}"
+        r += 1
+    r += 1
+    put(ws, f"B{r}", "Breaks and lunch apply only to the lines marked Yes in the Breaks & lunch column of 3. Lines "
+                     "(lines 1, 3, 5 and 7 have them; lines 8 to 12 run through).", font=font(10, italic=True,
+                                                                                             color="595959"))
+    fit_width(ws, "landscape")
+    protect(ws, formatColumns=False)
+    return names
+
+
+def build_rates(wb):
+    import csv
+    ws = wb.create_sheet(S_RATES)
+    ws.sheet_properties.tabColor = "7F7F7F"
+    ws.sheet_view.showGridLines = False
+    for col, w in {"A": 10, "B": 12, "C": 52, "D": 18, "E": 12, "F": 14}.items():
+        ws.column_dimensions[col].width = w
+    put(ws, "A1", "6. Line Rates - bottles per hour by line and item", font=font(16, True))
+    put(ws, "A2", "From the Line Lead MDI Router (Power BI): the Router BPH of each line and item, or the JDE "
+                  "router rate where there is no Router BPH. To update it, paste a new list over A5:E (Paste "
+                  "Values). The line is matched by its number, so LINE05, VPKL05 and LINE 5 are the same line (in column A "
+                  "the number must end the line name).",
+        font=font(10, italic=True, color="595959"))
+    for i, h in enumerate(["LINE", "ITEM", "DESCRIPTION", "BOTTLES PER HOUR", "SOURCE"]):
+        put(ws, f"{L(1 + i)}4", h, font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK)
+    with open(RATES_CSV, newline="") as fh:
+        rates = list(csv.DictReader(fh))
+    if len(rates) > RATE_ROWS:
+        raise SystemExit(f"{len(rates)} rates don't fit in {RATE_ROWS} rows")
+    for i, rt in enumerate(rates):
+        r = 5 + i
+        ws.cell(r, 1, rt["LINE"])
+        ws.cell(r, 2, rt["ITEM"])
+        ws.cell(r, 3, rt["DESCRIPTION"])
+        ws.cell(r, 4, float(rt["BOTTLES PER HOUR"])).number_format = "#,##0"
+        ws.cell(r, 5, rt["SOURCE"])
+    # hidden lookup key: line number | ITEM
+    put(ws, "F4", "KEY", font=font(9, True))
+    for r in range(5, 5 + RATE_ROWS):
+        t = f'TRIM(A{r}&"")'
+        num = f'IFERROR(--MID({t},MIN(FIND({{0,1,2,3,4,5,6,7,8,9}},{t}&"0123456789")),9),"")'
+        ws[f"F{r}"] = f'=IF(OR({t}="",TRIM(B{r}&"")=""),"",{num}&"|"&UPPER(TRIM(B{r}&"")))'
+    ws.column_dimensions["F"].hidden = True
+    ws.freeze_panes = "A5"
+    fit_width(ws, "portrait")
+    ws.print_title_rows = "4:4"
+    return ws
+
+
+# 4. Schedule's hidden helper columns (S onwards): (column, title, Calc output
+# key or None). The codes in AE:AL pick each cell's look - one conditional
+# format rule per code, so exactly one rule is true for any cell.
+SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "ns"), ("V", "STATUS #", "stidx"),
+                 ("W", "FIRST", "first"), ("X", "LAST", "last"), ("Y", "COUNT CHG", "cchg"), ("Z", "FIRST WO", "fw"),
+                 ("AA", "CHANGEOVER", "code"), ("AB", "NEXT #", "nidx"), ("AC", "STATUS", "o_status"),
+                 ("AD", "RUNS", "sched"), ("AE", "EDGE", None), ("AF", "LINE LOOK", None), ("AG", "DATA LOOK", None),
+                 ("AH", "CT LOOK", None), ("AI", "PROGRESS LOOK", None), ("AJ", "EE LOOK", None),
+                 ("AK", "EST LOOK", None), ("AL", "NEXT LOOK", None), ("AM", "CAP CHG", "capx"),
+                 ("AN", "CAP LOOK", None)]
+C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
+LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Bulk", "9DC3E6")]
+
+
+def look_codes(r):
+    """The look codes of 4. Schedule row r (helper columns AE:AL)."""
+    edge = f'IF(OR($S{r}="row",$S{r}="note"),IF($W{r}=1,IF($X{r}=1,1,2),IF($X{r}=1,3,4)),0)'
+    prev_first = f"N($W{r - 1})"
+    data = (f'IF($S{r}="note",6,IF($U{r}=1,5,IF($T{r}="allergen",2,IF($T{r}="oil",3,IF($T{r}="bulk",4,1)))))')
+    prog = (f'IF($S{r}="note",9,IF($U{r}=1,8,IF($Z{r}=1,IF($M{r}="Not Started Yet",2,1),IF($AA{r}="S1",3,'
+            f'IF($AA{r}="S1 Count Change",4,IF($AA{r}="S3",5,IF($AA{r}="S4",6,7)))))))')
+    return {
+        "AE": f"={edge}",
+        # LINE: 1 name, 2 status tag, 3 the rest, 4 a line with one row - x100,
+        # + status x10 + edge
+        "AF": f"=IF($AE{r}=0,0,IF($W{r}=1,IF($X{r}=1,4,1),IF({prev_first}=1,2,3))*100+$V{r}*10+$AE{r})",
+        "AG": f"=IF($AE{r}=0,0,{data}*10+$AE{r})",
+        "AH": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$Y{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
+        "AI": f"=IF($AE{r}=0,0,{prog}*10+$AE{r})",
+        "AJ": f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,1))*10+$AE{r})',
+        "AK": f'=IF($AE{r}=0,0,IF($S{r}="note",6,IF($U{r}=1,5,IF($P{r}="no rate",3,IF($Z{r}=1,1,2))))*10+$AE{r})',
+        "AL": f'=IF($AE{r}=0,0,IF($W{r}=1,IF($AB{r}>0,$AB{r},7),IF($S{r}="note",9,8))*10+$AE{r})',
+        "AN": f'=IF($AE{r}=0,0,IF(AND($S{r}="row",$U{r}=0,$AM{r}=1),INT($AG{r}/10)+10,INT($AG{r}/10))*10+$AE{r})',
+    }
+
+
+def rich(parts, size=BODY_PT):
+    """A legend cell: [(text, color, bold)] runs."""
+    from openpyxl.cell.rich_text import CellRichText, TextBlock
+    from openpyxl.cell.text import InlineFont
+    return CellRichText(*[TextBlock(InlineFont(rFont=FONT, sz=size, b=b, color="FF" + col), t) for t, col, b in parts])
+
+
 def build_schedule(wb):
     ws = wb.create_sheet(S_SCHED)
-    ws.sheet_properties.tabColor = "1F3864"
+    ws.sheet_properties.tabColor = C_TITLE
     ws.sheet_view.showGridLines = False
     ncol = len(SCHED_COLS)                        # 17 -> A:Q
-    last_row = 2 + OUT_ROWS
-    for i, (h, _, _) in enumerate(SCHED_COLS, start=1):
+    last_row = SCHED_ROW0 + OUT_ROWS - 1          # 704
+    for i, (h, _) in enumerate(SCHED_COLS, start=1):
         ws.column_dimensions[L(i)].width = SCHED_WIDTHS[h]
     ws.column_dimensions["R"].width = 2
-    # row 1: warnings (left), title (centred on the page), date (right). A:E
-    # holds each warning on one line; A:E and N:Q are about as wide, so F:M is
-    # close to centred on the table like the app's title.
-    ws.merge_cells("A1:E1")
-    put(ws, "A1", f"={SC['short_warn']}", font=font(HEADER_PT, True, "C00000"),
-        alignment=Alignment(horizontal="left", vertical="center", wrap_text=True))
-    ws.merge_cells("F1:M1")
-    put(ws, "F1", TITLE, font=font(TITLE_PT, True), alignment=Alignment(horizontal="center", vertical="center"))
-    ws.merge_cells("N1:Q1")
-    put(ws, "N1", "=TODAY()", number_format="mmmm d, yyyy", font=font(DATE_PT, color="444444"),
-        alignment=Alignment(horizontal="right", vertical="center"))
-    ws.row_dimensions[1].height = 36
-    for i, (h, _, _) in enumerate(SCHED_COLS, start=1):
-        put(ws, f"{L(i)}2", h, font=font(HEADER_PT, True), fill=fill(C_HEADER), border=THIN_BLACK,
-            alignment=Alignment(wrap_text=True, vertical="center", horizontal="left"))
-    ws.row_dimensions[2].height = 32
-    helpers = [("T", "KIND", "kind"), ("U", "HL", "hl"), ("V", "SCHEDULED", "sched"), ("W", "STATUS", "o_status"),
-               ("X", "FIRST", "first"), ("Y", "LAST", "last"), ("Z", "COUNT CHG", "cchg")]
-    for col, h, _ in helpers + [("AA", "BORDER", None), ("AB", "TAG", None)]:
-        put(ws, f"{col}2", h, font=font(8, True))
+    split = "J"                                   # rows 1-3: A:I on the left, J:Q on the right
+    lc = L(ncol)
+    navy, title_white = fill(C_TITLE), "FFFFFF"
+    # row 1: title band - the title and this copy's shift | the status legend
+    ws.merge_cells("A1:I1")
+    put(ws, "A1", f'="JDE PACKAGING SCHEDULE"&IF({SC["shift"]}="",""," · "&UPPER({SC["shift"]}))',
+        font=font(TITLE_PT - 2, True, title_white), fill=navy,
+        alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
+    ws.merge_cells(f"{split}1:{lc}1")
+    parts = []
+    for st, strong, _, _ in STATUSES:
+        parts += [("■ ", strong if st != "PM / CLEANING" else "5B9BD5", False),
+                  (st.capitalize().replace("Pm / cleaning", "PM / Cleaning") + "   ", title_white, False)]
+    put(ws, f"{split}1", rich(parts), fill=navy, font=font(BODY_PT, False, title_white),
+        alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
+    ws.row_dimensions[1].height = 30
+    # row 2: which copy this is (shift, date, as of) | changeover legend
+    light = fill(C_SUBTITLE)
+    ws.merge_cells("A2:I2")
+    put(ws, "A2", f"={SC['subtitle']}", font=font(10, True, C_TITLE, italic=True), fill=light,
+        alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
+    ws.merge_cells(f"{split}2:{lc}2")
+    parts = []
+    for _, lab, col in CO_LABELS:
+        parts += [("● ", col, False), (lab.replace(" · ", " ") + "   ", col, lab.startswith("MAJOR"))]
+    parts += [("CAP", C_CAP_CHANGED, True), (" = new cap ", "262626", False)]
+    put(ws, f"{split}2", rich(parts), fill=light, font=font(BODY_PT),
+        alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
+    ws.row_dimensions[2].height = 16
+    # row 3: today in one line (or the warnings) | row highlight legend
+    ws.merge_cells("A3:M3")
+    put(ws, "A3", f'=IF({SC["warn_line"]}<>"","⚠ "&{SC["warn_line"]},{SC["summary"]})',
+        font=font(9.5, True, "262626"), alignment=Alignment(horizontal="left", vertical="center", indent=1,
+                                                            shrink_to_fit=True))
+    cf(ws, "A3", 'LEFT($A$3,1)="⚠"', "FFC7CE", font(9.5, True, "9C0006"))
+    ws.merge_cells(f"N3:{lc}3")
+    parts = []
+    for lab, col in LEGEND_HL:
+        parts += [("■ ", col, False), (lab + "   ", "262626", False)]
+    put(ws, "N3", rich(parts), font=font(BODY_PT),
+        alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
+    ws.row_dimensions[3].height = 16
+    # row 4: column titles (NEXT SHIFT names the shift)
+    for i, (h, key) in enumerate(SCHED_COLS, start=1):
+        v = h if key != "o_next" else f'=IF({SC["nshift"]}="","NEXT SHIFT","NEXT: "&UPPER({SC["nshift"]}))'
+        put(ws, f"{L(i)}4", v, font=font(HEADER_PT, True, "FFFFFF"), fill=fill(C_COLHEAD),
+            border=Border(left=side("FFFFFF"), right=side("FFFFFF"), bottom=side(C_FRAME)),
+            alignment=Alignment(wrap_text=True, vertical="center", horizontal="center"))
+    ws.row_dimensions[4].height = 26
+    for col, h, _ in SCHED_HELPERS:
+        put(ws, f"{col}4", h, font=font(8, True))
         ws.column_dimensions[col].hidden = True
-    right = {"o_qty", "o_pct", "o_pa", "o_br"}
-    for r in range(3, last_row + 1):
-        cr = r + 2                                # Calc output row
-        # One line per row, like the app's printout: no wrapping, so rows never
-        # depend on Excel re-fitting their height after a paste. Long product /
-        # cap descriptions, desiccants and line names shrink to fit their cell
-        # (the app cuts them with "..."; a cut without "..." would look whole);
-        # long remarks stop at the cell edge.
+    align = {"o_line": "center", "o_seq": "center", "o_count": "center", "o_bottle": "center", "o_cap": "center",
+             "o_allergen": "center", "o_desiccant": "center", "o_qty": "right", "o_left": "right",
+             "o_crew": "center", "o_est": "right", "o_next": "center"}
+    for r in range(SCHED_ROW0, last_row + 1):
+        # One line per row, so rows never depend on Excel re-fitting their
+        # height after a paste: long values shrink to fit their cell.
         ws.row_dimensions[r].height = ROW_HEIGHT
-        for i, (_, key, _) in enumerate(SCHED_COLS, start=1):
-            c = ws.cell(r, i, f"=Calc!${O[key]}${cr}")
-            horiz = "center" if key == "o_line" else "right" if key in right else "left"
-            c.alignment = Alignment(horizontal=horiz, vertical="center", shrink_to_fit=key in SHRINK_COLS)
-            # LINE: grey and not bold, like the repeated names; the first row of
-            # each line is made bold black by a conditional format
-            c.font = (font(LINE_PT, False, C_LINE_REPEAT) if key == "o_line" else
-                      font(BODY_PT))
-            if key == "o_pa":
-                c.number_format = "0.0%"
-            elif key == "o_br":
-                c.number_format = "0"
-        for col, _, key in helpers:
-            ws[f"{col}{r}"] = f"=Calc!${O[key]}${cr}"
-        ws[f"AA{r}"] = (f'=IF($T{r}<>"row",0,IF($V{r}=1,IF($X{r}=1,IF($Y{r}=1,1,2),IF($Y{r}=1,3,4)),'
-                        f'IF($X{r}=1,IF($Y{r}=1,5,6),IF($Y{r}=1,7,8))))')
-        # 1 = this LINE cell holds the line's status tag (see Calc o_line)
-        ws[f"AB{r}"] = (f'=IF($T{r}<>"row",0,IF($W{r}="",0,IF($X{r}=1,IF($Y{r}=1,1,0),'
-                        f'IF(N($X{r - 1})=1,1,0))))')
+        for i, (_, key) in enumerate(SCHED_COLS, start=1):
+            c = ws.cell(r, i, f"=Calc!${O[key]}${r}")
+            c.alignment = Alignment(horizontal=align.get(key, "left"), vertical="center",
+                                    shrink_to_fit=key in SHRINK_COLS)
+            c.font = font(LINE_PT, True) if key == "o_line" else font(BODY_PT)
+            if key == "o_qty":
+                c.number_format = "#,##0"
+        for col, _, key in SCHED_HELPERS:
+            if key:
+                ws[f"{col}{r}"] = f"=Calc!${O[key]}${r}"
+        for col, f in look_codes(r).items():
+            ws[f"{col}{r}"] = f
     add_conditional_formats(ws, last_row)
-    ws.freeze_panes = "A3"
+    ws.freeze_panes = f"A{SCHED_ROW0}"
     # page setup
     ws.page_setup.orientation = "landscape"
     ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
@@ -1459,10 +1982,10 @@ def build_schedule(wb):
     ws.oddFooter.center.size = 8
     ws.oddFooter.left.text = "&F"          # the file name - it says which shift's copy this is
     ws.oddFooter.left.size = 8
-    ws.print_title_rows = "1:2"
-    # Print area stops at the last used row (see Calc!B13).
+    ws.print_title_rows = f"1:{SCHED_ROW0 - 1}"
+    # Print area stops at the last used row (Calc print_last).
     ws.defined_names["Print_Area"] = DefinedName(
-        "Print_Area", attr_text=f"{SCHED}!$A$1:INDEX({SCHED}!${L(ncol)}$1:${L(ncol)}${last_row},{SC['print_last']})")
+        "Print_Area", attr_text=f"{SCHED}!$A$1:INDEX({SCHED}!${lc}$1:${lc}${last_row},{SC['print_last']})")
     # Columns can be hidden or widened; rows can't be hidden (formatRows on):
     # the report is by position, so a hidden row would hide another work order
     # on a later day.
@@ -1471,73 +1994,91 @@ def build_schedule(wb):
 
 
 def add_conditional_formats(ws, last_row):
-    """Exactly one rule can be true for any cell (each rule spells out its
-    fill, font and borders together), so the result doesn't depend on how a
-    spreadsheet program merges several true rules. Borders are thin - Excel
-    conditional formats can't draw thick ones."""
-    gray, navy, green = side(C_GRID), side(C_DIVIDER), side(C_SCHEDULED)
-    R = lambda col: f"{col}3:{col}{last_row}"
-    # PROGRESS (% Actual Complete) as a green bar behind the percentage, like
-    # the app's progress bar: 0 % = empty, 100 % = full. Added first so it
-    # comes before the column's fill rules (they all stop further rules).
-    pa_col = L(1 + [k for _, k, _ in SCHED_COLS].index("o_pa"))
-    ws.conditional_formatting.add(R(pa_col), DataBarRule(start_type="num", start_value=0, end_type="num",
-                                                         end_value=1, color="FF" + C_PROGRESS, showValue=True))
-    code = lambda *cs: "OR(" + ",".join(f"$AA3={c}" for c in cs) + ")" if len(cs) > 1 else f"$AA3={cs[0]}"
-    # STATUS of the row's line (READY / PM / OT / none) - one condition each
-    status = [('$W3="READY"', C_READY, "FFFFFF", C_TINT["READY"]), ('$W3="PM"', C_PM, "FFFFFF", C_TINT["PM"]),
-              ('$W3="OT"', C_OT, "000000", C_TINT["OT"]), ('AND($W3<>"READY",$W3<>"PM",$W3<>"OT")', None, None, None)]
-    # LINE column: looks like one tall cell per line (no lines inside a block).
-    # A ticked line is bright green; an unticked line with a status gets the
-    # app's light status tint. The name is bold black on the first row (codes
-    # 1, 2, 5, 6) and grey on the rest.
-    a_borders = {
-        1: Border(left=green, right=gray, top=green, bottom=green), 2: Border(left=green, right=gray, top=green),
-        3: Border(left=green, right=gray, bottom=green), 4: Border(left=green, right=gray),
-        5: Border(left=gray, right=gray, top=gray, bottom=navy), 6: Border(left=gray, right=gray, top=gray),
-        7: Border(left=gray, right=gray, bottom=navy), 8: Border(left=gray, right=gray),
-    }
-    # the status tag cell: the tag's own color, white (OT: black) bold text
-    for c, b in a_borders.items():
-        for cond, color, txt, _ in status[:3]:
-            cf(ws, R("A"), f"AND({code(c)},$AB3=1,{cond})", color, font(8, True, txt), b)
-    for c, b in a_borders.items():
-        first = c in (1, 2, 5, 6)
-        if c <= 4:
-            cf(ws, R("A"), code(c), C_SCHEDULED, font(8, True, "000000") if first else
-               font(8, False, C_LINE_REPEAT_ON_GREEN), b)
-        else:
-            for cond, _, _, tint in status:
-                cf(ws, R("A"), f"AND({code(c)},{cond})", tint, font(8, True, "000000") if first else None, b)
-    # B..Q: a grid; green top/bottom on a scheduled block; navy under each line.
-    inner = [((1,), Border(left=gray, right=gray, top=green, bottom=green)),
-             ((2,), Border(left=gray, right=gray, top=green, bottom=gray)),
-             ((3,), Border(left=gray, right=gray, top=gray, bottom=green)),
-             ((4, 6, 8), Border(left=gray, right=gray, top=gray, bottom=gray)),
-             ((5, 7), Border(left=gray, right=gray, top=gray, bottom=navy))]
-    last_col = [((1,), Border(left=gray, right=green, top=green, bottom=green)),
-                ((2,), Border(left=gray, right=green, top=green, bottom=gray)),
-                ((3,), Border(left=gray, right=green, top=gray, bottom=green)),
-                ((4,), Border(left=gray, right=green, top=gray, bottom=gray)),
-                ((6, 8), Border(left=gray, right=gray, top=gray, bottom=gray)),
-                ((5, 7), Border(left=gray, right=gray, top=gray, bottom=navy))]
-    hl = [('$U3="allergen"', C_ALLERGEN), ('$U3="oil"', C_OIL), ('$U3="bulk"', C_BULK)]
-    hl_none = '$U3=""'
-    # plain columns B:E, G:N - row highlight (allergen > oil > bulk)
-    plain = "B3:E{0} G3:N{0}".format(last_row)
-    for codes, b in inner:
-        for cond, color in hl + [(hl_none, None)]:
-            cf(ws, plain, f"AND({code(*codes)},{cond})", color, None, b)
-    # COUNT: highlight + red bold count on an "S1 Count Change" row
-    for codes, b in inner:
-        for cond, color in hl + [(hl_none, None)]:
-            cf(ws, R("F"), f"AND({code(*codes)},{cond},$Z3=1)", color, font(8, True, C_COUNT_CHANGED), b)
-            cf(ws, R("F"), f"AND({code(*codes)},{cond},$Z3<>1)", color, None, b)
-    # calculated columns O:Q - pale yellow unless the row is highlighted
-    for rng, sets in [(R("O"), inner), (R("P"), inner), (R("Q"), last_col)]:
-        for codes, b in sets:
-            for cond, color in hl + [(hl_none, C_FORMULA)]:
-                cf(ws, rng, f"AND({code(*codes)},{cond})", color, None, b)
+    """Each range's rules test one look code (helper columns AE:AL), so
+    exactly one rule is true for any cell and the result doesn't depend on how
+    a spreadsheet program merges several true rules. Each line is a card: a
+    navy frame around its rows, a colored LINE tab (name, then the status tag
+    on the line's color), and a blank row before the next line."""
+    r0 = SCHED_ROW0
+    frame, inner = side(C_FRAME), side(C_INNER)
+    rng = lambda *cols: " ".join(f"{a}{r0}:{b}{last_row}" for a, b in cols)
+
+    def box(edge, left=inner, right=inner, verticals=True):
+        top = frame if edge in (1, 2) else inner
+        bottom = frame if edge in (1, 3) else None
+        return Border(left=left if verticals else None, right=right if verticals else None, top=top, bottom=bottom)
+
+    def note_box(edge, left=None, right=None):
+        return Border(left=left, right=right, top=None, bottom=frame if edge == 3 else None)
+
+    note_font = font(BODY_PT, False, C_NOTE_TEXT, italic=True)
+    grey = font(BODY_PT, False, C_NOT_SCHED_TEXT)
+    # LINE: the line's tab. Name on the line's tint, the status tag (and a
+    # line with one row) on its color.
+    st_colors = [(0, C_NO_STATUS, "262626", C_NO_STATUS)] + [
+        (i, strong, txt, tint) for i, (_, strong, txt, tint) in enumerate(STATUSES, start=1)]
+    for role, edges in ((1, (2,)), (4, (1,)), (2, (3, 4)), (3, (3, 4))):
+        for st, strong, txt, tint in st_colors:
+            for e in edges:
+                top = frame if e in (1, 2) else None
+                bottom = frame if e in (1, 3) else None
+                b = Border(left=frame, right=inner, top=top, bottom=bottom)
+                if role in (2, 4):
+                    fc, fo = strong, font(LINE_PT, True, txt if st else "262626")
+                else:
+                    fc, fo = tint, font(LINE_PT, True, "1F3864" if role == 1 else "7F7F7F")
+                cf(ws, rng(("A", "A")), f"$AF{r0}={role * 100 + st * 10 + e}", fc, fo, b)
+    # data columns B:E, G:L: row highlight (allergen > oil > bulk), grey for a
+    # line that isn't scheduled, notes in cream with no lines between columns
+    hl_fill = {1: None, 2: C_ALLERGEN, 3: C_OIL, 4: C_BULK, 5: None}
+    data = rng(("B", "E"), ("G", "H"), ("J", "L"))
+    for v in range(1, 6):
+        for e in range(1, 5):
+            cf(ws, data, f"$AG{r0}={v * 10 + e}", hl_fill[v], grey if v == 5 else None, box(e))
+    for e in (3, 4):
+        cf(ws, data, f"$AG{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+    # CT and CAP: as the data columns, in bold red on a count change (CT) and
+    # bold orange on a cap change (CAP)
+    for col, code, color in (("F", "AH", C_COUNT_CHANGED), ("I", "AN", C_CAP_CHANGED)):
+        for v in list(range(1, 6)) + list(range(11, 15)):
+            for e in range(1, 5):
+                cf(ws, rng((col, col)), f"${code}{r0}={v * 10 + e}", hl_fill[v % 10 if v > 10 else v],
+                   font(BODY_PT, True, color) if v > 10 else grey if v == 5 else None, box(e))
+        for e in (3, 4):
+            cf(ws, rng((col, col)), f"${code}{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+    # PROGRESS / CHANGEOVER and LEFT / C.O.: green progress dots on the
+    # running work order, the changeover type in its color on the next ones
+    prog_fonts = {1: font(BODY_PT, True, "2E7D32"), 2: font(BODY_PT, False, "7F7F7F", italic=True),
+                  7: font(BODY_PT, False, "A6A6A6"), 8: grey}
+    for i, (_, _, col) in enumerate(CO_LABELS, start=3):
+        prog_fonts[i] = font(BODY_PT, i >= 5, col)
+    for v, fo in prog_fonts.items():
+        for e in range(1, 5):
+            cf(ws, rng(("M", "N")), f"$AI{r0}={v * 10 + e}", None, fo, box(e))
+    for e in (3, 4):
+        cf(ws, rng(("M", "N")), f"$AI{r0}={90 + e}", C_NOTE_FILL, note_font, note_box(e))
+    # EE
+    for v, fo in ((1, None), (5, grey)):
+        for e in range(1, 5):
+            cf(ws, rng(("O", "O")), f"$AJ{r0}={v * 10 + e}", None, fo, box(e))
+    for e in (3, 4):
+        cf(ws, rng(("O", "O")), f"$AJ{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+    # EST. TIME: the running work order's time in bold navy
+    est_fonts = {1: font(BODY_PT, True, C_TITLE), 2: font(BODY_PT, False, "262626"),
+                 3: font(BODY_PT, False, "7F7F7F", italic=True), 5: grey}
+    for v, fo in est_fonts.items():
+        for e in range(1, 5):
+            cf(ws, rng(("P", "P")), f"$AK{r0}={v * 10 + e}", None, fo, box(e))
+    for e in (3, 4):
+        cf(ws, rng(("P", "P")), f"$AK{r0}={60 + e}", C_NOTE_FILL, note_font, note_box(e))
+    # NEXT SHIFT: a chip in the next shift's status color on the line's first row
+    for st, strong, txt, tint in st_colors[1:] + [(7, None, None, None)]:
+        for e in (1, 2):
+            cf(ws, rng(("Q", "Q")), f"$AL{r0}={st * 10 + e}", strong, font(BODY_PT, True, txt) if txt else None,
+               box(e, right=frame))
+    for e in (3, 4):
+        cf(ws, rng(("Q", "Q")), f"$AL{r0}={80 + e}", None, None, box(e, right=frame))
+        cf(ws, rng(("Q", "Q")), f"$AL{r0}={90 + e}", None, None, note_box(e, left=inner, right=frame))
 
 
 # ----------------------------------------------------------------------------
@@ -1545,33 +2086,35 @@ def add_conditional_formats(ws, last_row):
 
 HOW_ROWS = [
     ("title", "JDE Production Schedule - How To Use"),
-    ("sub", "Load it, Pick the Lines, Print it. Follow the steps in order. Do one step at a time."),
+    ("sub", "Load it, Set the Lines, Print it. Follow the steps in order. Do one step at a time."),
     ("gap",),
-    ("head", "", "QUICK CARD - A Load, B Pick the lines, C Print (this page prints on its own: post it at the computer)"),
+    ("head", "", "QUICK CARD - A Load, B Set the lines, C Print (this page prints on its own: post it at the computer)"),
     ("qc", "A1", "Open YOUR shift's copy of this file. Yellow PROTECTED VIEW bar? Click Enable Editing."),
     ("qc", "A2", "Tab 1. Paste Schedule: click the corner triangle (above row 1), then Home > Clear > Clear All."),
     ("qc", "A3", "Today's schedule file: Data > Clear (if it has filter arrows), click its corner triangle, Ctrl+C."),
     ("qc", "A4", "Back in THIS file, 1. Paste Schedule: right-click A1 > Paste Options > Values (123)."),
     ("qc", "A5", "Tab 2. Check Columns: the box is GREEN; First / Last work order = first / last row of today's file."),
     ("qc", "B1", "Tab 3. Lines: a line marked NOT IN YOUR LIST? Type its name in an empty row of the left table."),
-    ("qc", "B2", "Scheduled: pick Yes for every line running this shift. Clear the others (Delete)."),
-    ("qc", "B3", "Status: clear yesterday's. Pick READY / PM / OT (empty = from your file, NONE = no tag)."),
-    ("qc", "B4", "Click the yellow box Ticks and statuses checked on, press Ctrl+; (today's date)."),
+    ("qc", "B2", "This shift: pick each line's status (RUNNING, NOT SCHEDULED, PM / CLEANING, ...). Next shift: the same."),
+    ("qc", "B3", "Crew (EE): type the number of people on each running line."),
+    ("qc", "B4", "Click the yellow box Schedule as of: Ctrl+; then a space, then Ctrl+Shift+; (now). Press Enter."),
     ("qc", "B5", "Press Ctrl+S."),
     ("qc", "C1", "Tab 4. Schedule: press Ctrl+P, pick the printer, click Print."),
-    ("qc", "C2", "Check: today's date, green on the running lines, no red WARNING / CHECK at the top left."),
+    ("qc", "C2", "Check: your shift and today's date at the top, each line's status, no red line under the title."),
     ("qc", "C3", "Post it."),
     ("qc", "C4", "Press Ctrl+S."),
     ("pagebreak",),
     ("kv", "For", "Anyone printing the Production Schedule (1st, 2nd or 3rd shift). About 5 minutes."),
-    ("kv", "This file", "Replaces the Production Schedule tab of the JDE Sched web app. It works in Excel 2010 and "
-                        "newer, Excel for Mac and Excel on the web / Teams. No macros."),
+    ("kv", "This file", "Replaces the Production Schedule tab of the JDE Sched web app and the JDE Packaging Schedule "
+                        "printout, in one. It works in Excel 2010 and newer, Excel for Mac and Excel on the web / "
+                        "Teams. No macros."),
     ("kv", "Mac", "The keys below are for Windows. On a Mac use Cmd instead of Ctrl (Cmd+C, Cmd+V, Cmd+Z, Cmd+Y, "
-                  "Cmd+S, Cmd+P, Cmd+H). Today's date is Control+; on a Mac too."),
+                  "Cmd+S, Cmd+P, Cmd+H). Today's date is Control+; and the time Cmd+; on a Mac."),
     ("gap",),
     ("head", "", "You will do 3 jobs, in this order"),
     ("kv", "A", "Load the schedule - paste today's Excel file into the tab 1. Paste Schedule."),
-    ("kv", "B", "Pick the lines - tick the lines running this shift and mark READY / PM / OT on the tab 3. Lines."),
+    ("kv", "B", "Set the lines - on the tab 3. Lines pick each line's status for this shift and the next, the crew, "
+                "and the time the schedule is from."),
     ("kv", "C", "Print it - print the tab 4. Schedule and post it."),
     ("gap",),
     ("head", "", "What you need"),
@@ -1585,11 +2128,15 @@ HOW_ROWS = [
                   "JDE Schedule - MASTER - do not edit.xlsx. It is the clean spare."),
     ("step", "2", "Open it and click File > Save As (on the web: File > Save a Copy). Name the copy for a shift, "
                   "for example JDE Schedule - 1st Shift.xlsx. Do this 3 times: 1st, 2nd and 3rd Shift."),
-    ("step", "3", "In each shift's copy, type your production lines on the tab 3. Lines (left table, column A) - "
-                  "in the same order as the schedule, so the two tables there line up. Press Ctrl+S."),
+    ("step", "3", "In each shift's copy, on the tab 3. Lines: pick the shift in the yellow box This copy is for (top "
+                  "left). Lines 1, 3, 4, 5, 7 and 8 to 12 are already listed - add or remove lines in column A, and "
+                  "check Breaks & lunch: Yes for a line that stops for breaks and lunch (lines 1, 3, 5 and 7), No for "
+                  "a line that runs through them (lines 8 to 12)."),
+    ("step", "4", "Check the tab 5. Settings (when the 1st shift starts, the break and lunch hours, the changeover "
+                  "minutes) and the tab 6. Line Rates (bottles per hour of each line and item). Press Ctrl+S."),
     ("gap",),
     ("head", "", "3 golden rules"),
-    ("kv", "1", "ONE FILE PER SHIFT. Every day open YOUR shift's file - never the MASTER. Your lines, ticks and "
+    ("kv", "1", "ONE FILE PER SHIFT. Every day open YOUR shift's file - never the MASTER. Your lines, statuses and "
                 "column fixes are saved in it. Press Ctrl+S at the end of Part B and Part C."),
     ("kv", "2", "Check the tab 2. Check Columns after every paste. The box at the top must be GREEN, and the First "
                 "and Last work order shown there must be the first and last rows of today's file."),
@@ -1639,72 +2186,92 @@ HOW_ROWS = [
                   "or - to leave the field out. A red Note next to an Override means today's file may not need it: "
                   "read it, and clear the Override if the Note is right."),
     ("step", "8", "Click the tab 4. Schedule. Pick 2 or 3 work order numbers and make sure they match today's file."),
-    ("see", "", "You should see: each line's work orders together, in Seq order, with a blank row between lines."),
+    ("see", "", "You should see: each line as a box of its work orders, in Seq order, with a blank row between lines."),
     ("gap",),
-    ("part", "B", "Pick the lines running this shift - tick the running lines, and mark any line that is READY, "
-                  "down for PM, or OT."),
+    ("part", "B", "Set the lines - each line's status this shift and next shift, the crew, and the time the "
+                  "schedule is from."),
     ("step", "1", "Click the tab 3. Lines. The left table (yellow cells) is your list of production lines - you "
                   "type there. The right table lists the lines in today's schedule and fills itself in; its first "
-                  "column, Its row on the left, says which row of the left table to change for that line."),
-    ("step", "2a", "A line marked NOT IN YOUR LIST (in red) can't be ticked yet: type its name in a row of the left "
-                   "table where Line, Scheduled and Status are all empty. (The names are also listed under Lines to "
-                   "add, on the far right.)"),
+                  "column, Its row on the left, says which row of the left table belongs to that line. A line is "
+                  "found by its number: VPKL05 in the file is LINE 5 in the list."),
+    ("step", "2a", "A line marked NOT IN YOUR LIST (in red) can't get a status yet: type its name in an empty row of "
+                   "the left table. (The names are also listed under Lines to add, on the far right.)"),
     ("careful", "CAREFUL", "Copying names from Lines to add? Paste them with right-click > Paste Options > Values "
                            "(123) - NOT Ctrl+V. Ctrl+V pastes formulas and Excel warns about a circular reference: "
                            "press Ctrl+Z and paste as Values, or type the names."),
-    ("step", "2b", "To take a line off your list, clear all three cells of its row (Line, Scheduled and Status)."),
-    ("step", "3", "In the Scheduled column, pick Yes for every line running this shift (click the cell, then the "
-                  "small arrow). Clear the lines that are not running this shift: click the cell and press Delete."),
-    ("step", "4a", "Clear yesterday's statuses: click C4, hold Shift, click the last Status cell of your list, and "
-                   "press Delete."),
-    ("step", "4b", "Pick READY for a line that is set up and ready to run, PM for a line down for maintenance, or "
-                   "OT. Leave the rest empty - an empty Status uses the Line Status column of your file (Ready, PM, "
-                   "or OT / Overtime / Trial). NONE removes a READY / PM / OT that comes from your file."),
-    ("step", "5", "Click the yellow box Ticks and statuses checked on (top right) and press Ctrl+; (semicolon) to "
-                  "put in today's date."),
-    ("see", "", "You should see: today's date in the yellow box, and no red CHECK message next to it."),
-    ("step", "6", "Click the tab 4. Schedule and check it. Then press Ctrl+S to save."),
-    ("see", "", "You should see: the LINE cell of each ticked line filled bright green with a thin green box around "
-                "its rows, and READY / PM / OT under the line name (in the LINE column) of the lines you marked."),
-    ("tip", "TIP", "Ticks and statuses stay in this file from day to day. Until today's date is in the yellow box, "
-                   "3. Lines and the top left of 4. Schedule show a red CHECK message - it prints too - so old "
-                   "ticks never go out by mistake."),
+    ("step", "2b", "To take a line off your list, clear its whole row (Line, This shift, Next shift, Crew)."),
+    ("step", "3", "This shift: click the cell of each line in today's schedule, click the small arrow and pick its "
+                  "status. RUNNING, PARTIAL SHIFT and OVERTIME lines get estimated times; READY LINE (set up, ready "
+                  "to run), PM / CLEANING and NOT SCHEDULED lines don't. Empty = the Line Status column of your file "
+                  "(Ready, PM, OT). NONE = no status, even if your file has one."),
+    ("step", "4", "Next shift: the same, for the next shift. It prints at the right edge of 4. Schedule. Leave it "
+                  "empty if you don't know."),
+    ("step", "5", "Crew (EE): type the number of people on each line (it prints in the EE column). Leave it empty if "
+                  "you don't use it."),
+    ("step", "6", "Click the yellow box Schedule as of (top right). Press Ctrl+; (semicolon: today's date), a space, "
+                  "and Ctrl+Shift+; (the time now), then Enter. Better still, type the time today's file was taken "
+                  "(for example 10/29/2026 5:15 AM): the % Complete is from then, and the estimated times count "
+                  "from it. A date without a time counts from the time it is now."),
+    ("see", "", "You should see: today's date and time in the yellow box, and no red CHECK message next to it."),
+    ("step", "7", "Click the tab 4. Schedule and check it. Then press Ctrl+S to save."),
+    ("see", "", "You should see: each line's name in the LINE column with its status right under it in the status's "
+                "color, the estimated times of the running lines, and the next shift's status at the right."),
+    ("tip", "TIP", "Statuses and crews stay in this file from day to day. Until today's date is in Schedule as of, "
+                   "3. Lines and the top of 4. Schedule show a red CHECK message - it prints too - so yesterday's "
+                   "statuses never go out by mistake."),
     ("gap",),
     ("part", "C", "Print the schedule - make sure Parts A and B are done first."),
     ("step", "1", "Click the tab 4. Schedule. Press Ctrl+P (or File > Print)."),
     ("step", "2", "Pick your printer and click Print. The layout is already set: Landscape, Letter, all columns on "
-                  "one page wide, column titles on every page, page numbers at the bottom."),
-    ("step", "3", "Check the printout and post it: today's date top right, your shift's file name bottom left, every "
-                  "line, green on the running lines, a READY / PM / OT tag on the lines that have one, and no red "
-                  "WARNING or CHECK at the top left."),
+                  "one page wide, the title and column titles on every page, page numbers at the bottom."),
+    ("step", "3", "Check the printout and post it: your shift and today's date at the top, your shift's file name "
+                  "bottom left, every line with its status, and no red line under the title."),
     ("step", "4", "Press Ctrl+S to save before you close the file."),
     ("gap",),
-    ("head", "", "Colors on 4. Schedule"),
-    ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to CHANGEOVER. Highlights go allergen "
+    ("head", "", "Reading 4. Schedule"),
+    ("kv", "Top", "The title and the shift (This copy is for, on 3. Lines); which schedule it is and the time it is "
+                  "from (Schedule as of); one line with the lines by status, the work orders and the next changeover. "
+                  "A red line in its place means something to check (see Something went wrong)."),
+    ("kv", "LINE", "Each line is a box: its name, and right under it its status this shift, in the status's color "
+                   "(below). A line with one work order shows its status by the color of its name."),
+] + [("swatch", strong, desc) for (st, strong, _, _), desc in zip(STATUSES, [
+    "RUNNING - the line runs this shift. Estimated times.",
+    "PARTIAL SHIFT - the line runs part of the shift. Estimated times (as if it ran the whole shift).",
+    "OVERTIME - an overtime or trial run (OT, Overtime or Trial in your file). Estimated times.",
+    "READY LINE - set up and ready to run (Ready in your file). No estimated times.",
+    "PM / CLEANING - down for maintenance or cleaning (PM in your file). No estimated times.",
+    "NOT SCHEDULED - not running this shift. Its work orders print in grey."])] + [
+    ("kv", "PROGRESS / CHANGEOVER", "The first work order of a line (the one running now): ten dots, one for each "
+                                    "10 % done, and the % Complete - or Not Started Yet when % Complete is 0 or "
+                                    "blank. The work orders after it: the changeover before each one (see "
+                                    "Changeover codes)."),
+    ("kv", "LEFT / C.O.", "The first work order: the bottles left (32.9k = 32,900) = WO Qty x (1 - % Complete). The "
+                          "next ones: the changeover minutes (set on 5. Settings)."),
+    ("kv", "EE (crew)", "The number of people on the line (Crew on 3. Lines)."),
+    ("kv", "EST. TIME", "When the work order should be done - the time the line changes over to the next one. It "
+                        "counts from Schedule as of: the changeovers, then the bottles at the line's bottles per hour "
+                        "(6. Line Rates) x the line efficiency (5. Settings), slower in the break and lunch hours on "
+                        "lines with Breaks & lunch = Yes. Only RUNNING, PARTIAL SHIFT and OVERTIME lines get times; "
+                        "the date is in front of a time that isn't today. no rate = the line and item are not on "
+                        "6. Line Rates (add them there)."),
+    ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color."),
+    ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
+                  "different cap from the work order before it (the web app's Cap Change)."),
+    ("kv", "NOTE", "A work order's remark prints under it, in a cream box (up to 4 lines; a longer remark ends with "
+                   "... - the whole remark is on 1. Paste Schedule)."),
+    ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to WO QTY. Highlights go allergen "
                            "first, then oil, then bulk."),
     ("swatch", C_OIL, "Oily product (the description contains OIL)."),
     ("swatch", C_BULK, "Bulk item A662 or A624."),
-    ("swatch", C_FORMULA, "Calculated columns: PROGRESS, BTLS LEFT (bottles remaining), CHANGEOVER. PROGRESS "
-                          "is % Actual Complete with a green bar (full = 100 %); a dash means % Complete is 0 "
-                          "or blank."),
-    ("swatch", C_READY, "READY - the line is set up and ready to run."),
-    ("swatch", C_PM, "PM - the line is down for maintenance."),
-    ("swatch", C_OT, "OT - a line marked OT. A Line Status of OT, Overtime or Trial in your file also shows as OT."),
-    ("swatch", C_TINT["READY"], "Light green, blue or yellow LINE cell: the line has a READY, PM or OT status but "
-                                "is not ticked."),
-    ("swatch", C_SCHEDULED, "A ticked (Scheduled) line: green LINE cell and a thin green box around its rows."),
-    ("swatch", C_COUNT_CHANGED, "Red bold Count = the count changed from the work order before it (S1 Count Change)."),
-    ("swatch", C_DIVIDER, "Navy line under the last work order of each line."),
+    ("swatch", C_COUNT_CHANGED, "Red bold CT = the count changed from the work order before it (Minor · Count)."),
     ("gap",),
     ("head", "", "Changeover codes"),
-    ("kv", "S1", "Same setup."),
-    ("kv", "S1 Count Change", "The count differs."),
-    ("kv", "S3", "The bulk item differs."),
-    ("kv", "S4", "The bottle size differs."),
-    ("text", "", "Each code is shown on the work order the changeover happens on. It is blank on the first work "
-                 "order of a line, and when either Bottle Size is missing."),
-    ("text", "", "PROGRESS (% Actual Complete) = % Complete / 100 (a dash when % Complete is 0 or blank). "
-                 "BTLS LEFT (Bottles Remaining) = WO Quantity x (1 - % Actual Complete), rounded."),
+    ("kv", "Minor · S1", "Same bottle, bulk and count - a new item. Green."),
+    ("kv", "Minor · Count", "The count differs (S1 Count Change). Amber."),
+    ("kv", "MAJOR · S3", "The bulk item differs. Purple."),
+    ("kv", "MAJOR · S4", "The bottle size differs. Red."),
+    ("text", "", "Each code is shown on the work order the changeover happens on: compared with the work order "
+                 "before it on the same line. A dash when either Bottle Size is missing."),
     ("gap",),
     ("head", "", "Something went wrong?"),
     ("kv", "The box on 2. Check Columns is red", "Read what it says. Line / WO # not found: Part A, the CAREFUL box "
@@ -1723,7 +2290,7 @@ HOW_ROWS = [
     ("kv", "Red box: a WO is on two rows", "The same WO # is on two rows of 1. Paste Schedule - usually yesterday's "
                                            "rows left under today's. Do Part A again from step 2a. If today's file "
                                            "really lists that work order twice, you can ignore it (the printout "
-                                           "says CHECK: WO twice at the top left)."),
+                                           "says CHECK: WO twice at the top)."),
     ("kv", "Red box: a row looks like column titles", "Yesterday's schedule is probably still on 1. Paste Schedule, "
                                                       "or today's file was pasted lower down than A1. Do Part A "
                                                       "again from step 2a."),
@@ -1731,43 +2298,50 @@ HOW_ROWS = [
                                       "that says LEGEND are ignored. Exact duplicate rows are counted once."),
     ("kv", "Something is in the wrong column", "On 2. Check Columns pick the right column's title in that field's "
                                                "Override box (or - to leave it out)."),
-    ("kv", "Excel says the cell is on a protected sheet", "Only the yellow cells take typing (on 2. Check Columns "
-                                                          "and 3. Lines), plus all of 1. Paste Schedule. 4. Schedule "
-                                                          "fills itself in - to change it, edit 1. Paste Schedule. "
-                                                          "Never click Review > Unprotect Sheet."),
+    ("kv", "Excel says the cell is on a protected sheet", "Only the yellow cells take typing (on 2. Check Columns, "
+                                                          "3. Lines and 5. Settings), plus all of 1. Paste Schedule "
+                                                          "and 6. Line Rates. 4. Schedule fills itself in - to "
+                                                          "change it, edit 1. Paste Schedule. Never click Review > "
+                                                          "Unprotect Sheet."),
     ("kv", "Excel warns about a circular reference", "Names were pasted on 3. Lines with Ctrl+V. Press Ctrl+Z, then "
                                                      "paste them with Paste Options > Values (123), or type them."),
     ("kv", "Report typed on", "Something was typed over 4. Schedule, so it no longer fills itself in. Press Ctrl+Z "
                               "right away. If that does not fix it: close the file and click Don't Save, then open "
                               "it again. If it was already saved: File > Info > Version History (Teams / OneDrive / "
                               "SharePoint) and restore an earlier version - or copy the MASTER file again (First "
-                              "time only) and type your lines on 3. Lines again."),
+                              "time only) and set up 3. Lines again."),
     ("kv", "The file says Read-Only or locked for editing", "Someone else has your shift's file open (on a network "
                                                             "drive only one person at a time can change it - your "
-                                                            "ticks could not be saved). Close it, ask them to close "
-                                                            "it, then open it again. On Teams / OneDrive several "
-                                                            "people can edit it together."),
-    ("kv", "A line can't be ticked", "Type its name in the left table of 3. Lines (Part B, step 2a)."),
-    ("kv", "A line is ticked that nobody ticked", "On 3. Lines look for a red Note: a Scheduled or Status left in a "
-                                                  "row whose Line was cleared is taken over by the next line typed "
-                                                  "there. Clear Line, Scheduled and Status together."),
-    ("kv", "A READY / PM / OT nobody picked", "It comes from the Line Status column of today's file. To remove it, "
-                                              "pick NONE in that line's Status on 3. Lines."),
-    ("kv", "CHECK: 3. Lines not dated today", "Check the ticks and statuses on 3. Lines (Part B), then put "
-                                              "today's date in the yellow box there (Ctrl+;)."),
+                                                            "statuses could not be saved). Close it, ask them to "
+                                                            "close it, then open it again. On Teams / OneDrive "
+                                                            "several people can edit it together."),
+    ("kv", "A line can't get a status", "Type its name in the left table of 3. Lines (Part B, step 2a)."),
+    ("kv", "A status nobody picked", "On 3. Lines look for a red Note: a status left in a row whose Line was cleared "
+                                     "is taken over by the next line typed there. Clear the whole row together. A "
+                                     "READY / PM / OVERTIME can also come from the Line Status column of today's file: "
+                                     "pick NONE in that line's This shift to remove it."),
+    ("kv", "CHECK: 3. Lines not dated today", "Check the statuses on 3. Lines (Part B), then put today's date and "
+                                              "time in Schedule as of there (Part B, step 6)."),
     ("kv", "WARNING: see 2. Check Columns", "The box on 2. Check Columns says what is wrong (see the first row of "
                                             "this list)."),
+    ("kv", "No estimated times", "Only lines that are RUNNING, PARTIAL SHIFT or OVERTIME (This shift on 3. Lines) "
+                                 "get them. no rate: add the line and item to 6. Line Rates."),
+    ("kv", "The estimated times look wrong", "Check Schedule as of (the time the % Complete was taken), the line's "
+                                             "Breaks & lunch on 3. Lines, its bottles per hour on 6. Line Rates, and "
+                                             "the line efficiency and changeover minutes on 5. Settings. A time after "
+                                             "the work order before it can't be earlier - the times add up down the "
+                                             "line."),
     ("kv", "The printout has no colors", "In the print window, check the printer is not set to black and white / "
-                                         "draft. The STATUS words still print in black and white."),
+                                         "draft. The status words and changeover types still print in black and "
+                                         "white."),
     ("kv", "Blank pages, or rows missing", "The printout follows the schedule by itself - never use Page Layout > "
                                            "Print Area > Set Print Area. If it still goes wrong: on 4. Schedule "
-                                           "select from cell A1 to column R of the last work order, press Ctrl+P "
+                                           "select from cell A1 to column Q of the last work order, press Ctrl+P "
                                            "and under Settings pick Print Selection."),
     ("kv", "Columns cut off", "In the print window keep Fit All Columns on One Page."),
-    ("kv", "Long text", "Long product and cap descriptions, desiccants and line names get smaller to fit their "
-                        "cell. Remarks show one line and stop at the cell edge (the web app's printout cuts them "
-                        "too). To see more, make the column wider: drag the line between two column letters at the "
-                        "top of 4. Schedule (double-click it to fit the text)."),
+    ("kv", "Long text", "Long product descriptions, desiccants and line names get smaller to fit their cell. A remark "
+                        "wraps in its note box, up to 4 lines. To see more of a column, make it wider: drag the line "
+                        "between two column letters at the top of 4. Schedule."),
     ("gap",),
     ("head", "", "Tips"),
     ("kv", "Override: title or letter", "Pick the column's title in an Override box: the Override stays in this "
@@ -1778,13 +2352,20 @@ HOW_ROWS = [
     ("kv", "Why an Override is needed", "This file goes by the column titles only. Unlike the web app it does not "
                                         "guess the Line or WO column from the values in it, and a title with unusual "
                                         "characters may not be recognised - the Override box is how you tell it."),
+    ("kv", "Line rates", "6. Line Rates lists the bottles per hour of each line and item, from the Line Lead MDI "
+                         "Router (Power BI). A new item: type a row under the last one (Line like LINE05, Item, "
+                         "Description, Bottles per hour). A newer router list: paste it over A5:E with Paste "
+                         "Options > Values."),
+    ("kv", "Settings", "5. Settings: when the 1st shift starts, the break and lunch hours of the shift and how many "
+                       "bottles a break / lunch hour makes, the line efficiency, and the minutes of each changeover. "
+                       "They apply to every line (breaks and lunch only to lines with Breaks & lunch = Yes)."),
     ("kv", "Fit on one page", "In the print window, under Settings, change Fit All Columns on One Page to Fit Sheet "
                               "on One Page (the text gets smaller)."),
     ("kv", "Portrait or margins", "Portrait, margins and scaling can be changed in the print window for one "
                                   "printout. Keep Fit All Columns on One Page."),
-    ("kv", "Hide a column", "On 4. Schedule right-click the column letter (for example L for REMARKS) > Hide. "
-                            "To bring it back, select the columns on both sides (K to M), right-click > Unhide."),
-    ("kv", "Make a column wider", "On 4. Schedule drag the line between two column letters. Double-click it to fit."),
+    ("kv", "Hide a column", "On 4. Schedule right-click the column letter (for example O for EE) > Hide. "
+                            "To bring it back, select the columns on both sides (N to P), right-click > Unhide."),
+    ("kv", "Make a column wider", "On 4. Schedule drag the line between two column letters."),
     ("kv", "Find a work order", "On 1. Paste Schedule press Ctrl+F and type its WO number."),
     ("kv", "Change a work order", "Find it (above) and change its cells on 1. Paste Schedule. To remove it, clear "
                                   "its cells."),
@@ -1800,7 +2381,7 @@ HOW_ROWS = [
                                       "row 1 from the MASTER file). Then type one work order per row under it."),
     ("kv", "Rename a line", "On 1. Paste Schedule press Ctrl+H. Find what: the old name. Replace with: the new "
                             "name. Click Options, tick Match entire cell contents, then Replace All. Change the "
-                            "name on 3. Lines too."),
+                            "name on 3. Lines too (a line keeps its row there as long as its number stays the same)."),
     ("kv", "Leave a whole line off", "On 1. Paste Schedule click a cell in the title row, then Data > Filter. "
                                      "With the arrow on the Line column show only that line, select its rows "
                                      "(click the row numbers) and press Delete. Then click Data > Filter again to "
@@ -1809,27 +2390,29 @@ HOW_ROWS = [
     ("kv", "Send the schedule as PDF", "With 4. Schedule open: File > Save As (on the web: Save a Copy / Export) "
                                        "and pick PDF. Email or post the PDF."),
     ("kv", "Send it as Excel", "Send this file (or File > Save a Copy). To send only the schedule: on 4. Schedule "
-                               "select from A1 to column R of the last row, press Ctrl+C, open a new workbook, "
+                               "select from A1 to column Q of the last row, press Ctrl+C, open a new workbook, "
                                "right-click A1 > Paste Options > Values."),
     ("kv", "Seq order", "Numbers sort as numbers (6.5 goes between 6 and 7). A row with no Seq stays right after "
                         "the row above it of the same line. Seq values that are not numbers go after the numbered "
                         "ones, in the order they were pasted."),
     ("kv", "Long schedules", "The LINE name is shown once, on the first row of each line. Excel can't keep a "
-                             "line's rows together on one page like the web app, so a line that runs on to the next "
-                             "page has no name at the top of that page - use Fit Sheet on One Page if that matters."),
+                             "line's rows together on one page, so a line that runs on to the next page has no name "
+                             "at the top of that page - use Fit Sheet on One Page if that matters."),
     ("kv", "Limits", f"Up to {MAX_WO} work orders (the first {MAX_WO} under the column titles, in paste order), "
                      f"pasted rows 1 to {PASTE_ROWS}, columns A to BH, {LINE_SLOTS} lines on 3. Lines, {OUT_ROWS} "
-                     f"rows on 4. Schedule. Past a limit, a red WARNING shows on 2. Check Columns and on "
-                     f"4. Schedule."),
-    ("kv", "Not like the web app", "The READY / PM / OT tag is a colored cell under the line name; the green box around a ticked line is "
-                                   "thin (Excel can't draw a thick one by formula); a line that runs on to "
-                                   "the next page isn't named again there (Excel can't keep a line on one page); long text shrinks "
-                                   "to fit or (remarks) is cut at the cell edge with no ...; columns can be hidden "
-                                   "but not moved; the Line and WO columns are found by their titles only; pasting "
-                                   "a new schedule does not clear the statuses (Part B, step 4a does)."),
-    ("kv", "Also not in this file", "The web app's Customize Print Design: the report title, the date, the fonts "
-                                    "and the colors are fixed here. Line Assignments (and the app's Print > Both) "
-                                    "is not part of this file. Export Excel: see Send it as Excel."),
+                     f"rows on 4. Schedule (work orders, notes and the blank rows between lines), {RATE_ROWS} rows "
+                     f"on 6. Line Rates. Past a limit, a red WARNING shows on 2. Check Columns and on 4. Schedule."),
+    ("kv", "Not like the web app", "The status is a colored cell under the line name; a line that runs on to the "
+                                   "next page isn't named again there (Excel can't keep a line on one page); long "
+                                   "text shrinks to fit; columns can be hidden but not moved; the Line and WO "
+                                   "columns are found by their titles only; pasting a new schedule does not clear "
+                                   "the statuses (Part B, step 3 does)."),
+    ("kv", "Not like the JDE printout", "HOT WO, twin pack and COT are not shown: the schedule file has no column for "
+                                        "them. The estimated times are worked out from 6. Line Rates, so they can "
+                                        "differ a little from the printout's."),
+    ("kv", "Also not in this file", "The web app's Customize Print Design: the report title, the fonts and the "
+                                    "colors are fixed here. Line Assignments (and the app's Print > Both) is not "
+                                    "part of this file. Export Excel: see Send it as Excel."),
 ]
 
 
@@ -1913,7 +2496,8 @@ FORBIDDEN = ["AGGREGATE", "MAXIFS", "MINIFS", "IFS", "SWITCH", "XLOOKUP", "XMATC
 ALLOWED = {"IF", "IFERROR", "AND", "OR", "NOT", "INDEX", "MATCH", "LOOKUP", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS",
            "SUMPRODUCT", "ROW", "ROWS", "COLUMN", "COLUMNS", "MIN", "MAX", "SMALL", "LARGE", "ISNUMBER", "ISERROR",
            "ISBLANK", "ISTEXT", "LEN", "TRIM", "UPPER", "LEFT", "RIGHT", "MID", "SEARCH", "FIND", "SUBSTITUTE",
-           "EXACT", "VALUE", "TEXT", "ROUND", "TODAY", "CHAR", "N", "T", "ABS", "INT", "MOD", "OFFSET"}
+           "EXACT", "VALUE", "TEXT", "ROUND", "TODAY", "CHAR", "N", "T", "ABS", "INT", "MOD", "OFFSET",
+           "NOW", "YEAR", "MONTH", "DAY", "HOUR", "MINUTE", "TIME", "CHOOSE", "REPT", "SUM"}
 
 
 def formula_functions(formula):
@@ -1981,12 +2565,15 @@ def deterministic_zip(data):
     return out.getvalue()
 
 
-# --demo: a copy ready to present - the sample schedule with a few lines
-# ticked and tagged, the "checked on" date always today (so no CHECK
+# --demo: a copy ready to present - the JDE Packaging Schedule printout's
+# lines with its statuses and crews, 1st shift as of 5:15 AM today (so no CHECK
 # message on the day it's shown), opening on 4. Schedule.
 DEMO_OUT = OUT.with_name("JDE_Production_Schedule_DEMO.xlsx")
-DEMO_LINES = {"VPKL05": ("Yes", "READY"), "VPKL07": ("", "PM"), "VPKL09": ("", "PM"), "VPKL10": ("Yes", "OT"),
-              "VPKL12": ("Yes", "")}
+DEMO_LINES = {  # line: (this shift, next shift, crew)
+    "LINE 1": ("NOT SCHEDULED", "NOT SCHEDULED", None), "LINE 3": ("RUNNING", "NOT SCHEDULED", 5),
+    "LINE 5": ("RUNNING", "RUNNING", 6), "LINE 7": ("RUNNING", "NOT SCHEDULED", 7),
+    "LINE 8": ("PM / CLEANING", "RUNNING", 5), "LINE 9": ("RUNNING", "RUNNING", 5),
+    "LINE 10": ("RUNNING", "RUNNING", 4), "LINE 12": ("RUNNING", "RUNNING", 5)}
 
 
 def apply_demo(wb):
@@ -1994,11 +2581,10 @@ def apply_demo(wb):
     for r in range(4, 4 + LINE_SLOTS):
         name = ws[f"A{r}"].value
         if name in DEMO_LINES:
-            sched, status = DEMO_LINES[name]
-            ws[f"B{r}"].value = sched or None
-            ws[f"C{r}"].value = status or None
-    ws["K1"].value = "=TODAY()"
-    ws["K1"].number_format = "mmm d, yyyy"
+            this, nxt, crew = DEMO_LINES[name]
+            ws[f"B{r}"].value, ws[f"C{r}"].value, ws[f"E{r}"].value = this, nxt, crew
+    ws["C1"].value = SHIFTS[0]
+    ws["L1"].value = "=TODAY()+TIME(5,15,0)"
     wb.properties.title = "JDE Production Schedule (demo)"
     sched_idx = wb.sheetnames.index(S_SCHED)
     wb.active = sched_idx
@@ -2014,6 +2600,8 @@ def main():
     build_check(wb)
     build_lines(wb)
     build_schedule(wb)
+    settings = build_settings(wb)
+    build_rates(wb)
     build_calc(wb)
 
     add_name(wb, "PASTE_ALL", f"{PASTE}!$1:$1048576")
@@ -2023,12 +2611,15 @@ def main():
     add_name(wb, "WO_COUNT", f"{CHECK}!$E$9")
     add_name(wb, "LINE_COUNT", f"{CHECK}!$E$10")
     last = 3 + LINE_SLOTS
-    add_name(wb, "LINES_NAME", f"{LINES}!$A$4:$A${last}")
-    add_name(wb, "LINES_SCHEDULED", f"{LINES}!$B$4:$B${last}")
-    add_name(wb, "LINES_STATUS", f"{LINES}!$C$4:$C${last}")
-    add_name(wb, "LINES_CHECKED_ON", f"{LINES}!$K$1")
-    for name, col in [("SCHED_KIND", "T"), ("SCHED_HL", "U"), ("SCHED_SCHEDULED", "V"), ("SCHED_STATUS", "W")]:
-        add_name(wb, name, f"{SCHED}!${col}$3:${col}${2 + OUT_ROWS}")
+    for name, col in [("LINES_NAME", "A"), ("LINES_STATUS", "B"), ("LINES_NEXT", "C"), ("LINES_BREAKS", "D"),
+                      ("LINES_CREW", "E")]:
+        add_name(wb, name, f"{LINES}!${col}$4:${col}${last}")
+    add_name(wb, "LINES_SHIFT", f"{LINES}!$C$1")
+    add_name(wb, "LINES_CHECKED_ON", f"{LINES}!$L$1")
+    for name, ref in settings.items():
+        add_name(wb, name, ref)
+    for name, col in [("SCHED_KIND", "S"), ("SCHED_HL", "T"), ("SCHED_STATUS", "AC"), ("SCHED_SCHEDULED", "AD")]:
+        add_name(wb, name, f"{SCHED}!${col}${SCHED_ROW0}:${col}${SCHED_ROW0 + OUT_ROWS - 1}")
 
     wb.active = 0
     for ws in wb.worksheets:
