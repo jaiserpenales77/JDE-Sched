@@ -52,23 +52,24 @@ holds the machinery.
   changeover minutes.
 - CAP as size-type (45-CRC), in bold orange when it differs from the work
   order before it (the app's Cap Change). CT in red bold on a count change.
-- Under each work order, a thin notes row: one cell merged from WO to EST.
-  TIME, in 6.5 pt italics, cream when it has something. **Changeover Notes:**
-  what the changeover into it changes from the work order before it: Cap /
-  Count / Bottle Change (in one phrase, e.g. Cap, Count & Bottle Change), Add /
-  Remove / Change Cotton, Add / Remove / Change Desiccant, and Dumping for a
-  dumping work order (bulk A662 / A624) - only for changeovers that start
-  before the end of the shift (the same ones the summary counts). Then, after
-  a |, **Remarks:** and its remark. A long row shrinks to fit. Merged cells,
-  font sizes and row heights can't follow the data, so the notes row is there
+- Under each work order, two thin notes rows, each one cell merged from SQ to
+  EST. TIME, in 6.5 pt italics on cream. **Changeover Notes:** what the
+  changeover into it changes from the work order before it: Cap / Count /
+  Bottle Change (in one phrase, e.g. Cap, Count & Bottle Change), Add / Remove
+  / Change Cotton, Add / Remove / Change Desiccant, and Dumping for a dumping
+  work order (bulk A662 / A624) - only for changeovers that start before the
+  end of the shift (the same ones the summary counts). Under it, on its own
+  row, **Remarks:** and its remark. A long row shrinks to fit. Merged cells,
+  font sizes and row heights can't follow the data, so both rows are there
   for every work order; the macro hides the empty ones (hidden column AU says
   which) when the file opens, when 4. Schedule recalculates or is opened, and
   before printing. The gap between two lines is the last work order's empty
-  notes row (kept), or a blank row when that work order has notes. The file's COT (cotton) column isn't printed as a column: Yes for
-  Y / Yes / X, none for N / No / 0 / blank, else the file's value (Change
-  Cotton (value)). 2. Check Columns shows the column it comes from, with an
-  Override for a file that titles it differently. A desiccant of N / No / 0 /
-  None counts as none.
+  changeover notes row (kept), or a blank row when that work order has notes.
+  The file's COT (cotton) column isn't printed as a column: Yes for Y / Yes /
+  X, none for N / No / 0 / blank, else the file's value (Change Cotton
+  (value)). 2. Check Columns shows the column it comes from, with an Override
+  for a file that titles it differently. A desiccant of N / No / 0 / None
+  counts as none.
 - Row highlights as in the app: allergen, oil, and dumping in light blue (bulk
   items A662 / A624).
 
