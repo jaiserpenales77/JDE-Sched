@@ -796,10 +796,12 @@ def window_v2(ws, c, A, s, r_):
     dv, dp = A["desv"], ix("desv", kp)
     ws[c["desnote"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF({dv}<>"",IF({dp}="","Add Desiccant",IF(UPPER({dv})<>'
                         f'UPPER({dp}),"Change Desiccant","")),IF({dp}<>"","Remove Desiccant","")))')
-    # cap + 2 x count + 4 x bottle changed (count and bottle as the changeover
-    # code compares them; blanks don't count)
+    # cap + 2 x count + 4 x bottle changed (the count only on an S1 Count
+    # Change; the bottle as the changeover code compares it, blanks don't
+    # count)
     diff = lambda f: f'AND({ix(f, kp)}<>"",{A[f]}<>"",NOT(EXACT({ix(f, kp)},{A[f]})))'
-    ws[c["szchg"]] = f'=IF(OR({keep}=0,{fw}=1),0,{A["capchg"]}+2*{diff("count")}+4*{diff("bottle")})'
+    ws[c["szchg"]] = (f'=IF(OR({keep}=0,{fw}=1),0,{A["capchg"]}+2*({A["co"]}="S1 Count Change")'
+                      f'+4*{diff("bottle")})')
     # Changeover notes - only when the changeover into it starts (the work
     # order before it ends) before the end of the shift: the cap / count /
     # bottle change, the cotton, the desiccant, and Dumping for a dumping work
@@ -2573,7 +2575,7 @@ HOW_ROWS = [
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
     ("kv", "NOTES", "Thin rows under a work order, from SQ to EST. TIME, in small italics on cream. Changeover Notes: what the changeover into the work order changes from the one "
-                    "before it - Cap / Count / Bottle Change, Add / Remove / Change Cotton (the COT column of your "
+                    "before it - Cap / Count / Bottle Change (Count Change only on an S1 Count Change), Add / Remove / Change Cotton (the COT column of your "
                     "file: Yes for Y / Yes / X, nothing for N or blank), Add / Remove / Change Desiccant, and "
                     "Dumping (bulk A662 / A624); only for changeovers that start before the end of the shift (the "
                     "summary's count at the top). Under it, on its own row, Remarks: and its remark. A long row "

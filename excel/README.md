@@ -55,7 +55,8 @@ holds the machinery.
 - Under each work order, two thin notes rows, each one cell merged from SQ to
   EST. TIME, in 6.5 pt italics on cream. **Changeover Notes:** what the
   changeover into it changes from the work order before it: Cap / Count /
-  Bottle Change (in one phrase, e.g. Cap, Count & Bottle Change), Add / Remove
+  Bottle Change (in one phrase, e.g. Cap & Bottle Change; Count Change only
+  on an S1 Count Change), Add / Remove
   / Change Cotton, Add / Remove / Change Desiccant, and Dumping for a dumping
   work order (bulk A662 / A624) - only for changeovers that start before the
   end of the shift (the same ones the summary counts). Under it, on its own
