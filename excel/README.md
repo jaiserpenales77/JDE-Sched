@@ -85,9 +85,10 @@ with the totals on top (changeovers, oily / powdery parts, Cremer / Merrill).
 Per changeover: the time and shift; the line and its filler - Cremer (lines
 1, 5, 9, 10, 12) or Merrill (3, 7, 8, 11), editable on 5. Settings; the
 changeover type; the work order coming off the line (its parts are washed)
-and its type - **Oily** (a softgel: the description has a word of 5.
-Settings' oily list: OIL, OMEGA, SOFTGEL, SG, LSG, S/G, VITAMIN E, DHA, COQ10,
-LIQUID) or **Powdery** (a tablet); and the work order going on and its type.
+and its type - **Oily** (a softgel: the description has SG, LSG or S/G, the
+oily words on 5. Settings, where more can be added; they don't change 4.
+Schedule's Oil highlight) or **Powdery** (a tablet);
+and the work order going on and its type.
 A line marks each new shift. The
 times are 4. Schedule's estimated times, so only running lines with a line
 rate are listed.

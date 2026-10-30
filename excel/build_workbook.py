@@ -253,7 +253,8 @@ S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_WASH, S_CALC = (
 PASTE, CHECK, LINES, SCHED = "'1. Paste Schedule'", "'2. Check Columns'", "'3. Lines'", "'4. Schedule'"
 SETTINGS, RATES, WASH = "'5. Settings'", "'6. Line Rates'", "'7. Washroom'"
 WASH_ROWS = 150         # 7. Washroom: up to 150 changeovers (rows 5:154)
-OILY_WORDS = ["OIL", "OMEGA", "SOFTGEL", "SOFTGELS", "SG", "LSG", "S/G", "VITAMIN E", "DHA", "COQ10", "LIQUID", ""]
+# softgels are marked SG, LSG or S/G in the item description (9 more cells to add words)
+OILY_WORDS = ["SG", "LSG", "S/G"] + [""] * 9
 RATE_ROWS = 5000        # 6. Line Rates rows 5:5004
 RATES_CSV = Path(__file__).resolve().parent / "line_rates.csv"
 
@@ -2878,9 +2879,10 @@ HOW_ROWS = [
                           "5. Settings); the CHANGEOVER type; OFF THE LINE - the work order whose parts come off to "
                           "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); and NEXT ON THE LINE "
                           "and its type. A line across the list marks where a new shift starts."),
-    ("kv", "Oily or powdery", "Oily when the item description has one of the oily words on 5. Settings (OIL, OMEGA, "
-                              "SOFTGEL, SG, LSG, S/G, VITAMIN E, ...), else powdery. A product sorted wrong: add or "
-                              "change a word there. The hours ahead and the Cremer / Merrill line numbers are "
+    ("kv", "Oily or powdery", "Oily (a softgel) when the item description has SG, LSG or S/G (the oily words on "
+                              "5. Settings), else powdery. A product sorted wrong: add or change a word there. (This list is "
+                              "only for 7. Washroom - the Oil highlight on 4. Schedule still goes by OIL in the "
+                              "description.) The hours ahead and the Cremer / Merrill line numbers are "
                               "there too."),
     ("gap",),
     ("head", "", "Tips"),
