@@ -37,6 +37,8 @@ Sheets (tab order)
                       their output share), line efficiency, changeover minutes
   6. Line Rates       bottles per hour by line and item (unprotected), with a
                       hidden key column F (line number | ITEM)
+  7. Washroom         the washroom attendants' prep list: the changeovers of the
+                      hours ahead, first to last (formulas only, protected)
   Calc                hidden helper sheet (protected), layout below
 
 Workbook-scope defined names
@@ -161,7 +163,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          CH233 EXACT mask (auto), CH236 overridden-fields mask,
          CH237 EXACT mask (with overrides)
   DA:DC  pasted rows 1-1000 (rows 5-1004): row no., trimmed Line, LEGEND flag
-  DE:GH  the window: every pasted row under the header down to row 1000
+  DE:GL  the window: every pasted row under the header down to row 1000
          (rows 5-1003), one row per pasted row HEADER_ROW+k: k, paste row,
          in range, line, row key (the 60 cells joined with U+241F, trimmed),
          duplicate, kept before the cap, running count, kept (the first 600),
@@ -172,25 +174,27 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          in '3. Lines', running (RUNNING / PARTIAL SHIFT / OVERTIME), status
          shown, highlight, % actual, bottles remaining, first kept row with
          the same WO # (EXACT), looks like a row of column titles, filled
-         cells of the row (only for the example row); then EX:GH: line
+         cells of the row (only for the example row); then EX:GL: line
          number, name shown, next shift, breaks, crew (from LB), the work
          order before it on the line, first-of-line flag, changeover code and
          minutes, cap change, cotton (its own, the one before it, Add /
          Remove / Change Cotton), desiccant (its own, Add / Remove / Change
          Desiccant), cap + 2 x count + 4 x bottle changed, the changeover
          notes (blank when the changeover starts after the end of the
-         shift), remark, the notes rows' texts (Changeover Notes: ...,
+         shift) and their list (any time), oily (7. Washroom), the
+         changeover's start in minutes when within the hours ahead and its
+         place in time order, remark, the notes rows' texts (Changeover Notes: ...,
          Remarks: ...), rate key, bottles per hour, bottles, full-hour equivalents, no rate,
          running total, the shift-clock steps (F2, whole shifts, rest, hour),
          estimated time (number, text), next changeover, when the changeover
          into it starts, progress / changeover
          text, left / minutes text, CAP as size-type
-  GJ:HX  the report, 700 slots (row 4 + p = slot p = 4. Schedule rows
+  GN:IB  the report, 700 slots (row 4 + p = slot p = 4. Schedule rows
          2 + 3p to 4 + 3p): slot, window row, kind (row/spacer/""), first/last
-         of line, then the 17 printed columns A:Q side by side (GO:HE), then
+         of line, then the 17 printed columns A:Q side by side (GS:HI), then
          the helpers, the line no., the slot's role in LINE / NEXT SHIFT
          (name, status tag, other, one-slot line) and the two notes rows
-  HZ:IX  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
+  ID:JB  today's lines 1-100 (rows 5-104), row n = the line with line no. n:
          no., window row, name, work orders, line number, matching key, row
          on 3. Lines, name shown, status from the file, status typed, status
          shown, running, next shift, breaks, crew, note, the lines that are
@@ -198,7 +202,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          the line's row in the left table of '3. Lines', a blank slot after
          it (its last work order has notes), the blank slots before it, its
          box on 4. Schedule (first report slot, slots, the name's slot)
-  IZ:JF  3. Lines rows 1-100: line number, matching key (the number, or
+  JD:JJ  3. Lines rows 1-100: line number, matching key (the number, or
          N:NAME without one), first row with the same key, status this shift
          and next (standard spelling), breaks, crew
 """
@@ -2031,8 +2035,7 @@ def build_rates(wb):
 
 
 WASH_COLS = [("#", 4), ("TIME", 14), ("SHIFT", 6.5), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13),
-             ("OFF THE LINE - PARTS TO WASH", 36), ("TYPE", 9), ("NEXT ON THE LINE", 36), ("TYPE", 9),
-             ("CHANGES", 40)]
+             ("OFF THE LINE - PARTS TO WASH", 40), ("TYPE", 9), ("NEXT ON THE LINE", 40), ("TYPE", 9)]
 
 
 def build_wash(wb):
@@ -2040,7 +2043,7 @@ def build_wash(wb):
     expected in the hours ahead of Schedule as of (5. Settings), first to
     last: when, the line and its filler (Cremer / Merrill), the changeover,
     what comes off the line (its parts to wash: oily softgel or powdery
-    tablet) and what goes on, and the changes."""
+    tablet) and what goes on."""
     ws = wb.create_sheet(S_WASH)
     ws.sheet_properties.tabColor = "0070C0"
     ws.sheet_view.showGridLines = False
@@ -2101,7 +2104,6 @@ def build_wash(wb):
             "H": f'=IF({at("oily", kp)}=1,"Oily","Powdery")',
             "I": f'={at("item", k)}&"   "&{at("desc", k)}',
             "J": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
-            "K": f"={at('colist', k)}",
         }
         for i, (h, _) in enumerate(WASH_COLS, start=1):
             col = L(i)
@@ -2112,17 +2114,24 @@ def build_wash(wb):
                                     shrink_to_fit=True)
             c.border = Border(bottom=grid)
         ws.row_dimensions[r].height = 15
-    # looks: oily / powdery, the changeover in its color, the filler
-    data = f"A5:{lc}{last}"
-    for col in ("H", "J"):
-        cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL, font(BODY_PT, True, "7F6000"))
-        cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))
-    for _, lab, color in CO_LABELS:
-        cf(ws, f"F5:F{last}", f'$F5="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color))
-    cf(ws, f"E5:E{last}", '$E5="Cremer"', None, font(BODY_PT, True, "1F6F8B"))
-    cf(ws, f"E5:E{last}", '$E5="Merrill"', None, font(BODY_PT, True, "7B3F00"))
-    # a line across where the shift changes
-    cf(ws, f"A6:{lc}{last}", f'AND($A6<>"",$C6<>$C5)', None, None, Border(top=side(C_TITLE)))
+    # looks: oily / powdery, the changeover in its color, the filler; a line
+    # across where the shift changes. (One rule per look, with and without
+    # that line, so the first true rule has both.)
+    newshift = 'AND(ISNUMBER($A4),$C5<>$C4)'
+    top = Border(top=side(C_TITLE))
+    looks = {"H": [('$H5="Oily"', C_OIL, font(BODY_PT, True, "7F6000")),
+                   ('$H5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))],
+             "J": [('$J5="Oily"', C_OIL, font(BODY_PT, True, "7F6000")),
+                   ('$J5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))],
+             "F": [(f'$F5="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color)) for _, lab, color in CO_LABELS],
+             "E": [('$E5="Cremer"', None, font(BODY_PT, True, "1F6F8B")),
+                   ('$E5="Merrill"', None, font(BODY_PT, True, "7B3F00"))]}
+    for col, rules_ in looks.items():
+        for cond, fc, fo in rules_:
+            cf(ws, f"{col}5:{col}{last}", f"AND({cond},{newshift})", fc, fo, top)
+        for cond, fc, fo in rules_:
+            cf(ws, f"{col}5:{col}{last}", cond, fc, fo)
+    cf(ws, f"A5:{lc}{last}", newshift, None, None, top)
     ws.freeze_panes = "A5"
     ws.page_setup.orientation = "landscape"
     ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
@@ -2867,9 +2876,8 @@ HOW_ROWS = [
                          "same way (Ctrl+P) and give it to the washroom."),
     ("kv", "The columns", "TIME and SHIFT of the changeover; the LINE and its FILLER (Cremer or Merrill, from "
                           "5. Settings); the CHANGEOVER type; OFF THE LINE - the work order whose parts come off to "
-                          "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); NEXT ON THE LINE and "
-                          "its type; and the CHANGES (cap, count, bottle, cotton, desiccant, dumping). A line "
-                          "across the list marks where a new shift starts."),
+                          "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); and NEXT ON THE LINE "
+                          "and its type. A line across the list marks where a new shift starts."),
     ("kv", "Oily or powdery", "Oily when the item description has one of the oily words on 5. Settings (OIL, OMEGA, "
                               "SOFTGEL, SG, LSG, S/G, VITAMIN E, ...), else powdery. A product sorted wrong: add or "
                               "change a word there. The hours ahead and the Cremer / Merrill line numbers are "

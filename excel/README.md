@@ -87,8 +87,8 @@ Per changeover: the time and shift; the line and its filler - Cremer (lines
 changeover type; the work order coming off the line (its parts are washed)
 and its type - **Oily** (a softgel: the description has a word of 5.
 Settings' oily list: OIL, OMEGA, SOFTGEL, SG, LSG, S/G, VITAMIN E, DHA, COQ10,
-LIQUID) or **Powdery** (a tablet); the work order going on and its type; and
-the changes (the changeover notes' list). A line marks each new shift. The
+LIQUID) or **Powdery** (a tablet); and the work order going on and its type.
+A line marks each new shift. The
 times are 4. Schedule's estimated times, so only running lines with a line
 rate are listed.
 
