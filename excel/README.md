@@ -91,7 +91,8 @@ parts are washed), its allergen (orange) and its type - **Oily** (a softgel) or 
 tick on **8. Products**, else SG, LSG or S/G in the description (the oily
 words on 5. Settings, where more can be added; they don't change 4.
 Schedule's Oil highlight);
-and the work order going on and its type. The
+the work order going on and its type; and a **DONE** box to tick with a pen
+on the walk. The
 times are 4. Schedule's estimated times, so only running lines with a line
 rate are listed.
 

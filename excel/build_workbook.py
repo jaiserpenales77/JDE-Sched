@@ -2101,7 +2101,7 @@ def build_products(wb):
 
 WASH_COLS = [("#", 4), ("TIME", 14), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13), ("MIN", 7),
              ("OFF THE LINE - PARTS TO WASH", 38), ("TYPE", 9), ("ALLERGEN", 10), ("NEXT ON THE LINE", 38),
-             ("TYPE", 9)]
+             ("TYPE", 9), ("DONE", 7)]
 
 
 def build_wash(wb):
@@ -2150,7 +2150,7 @@ def build_wash(wb):
     put(ws, "N4", "K BEFORE", font=font(8, True))
     ws.column_dimensions["M"].hidden = ws.column_dimensions["N"].hidden = True
     filler = lambda ln, lst: f'ISNUMBER(SEARCH(","&{ln}&",",","&SUBSTITUTE({lst}&""," ","")&","))'
-    center = {"#", "FILLER", "TYPE", "MIN", "ALLERGEN"}
+    center = {"#", "FILLER", "TYPE", "MIN", "ALLERGEN", "DONE"}
     grid = side("D9D9D9")
     for n in range(1, WASH_ROWS + 1):
         r = 4 + n
@@ -2172,16 +2172,17 @@ def build_wash(wb):
             "I": f'=IF(OR({al}="",UPPER({al})="N"),"",{al})',
             "J": f'={at("item", k)}&"   "&{at("desc", k)}',
             "K": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
+            "L": '="\u2610"',                     # a box to tick with a pen on the walk
         }
         for i, (h, _) in enumerate(WASH_COLS, start=1):
             col = L(i)
             body = f[col][1:]
             c = ws.cell(r, i, f'=IF({k}=0,"",{body})')
-            c.font = font(BODY_PT + 1, col in "ACEF")
+            c.font = font(15, False, "404040") if h == "DONE" else font(BODY_PT + 1, col in "ACEF")
             c.alignment = Alignment(horizontal="center" if h in center else "left", vertical="center",
                                     shrink_to_fit=True)
             c.border = Border(bottom=grid)
-        ws.row_dimensions[r].height = 15
+        ws.row_dimensions[r].height = 19
     # looks: oily / powdery, the changeover in its color, the filler
     cf(ws, f"I5:I{last}", '$I5<>""', C_ALLERGEN, font(BODY_PT, True, "843C0C"))
     for col in ("H", "K"):
@@ -2936,8 +2937,8 @@ HOW_ROWS = [
     ("kv", "The columns", "TIME of the changeover; the LINE and its FILLER (Cremer or Merrill, from "
                           "5. Settings); the CHANGEOVER type and its MINutes (5. Settings) - how long the line is "
                           "down; OFF THE LINE - the work order whose parts come off to be washed - its TYPE: Oily "
-                          "(a softgel) or Powdery (a tablet) and its ALLERGEN (in orange: wash for allergens); and NEXT "
-                          "ON THE LINE and its type."),
+                          "(a softgel) or Powdery (a tablet) and its ALLERGEN (in orange: wash for allergens); NEXT "
+                          "ON THE LINE and its type; and a DONE box to tick with a pen on the walk."),
     ("kv", "Oily or powdery", "By the item's tick on 8. Products (Oily or Powdery - the supervisor picks it once "
                               "per item). An item without one: oily (a softgel) when its description has SG, LSG "
                               "or S/G (the oily words on 5. Settings), else powdery. (This list is "
