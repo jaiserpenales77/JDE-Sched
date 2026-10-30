@@ -243,11 +243,13 @@ LINE_SLOTS = 100       # 3. Lines rows
 NBSP = " "
 SEP = "␟"         # joins the cells of a row for the duplicate check
 
-S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_CALC = (
+S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_WASH, S_CALC = (
     "How To Use", "1. Paste Schedule", "2. Check Columns", "3. Lines", "4. Schedule", "5. Settings",
-    "6. Line Rates", "Calc")
+    "6. Line Rates", "7. Washroom", "Calc")
 PASTE, CHECK, LINES, SCHED = "'1. Paste Schedule'", "'2. Check Columns'", "'3. Lines'", "'4. Schedule'"
-SETTINGS, RATES = "'5. Settings'", "'6. Line Rates'"
+SETTINGS, RATES, WASH = "'5. Settings'", "'6. Line Rates'", "'7. Washroom'"
+WASH_ROWS = 150         # 7. Washroom: up to 150 changeovers (rows 5:154)
+OILY_WORDS = ["OIL", "OMEGA", "SOFTGEL", "SOFTGELS", "SG", "LSG", "S/G", "VITAMIN E", "DHA", "COQ10", "LIQUID", ""]
 RATE_ROWS = 5000        # 6. Line Rates rows 5:5004
 RATES_CSV = Path(__file__).resolve().parent / "line_rates.csv"
 
@@ -706,7 +708,7 @@ W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "
           # combined report (v2): the line's number, statuses and crew (from the
           # lines table LB), changeovers, notes, estimates
           "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "cotv", "cotprev", "cotnote",
-          "desv", "szchg", "desnote", "conote", "note", "cotext", "remtext", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
+          "desv", "szchg", "desnote", "conote", "colist", "oily", "wm", "wrk", "note", "cotext", "remtext", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
           "est", "estt", "nextco", "cot_t", "prog", "left", "capc"])
 # (Calc rows 5-704 hold a window row and a report slot: keep their XML under
 # 32 KB - the zip's compression window - or the file grows by about a fifth)
@@ -814,7 +816,19 @@ def window_v2(ws, c, A, s, r_):
     part = lambda n: f'IF({A[n]}<>"",", "&{A[n]},"")'
     lst = (f'IF({sz}=0,"",", "&INDEX(${CO_SIZE_COL}$5:${CO_SIZE_COL}${4 + len(CO_SIZE)},{sz}))&{part("cotnote")}&'
            f'{part("desnote")}&IF(OR(EXACT({A["bulk"]},"A662"),EXACT({A["bulk"]},"A624")),", Dumping","")')
-    ws[c["conote"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF(OR({te}="",{te}>={s["sh_end"]}),"",MID({lst},3,250)))')
+    ws[c["colist"]] = f'=IF(OR({keep}=0,{fw}=1),"",MID({lst},3,250))'
+    ws[c["conote"]] = f'=IF(OR({te}="",{te}>={s["sh_end"]}),"",{A["colist"]})'
+    # 7. Washroom: oily (a softgel: the description has a word of 5. Settings'
+    # oily list) or powdery; the changeover's start in whole minutes when it
+    # is within the hours ahead of Schedule as of, and its place in time order
+    # (ties by paste order)
+    d = f'" "&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({A["desc"]}&"","-"," "),","," "),"("," "),")"," ")&" "'
+    ws[c["oily"]] = (f'=IF({keep}=0,0,IF(SUMPRODUCT(ISNUMBER(SEARCH(" "&TRIM(SET_OILY&"")&" ",{d}))'
+                     f'*(TRIM(SET_OILY&"")<>""))>0,1,0))')
+    ws[c["wm"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF({te}="","",IF(AND({te}>={s["asof"]},{te}<{s["asof"]}'
+                   f'+SET_WR_HOURS/24),ROUND({te}*1440,0),"")))')
+    ws[c["wrk"]] = (f'=IF({A["wm"]}="","",COUNTIF({wr("wm")},"<"&{A["wm"]})+COUNTIFS({wr("wm")},{A["wm"]},'
+                    f'{wr("kn")},"<"&{A["kn"]})+1)')
     ws[c["note"]] = f'=IF({keep}=0,"",TRIM({A["remarks"]}&""))'
     # the two notes rows: Changeover Notes: ..., then Remarks: ...
     cn, nt = A["conote"], A["note"]
@@ -1925,7 +1939,15 @@ SETTINGS_ROWS = [
     ("SET_CO_CNT", "Changeover minutes: Minor - count change", 15, "0", "Same bottle and bulk, different count."),
     ("SET_CO_S3", "Changeover minutes: MAJOR - S3", 40, "0", "Different bulk item."),
     ("SET_CO_S4", "Changeover minutes: MAJOR - S4", 45, "0", "Different bottle size."),
-]
+    ("gap",),
+    ("head", "Washroom prep list (7. Washroom)"),
+    ("SET_WR_HOURS", "Hours ahead", 24, "0", "The changeovers listed: from Schedule as of, this many hours ahead."),
+    ("SET_CREMER", "Cremer lines", "1, 5, 9, 10, 12", "@", "Line numbers, with commas."),
+    ("SET_MERRILL", "Merrill filler lines", "3, 7, 8, 11", "@", "Line numbers, with commas."),
+] + [(f"SET_OILY{i}", "Oily (softgel) word", w, "@",
+      "A work order whose ITEM DESCRIPTION has one of these words (whole words, any case) is oily; the "
+      "others are powdery (tablets)." if i == 1 else "")
+     for i, w in enumerate(OILY_WORDS, start=1)]
 
 
 def build_settings(wb):
@@ -1958,6 +1980,8 @@ def build_settings(wb):
         put(ws, f"D{r}", note, font=font(10, color="404040"), border=THIN_GRAY)
         names[name] = f"{SETTINGS}!$C${r}"
         r += 1
+    # the oily words as one range
+    names["SET_OILY"] = names["SET_OILY1"].split(":")[0] + ":" + names[f"SET_OILY{len(OILY_WORDS)}"].split("!")[1]
     r += 1
     put(ws, f"B{r}", "Breaks and lunch apply only to the lines marked Yes in the Breaks & lunch column of 3. Lines "
                      "(lines 1, 3, 5 and 7 have them; lines 8 to 12 run through).", font=font(10, italic=True,
@@ -2003,6 +2027,120 @@ def build_rates(wb):
     ws.freeze_panes = "A5"
     fit_width(ws, "portrait")
     ws.print_title_rows = "4:4"
+    return ws
+
+
+WASH_COLS = [("#", 4), ("TIME", 14), ("SHIFT", 6.5), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13),
+             ("OFF THE LINE - PARTS TO WASH", 36), ("TYPE", 9), ("NEXT ON THE LINE", 36), ("TYPE", 9),
+             ("CHANGES", 40)]
+
+
+def build_wash(wb):
+    """7. Washroom: the washroom attendants' prep list - every changeover
+    expected in the hours ahead of Schedule as of (5. Settings), first to
+    last: when, the line and its filler (Cremer / Merrill), the changeover,
+    what comes off the line (its parts to wash: oily softgel or powdery
+    tablet) and what goes on, and the changes."""
+    ws = wb.create_sheet(S_WASH)
+    ws.sheet_properties.tabColor = "0070C0"
+    ws.sheet_view.showGridLines = False
+    last = 4 + WASH_ROWS
+    for i, (_, w) in enumerate(WASH_COLS, start=1):
+        ws.column_dimensions[L(i)].width = w
+    lc = L(len(WASH_COLS))
+    wm, rk = f"Calc!{wr('wm')}", f"Calc!{wr('wrk')}"
+    at = lambda col, k: f"INDEX(Calc!{wr(col)},{k})"
+    asof, hours = SC["asof"], "SET_WR_HOURS"
+    # title, subtitle, totals
+    ws.merge_cells(f"A1:{lc}1")
+    put(ws, "A1", f'="WASHROOM PREP LIST"&IF({SC["shift"]}="",""," · "&UPPER({SC["shift"]}))',
+        font=font(TITLE_PT - 2, True, "FFFFFF"), fill=fill(C_TITLE),
+        alignment=Alignment(horizontal="left", vertical="center", indent=1))
+    ws.row_dimensions[1].height = 30
+    ws.merge_cells(f"A2:{lc}2")
+    put(ws, "A2", (f'="Changeovers expected from "&{clock_text(asof, asof, "today ")}&" to "'
+                   f'&{clock_text(f"({asof}+{hours}/24)", asof, "today ")}&", first to last (Schedule as of on '
+                   f'3. Lines; the times from 4. Schedule)"'),
+        font=font(10, True, C_TITLE, italic=True), fill=fill(C_SUBTITLE),
+        alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
+    ws.row_dimensions[2].height = 16
+    rng_ = lambda col: f"${col}$5:${col}${last}"
+    ws.merge_cells(f"A3:{lc}3")
+    put(ws, "A3", (f'=COUNT({wm})&" changeovers  |  Oily parts: "&COUNTIF({rng_("H")},"Oily")&"  ·  Powdery parts: "'
+                   f'&COUNTIF({rng_("H")},"Powdery")&"  |  Cremer: "&COUNTIF({rng_("E")},"Cremer")&"  ·  Merrill: "'
+                   f'&COUNTIF({rng_("E")},"Merrill")&IF(COUNT({wm})>{WASH_ROWS},"  |  only the first {WASH_ROWS} '
+                   f'are listed","")'),
+        font=font(10, True, "262626"), alignment=Alignment(horizontal="left", vertical="center", indent=1))
+    ws.row_dimensions[3].height = 18
+    for i, (h, _) in enumerate(WASH_COLS, start=1):
+        put(ws, f"{L(i)}4", h, font=font(HEADER_PT, True, "FFFFFF"), fill=fill(C_COLHEAD),
+            border=Border(left=side("FFFFFF"), right=side("FFFFFF")),
+            alignment=Alignment(wrap_text=True, vertical="center", horizontal="center"))
+    ws.row_dimensions[4].height = 26
+    put(ws, "M4", "K", font=font(8, True))
+    put(ws, "N4", "K BEFORE", font=font(8, True))
+    ws.column_dimensions["M"].hidden = ws.column_dimensions["N"].hidden = True
+    filler = lambda ln, lst: f'ISNUMBER(SEARCH(","&{ln}&",",","&SUBSTITUTE({lst}&""," ","")&","))'
+    center = {"#", "SHIFT", "FILLER", "TYPE"}
+    grid = side("D9D9D9")
+    for n in range(1, WASH_ROWS + 1):
+        r = 4 + n
+        k, kp = f"$M{r}", f"$N{r}"
+        ws[f"M{r}"] = f"=IFERROR(MATCH({n},{rk},0),0)"
+        ws[f"N{r}"] = f"=IF({k}=0,0,{at('kprev', k)})"
+        t = f"({at('wm', k)}/1440)"
+        ln = at("lnum", k)
+        f = {
+            "A": f"={n}",
+            "B": f"={clock_text(t, asof, 'Today ')}",
+            "C": f'=CHOOSE(INT(MOD(({t}-SET_START)*24,24)/8)+1,"1st","2nd","3rd")',
+            "D": f"={at('dname', k)}",
+            "E": f'=IF({ln}="","",IF({filler(ln, "SET_CREMER")},"Cremer",IF({filler(ln, "SET_MERRILL")},"Merrill","")))',
+            "F": f"={at('prog', k)}",
+            "G": f'={at("item", kp)}&"   "&{at("desc", kp)}',
+            "H": f'=IF({at("oily", kp)}=1,"Oily","Powdery")',
+            "I": f'={at("item", k)}&"   "&{at("desc", k)}',
+            "J": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
+            "K": f"={at('colist', k)}",
+        }
+        for i, (h, _) in enumerate(WASH_COLS, start=1):
+            col = L(i)
+            body = f[col][1:]
+            c = ws.cell(r, i, f'=IF({k}=0,"",{body})')
+            c.font = font(BODY_PT + 1, col in "ADF")
+            c.alignment = Alignment(horizontal="center" if h in center else "left", vertical="center",
+                                    shrink_to_fit=True)
+            c.border = Border(bottom=grid)
+        ws.row_dimensions[r].height = 15
+    # looks: oily / powdery, the changeover in its color, the filler
+    data = f"A5:{lc}{last}"
+    for col in ("H", "J"):
+        cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL, font(BODY_PT, True, "7F6000"))
+        cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))
+    for _, lab, color in CO_LABELS:
+        cf(ws, f"F5:F{last}", f'$F5="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color))
+    cf(ws, f"E5:E{last}", '$E5="Cremer"', None, font(BODY_PT, True, "1F6F8B"))
+    cf(ws, f"E5:E{last}", '$E5="Merrill"', None, font(BODY_PT, True, "7B3F00"))
+    # a line across where the shift changes
+    cf(ws, f"A6:{lc}{last}", f'AND($A6<>"",$C6<>$C5)', None, None, Border(top=side(C_TITLE)))
+    ws.freeze_panes = "A5"
+    ws.page_setup.orientation = "landscape"
+    ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.page_margins.left = ws.page_margins.right = 0.4
+    ws.page_margins.top = 0.4
+    ws.page_margins.bottom = 0.5
+    ws.print_options.horizontalCentered = True
+    ws.oddFooter.center.text = "Page &P of &N"
+    ws.oddFooter.center.size = 8
+    ws.oddFooter.left.text = "&F"
+    ws.oddFooter.left.size = 8
+    ws.print_title_rows = "1:4"
+    ws.defined_names["Print_Area"] = DefinedName(
+        "Print_Area", attr_text=f"{WASH}!$A$1:INDEX({WASH}!${lc}$1:${lc}${last},MAX(5,4+MIN(COUNT({wm}),{WASH_ROWS})))")
+    protect(ws, formatColumns=False)
     return ws
 
 
@@ -2722,6 +2860,21 @@ HOW_ROWS = [
                         "To see more of a column, make it wider: drag the line between two column letters at the "
                         "top of 4. Schedule."),
     ("gap",),
+    ("head", "", "7. Washroom - the washroom attendants' prep list"),
+    ("kv", "What it is", "Every changeover expected in the next 24 hours from Schedule as of (3. Lines), first to "
+                         "last, with the totals at the top. It fills itself in from 4. Schedule's estimated times, "
+                         "so only RUNNING, PARTIAL SHIFT and OVERTIME lines with a line rate are on it. Print it the "
+                         "same way (Ctrl+P) and give it to the washroom."),
+    ("kv", "The columns", "TIME and SHIFT of the changeover; the LINE and its FILLER (Cremer or Merrill, from "
+                          "5. Settings); the CHANGEOVER type; OFF THE LINE - the work order whose parts come off to "
+                          "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); NEXT ON THE LINE and "
+                          "its type; and the CHANGES (cap, count, bottle, cotton, desiccant, dumping). A line "
+                          "across the list marks where a new shift starts."),
+    ("kv", "Oily or powdery", "Oily when the item description has one of the oily words on 5. Settings (OIL, OMEGA, "
+                              "SOFTGEL, SG, LSG, S/G, VITAMIN E, ...), else powdery. A product sorted wrong: add or "
+                              "change a word there. The hours ahead and the Cremer / Merrill line numbers are "
+                              "there too."),
+    ("gap",),
     ("head", "", "Tips"),
     ("kv", "Override: title or letter", "Pick the column's title in an Override box: the Override stays in this "
                                         "file, and a title keeps working when another day's file has its columns in "
@@ -2877,7 +3030,7 @@ def build_how(wb):
 
 FORBIDDEN = ["AGGREGATE", "MAXIFS", "MINIFS", "IFS", "SWITCH", "XLOOKUP", "XMATCH", "FILTER", "SORT", "SORTBY",
              "UNIQUE", "SEQUENCE", "LET", "LAMBDA", "TEXTJOIN", "CONCAT", "INDIRECT"]
-ALLOWED = {"IF", "IFERROR", "AND", "OR", "NOT", "INDEX", "MATCH", "LOOKUP", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS",
+ALLOWED = {"IF", "IFERROR", "AND", "OR", "NOT", "INDEX", "MATCH", "LOOKUP", "COUNT", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS",
            "SUMPRODUCT", "ROW", "ROWS", "COLUMN", "COLUMNS", "MIN", "MAX", "SMALL", "LARGE", "ISNUMBER", "ISERROR",
            "ISBLANK", "ISTEXT", "LEN", "TRIM", "UPPER", "LEFT", "RIGHT", "MID", "SEARCH", "FIND", "SUBSTITUTE",
            "EXACT", "VALUE", "TEXT", "ROUND", "TODAY", "CHAR", "N", "T", "ABS", "INT", "MOD", "OFFSET",
@@ -3008,6 +3161,7 @@ def main():
     build_schedule(wb)
     settings = build_settings(wb)
     build_rates(wb)
+    build_wash(wb)
     build_calc(wb)
 
     add_name(wb, "PASTE_ALL", f"{PASTE}!$1:$1048576")
