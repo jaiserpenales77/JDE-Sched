@@ -37,8 +37,8 @@ Sheets (tab order)
                       their output share), line efficiency, changeover minutes
   6. Line Rates       bottles per hour by line and item (unprotected), with a
                       hidden key column F (line number | ITEM)
-  7. Washroom         the washroom attendants' prep list: the changeovers of the
-                      hours ahead, first to last (formulas only, protected)
+  7. Washroom         the washroom attendants' prep list: this shift's
+                      changeovers, first to last (formulas only, protected)
   8. Products         the work orders' items (from the router) to tick Oily or
                       Powdery for 7. Washroom (unprotected), hidden KEY column I
   Calc                hidden helper sheet (protected), layout below
@@ -184,7 +184,7 @@ Calc sheet layout (row 3 = band titles, row 4 = column labels, data from 5)
          Desiccant), cap + 2 x count + 4 x bottle changed, the changeover
          notes (blank when the changeover starts after the end of the
          shift) and their list (any time), oily (7. Washroom), the
-         changeover's start in minutes when within the hours ahead and its
+         changeover's start in minutes when within this shift and its
          place in time order, remark, the notes rows' texts (Changeover Notes: ...,
          Remarks: ...), rate key, bottles per hour, bottles, full-hour equivalents, no rate,
          running total, the shift-clock steps (F2, whole shifts, rest, hour),
@@ -829,7 +829,8 @@ def window_v2(ws, c, A, s, r_):
     ws[c["conote"]] = f'=IF(OR({te}="",{te}>={s["sh_end"]}),"",{A["colist"]})'
     # 7. Washroom: oily (a softgel: the description has a word of 5. Settings'
     # oily list) or powdery; the changeover's start in whole minutes when it
-    # is within the hours ahead of Schedule as of, and its place in time order
+    # is from Schedule as of to the end of this copy's shift (other shifts may
+    # run other lines), and its place in time order
     # (ties by paste order)
     d = f'" "&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({A["desc"]}&"","-"," "),","," "),"("," "),")"," ")&" "'
     # (the item's tick on 8. Products first: Oily or Powdery)
@@ -838,8 +839,8 @@ def window_v2(ws, c, A, s, r_):
     pt = A["ptype"]
     ws[c["oily"]] = (f'=IF({keep}=0,0,IF({pt}="OILY",1,IF({pt}="POWDERY",0,IF(SUMPRODUCT(ISNUMBER(SEARCH(" "&'
                      f'TRIM(SET_OILY&"")&" ",{d}))*(TRIM(SET_OILY&"")<>""))>0,1,0))))')
-    ws[c["wm"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF({te}="","",IF(AND({te}>={s["asof"]},{te}<{s["asof"]}'
-                   f'+SET_WR_HOURS/24),ROUND({te}*1440,0),"")))')
+    ws[c["wm"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF({te}="","",IF(AND({te}>={s["asof"]},{te}<{s["sh_end"]}),'
+                   f'ROUND({te}*1440,0),"")))')
     ws[c["wrk"]] = (f'=IF({A["wm"]}="","",COUNTIF({wr("wm")},"<"&{A["wm"]})+COUNTIFS({wr("wm")},{A["wm"]},'
                     f'{wr("kn")},"<"&{A["kn"]})+1)')
     ws[c["note"]] = f'=IF({keep}=0,"",TRIM({A["remarks"]}&""))'
@@ -1954,7 +1955,6 @@ SETTINGS_ROWS = [
     ("SET_CO_S4", "Changeover minutes: MAJOR - S4", 45, "0", "Different bottle size."),
     ("gap",),
     ("head", "Washroom prep list (7. Washroom)"),
-    ("SET_WR_HOURS", "Hours ahead", 24, "0", "The changeovers listed: from Schedule as of, this many hours ahead."),
     ("SET_CREMER", "Cremer lines", "1, 5, 9, 10, 12", "@", "Line numbers, with commas."),
     ("SET_MERRILL", "Merrill filler lines", "3, 7, 8, 11", "@", "Line numbers, with commas."),
 ] + [(f"SET_OILY{i}", "Oily (softgel) word", w, "@",
@@ -2099,13 +2099,13 @@ def build_products(wb):
     return ws
 
 
-WASH_COLS = [("#", 4), ("TIME", 14), ("SHIFT", 6.5), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13),
+WASH_COLS = [("#", 4), ("TIME", 14), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13),
              ("OFF THE LINE - PARTS TO WASH", 40), ("TYPE", 9), ("NEXT ON THE LINE", 40), ("TYPE", 9)]
 
 
 def build_wash(wb):
     """7. Washroom: the washroom attendants' prep list - every changeover
-    expected in the hours ahead of Schedule as of (5. Settings), first to
+    expected from Schedule as of to the end of this copy's shift, first to
     last: when, the line and its filler (Cremer / Merrill), the changeover,
     what comes off the line (its parts to wash: oily softgel or powdery
     tablet) and what goes on."""
@@ -2118,7 +2118,7 @@ def build_wash(wb):
     lc = L(len(WASH_COLS))
     wm, rk = f"Calc!{wr('wm')}", f"Calc!{wr('wrk')}"
     at = lambda col, k: f"INDEX(Calc!{wr(col)},{k})"
-    asof, hours = SC["asof"], "SET_WR_HOURS"
+    asof = SC["asof"]
     # title, subtitle, totals
     ws.merge_cells(f"A1:{lc}1")
     put(ws, "A1", f'="WASHROOM PREP LIST"&IF({SC["shift"]}="",""," · "&UPPER({SC["shift"]}))',
@@ -2127,16 +2127,16 @@ def build_wash(wb):
     ws.row_dimensions[1].height = 30
     ws.merge_cells(f"A2:{lc}2")
     put(ws, "A2", (f'="Changeovers expected from "&{clock_text(asof, asof, "today ")}&" to "'
-                   f'&{clock_text(f"({asof}+{hours}/24)", asof, "today ")}&", first to last (Schedule as of on '
+                   f'&{clock_text(SC["sh_end"], asof, "today ")}&" (the end of the shift), first to last (Schedule as of on '
                    f'3. Lines; the times from 4. Schedule)"'),
         font=font(10, True, C_TITLE, italic=True), fill=fill(C_SUBTITLE),
         alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
     ws.row_dimensions[2].height = 16
     rng_ = lambda col: f"${col}$5:${col}${last}"
     ws.merge_cells(f"A3:{lc}3")
-    put(ws, "A3", (f'=COUNT({wm})&" changeovers  |  Oily parts: "&COUNTIF({rng_("H")},"Oily")&"  ·  Powdery parts: "'
-                   f'&COUNTIF({rng_("H")},"Powdery")&"  |  Cremer: "&COUNTIF({rng_("E")},"Cremer")&"  ·  Merrill: "'
-                   f'&COUNTIF({rng_("E")},"Merrill")&IF(COUNT({wm})>{WASH_ROWS},"  |  only the first {WASH_ROWS} '
+    put(ws, "A3", (f'=COUNT({wm})&" changeovers  |  Oily parts: "&COUNTIF({rng_("G")},"Oily")&"  ·  Powdery parts: "'
+                   f'&COUNTIF({rng_("G")},"Powdery")&"  |  Cremer: "&COUNTIF({rng_("D")},"Cremer")&"  ·  Merrill: "'
+                   f'&COUNTIF({rng_("D")},"Merrill")&IF(COUNT({wm})>{WASH_ROWS},"  |  only the first {WASH_ROWS} '
                    f'are listed","")'),
         font=font(10, True, "262626"), alignment=Alignment(horizontal="left", vertical="center", indent=1))
     ws.row_dimensions[3].height = 18
@@ -2149,7 +2149,7 @@ def build_wash(wb):
     put(ws, "N4", "K BEFORE", font=font(8, True))
     ws.column_dimensions["M"].hidden = ws.column_dimensions["N"].hidden = True
     filler = lambda ln, lst: f'ISNUMBER(SEARCH(","&{ln}&",",","&SUBSTITUTE({lst}&""," ","")&","))'
-    center = {"#", "SHIFT", "FILLER", "TYPE"}
+    center = {"#", "FILLER", "TYPE"}
     grid = side("D9D9D9")
     for n in range(1, WASH_ROWS + 1):
         r = 4 + n
@@ -2161,42 +2161,31 @@ def build_wash(wb):
         f = {
             "A": f"={n}",
             "B": f"={clock_text(t, asof, 'Today ')}",
-            "C": f'=CHOOSE(INT(MOD(({t}-SET_START)*24,24)/8)+1,"1st","2nd","3rd")',
-            "D": f"={at('dname', k)}",
-            "E": f'=IF({ln}="","",IF({filler(ln, "SET_CREMER")},"Cremer",IF({filler(ln, "SET_MERRILL")},"Merrill","")))',
-            "F": f"={at('prog', k)}",
-            "G": f'={at("item", kp)}&"   "&{at("desc", kp)}',
-            "H": f'=IF({at("oily", kp)}=1,"Oily","Powdery")',
-            "I": f'={at("item", k)}&"   "&{at("desc", k)}',
-            "J": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
+            "C": f"={at('dname', k)}",
+            "D": f'=IF({ln}="","",IF({filler(ln, "SET_CREMER")},"Cremer",IF({filler(ln, "SET_MERRILL")},"Merrill","")))',
+            "E": f"={at('prog', k)}",
+            "F": f'={at("item", kp)}&"   "&{at("desc", kp)}',
+            "G": f'=IF({at("oily", kp)}=1,"Oily","Powdery")',
+            "H": f'={at("item", k)}&"   "&{at("desc", k)}',
+            "I": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
         }
         for i, (h, _) in enumerate(WASH_COLS, start=1):
             col = L(i)
             body = f[col][1:]
             c = ws.cell(r, i, f'=IF({k}=0,"",{body})')
-            c.font = font(BODY_PT + 1, col in "ADF")
+            c.font = font(BODY_PT + 1, col in "ACE")
             c.alignment = Alignment(horizontal="center" if h in center else "left", vertical="center",
                                     shrink_to_fit=True)
             c.border = Border(bottom=grid)
         ws.row_dimensions[r].height = 15
-    # looks: oily / powdery, the changeover in its color, the filler; a line
-    # across where the shift changes. (One rule per look, with and without
-    # that line, so the first true rule has both.)
-    newshift = 'AND(ISNUMBER($A4),$C5<>$C4)'
-    top = Border(top=side(C_TITLE))
-    looks = {"H": [('$H5="Oily"', C_OIL, font(BODY_PT, True, "7F6000")),
-                   ('$H5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))],
-             "J": [('$J5="Oily"', C_OIL, font(BODY_PT, True, "7F6000")),
-                   ('$J5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))],
-             "F": [(f'$F5="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color)) for _, lab, color in CO_LABELS],
-             "E": [('$E5="Cremer"', None, font(BODY_PT, True, "1F6F8B")),
-                   ('$E5="Merrill"', None, font(BODY_PT, True, "7B3F00"))]}
-    for col, rules_ in looks.items():
-        for cond, fc, fo in rules_:
-            cf(ws, f"{col}5:{col}{last}", f"AND({cond},{newshift})", fc, fo, top)
-        for cond, fc, fo in rules_:
-            cf(ws, f"{col}5:{col}{last}", cond, fc, fo)
-    cf(ws, f"A5:{lc}{last}", newshift, None, None, top)
+    # looks: oily / powdery, the changeover in its color, the filler
+    for col in ("G", "I"):
+        cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL, font(BODY_PT, True, "7F6000"))
+        cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))
+    for _, lab, color in CO_LABELS:
+        cf(ws, f"E5:E{last}", f'$E5="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color))
+    cf(ws, f"D5:D{last}", '$D5="Cremer"', None, font(BODY_PT, True, "1F6F8B"))
+    cf(ws, f"D5:D{last}", '$D5="Merrill"', None, font(BODY_PT, True, "7B3F00"))
     ws.freeze_panes = "A5"
     ws.page_setup.orientation = "landscape"
     ws.page_setup.paperSize = ws.PAPERSIZE_LETTER
@@ -2935,20 +2924,19 @@ HOW_ROWS = [
                         "top of 4. Schedule."),
     ("gap",),
     ("head", "", "7. Washroom - the washroom attendants' prep list"),
-    ("kv", "What it is", "Every changeover expected in the next 24 hours from Schedule as of (3. Lines), first to "
-                         "last, with the totals at the top. It fills itself in from 4. Schedule's estimated times, "
+    ("kv", "What it is", "Every changeover expected from Schedule as of (3. Lines) to the end of this copy's shift "
+                         "(other shifts may run other lines), first to last, with the totals at the top. It fills itself in from 4. Schedule's estimated times, "
                          "so only RUNNING, PARTIAL SHIFT and OVERTIME lines with a line rate are on it. Print it the "
                          "same way (Ctrl+P) and give it to the washroom."),
-    ("kv", "The columns", "TIME and SHIFT of the changeover; the LINE and its FILLER (Cremer or Merrill, from "
+    ("kv", "The columns", "TIME of the changeover; the LINE and its FILLER (Cremer or Merrill, from "
                           "5. Settings); the CHANGEOVER type; OFF THE LINE - the work order whose parts come off to "
                           "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); and NEXT ON THE LINE "
-                          "and its type. A line across the list marks where a new shift starts."),
+                          "and its type."),
     ("kv", "Oily or powdery", "By the item's tick on 8. Products (Oily or Powdery - the supervisor picks it once "
                               "per item). An item without one: oily (a softgel) when its description has SG, LSG "
                               "or S/G (the oily words on 5. Settings), else powdery. (This list is "
                               "only for 7. Washroom - the Oil highlight on 4. Schedule still goes by OIL in the "
-                              "description.) The hours ahead and the Cremer / Merrill line numbers are "
-                              "there too."),
+                              "description.) The Cremer / Merrill line numbers are there too."),
     ("gap",),
     ("head", "", "Tips"),
     ("kv", "Override: title or letter", "Pick the column's title in an Override box: the Override stays in this "

@@ -28,7 +28,7 @@ The daily job is three steps (load, set the lines, print); the first tab,
 | 4. Schedule | The printable JDE Packaging Schedule - fills itself in, protected |
 | 5. Settings | Shift clock (1st shift start, break and lunch hours, their output), line efficiency, changeover minutes |
 | 6. Line Rates | Bottles per hour by line and item (2,263 rows from the router; add or paste more) |
-| 7. Washroom | The washroom attendants' prep list: every changeover expected in the next 24 hours, first to last - fills itself in |
+| 7. Washroom | The washroom attendants' prep list: every changeover expected this shift, first to last - fills itself in |
 | 8. Products | The items of the router's work orders (292, in `products.csv`), to tick Oily or Powdery for 7. Washroom |
 
 Everything on 2-4 is worksheet formulas: the import, grouping, Seq order,
@@ -81,17 +81,17 @@ holds the machinery.
 ## 7. Washroom
 
 The washroom attendants' prep list: every changeover expected from Schedule
-as of to 24 hours later (5. Settings: Hours ahead), first to last, numbered,
+as of to the end of this copy's shift (other shifts may run other lines - the
+same changeovers the summary on 4. Schedule counts), first to last, numbered,
 with the totals on top (changeovers, oily / powdery parts, Cremer / Merrill).
-Per changeover: the time and shift; the line and its filler - Cremer (lines
+Per changeover: the time; the line and its filler - Cremer (lines
 1, 5, 9, 10, 12) or Merrill (3, 7, 8, 11), editable on 5. Settings; the
 changeover type; the work order coming off the line (its parts are washed)
 and its type - **Oily** (a softgel) or **Powdery** (a tablet): the item's
 tick on **8. Products**, else SG, LSG or S/G in the description (the oily
 words on 5. Settings, where more can be added; they don't change 4.
 Schedule's Oil highlight);
-and the work order going on and its type.
-A line marks each new shift. The
+and the work order going on and its type. The
 times are 4. Schedule's estimated times, so only running lines with a line
 rate are listed.
 
