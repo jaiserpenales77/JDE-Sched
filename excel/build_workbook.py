@@ -2060,13 +2060,6 @@ def build_products(wb):
     for i, (_, w) in enumerate(PROD_COLS, start=1):
         ws.column_dimensions[L(i)].width = w
     put(ws, "A1", "8. Products - oily or powdery (for 7. Washroom)", font=font(16, True))
-    ws.merge_cells("A2:H2")
-    put(ws, "A2", "Pick Oily or Powdery for each item in the yellow column (the arrow in the cell). 7. Washroom "
-                  "uses it; an item left empty goes by the oily words on 5. Settings (SG, LSG, S/G). SUGGESTED is "
-                  "only a hint: the router's dosage form, or SG in the description. A new item: type it under the "
-                  "last one. The arrows in the titles sort and filter.",
-        font=font(10, italic=True, color="595959"), alignment=Alignment(wrap_text=True, vertical="top"))
-    ws.row_dimensions[2].height = 42
     for i, (h, _) in enumerate(PROD_COLS, start=1):
         put(ws, f"{L(i)}4", h, font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK,
             alignment=Alignment(wrap_text=True, vertical="center", horizontal="center"))
