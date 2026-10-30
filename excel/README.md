@@ -136,7 +136,9 @@ From the web app:
 
 - One status per line (This shift on 3. Lines) instead of a Scheduled tick
   plus READY / PM / OT. The file's Line Status column (Ready, PM, OT /
-  Overtime / Trial) is used when This shift is empty; NONE removes it.
+  Overtime / Trial) is used when This shift is empty; with neither, the line
+  is NOT SCHEDULED (it runs only when marked RUNNING / Yes); NONE removes the
+  status.
 - Lines are matched by their number: VPKL05 in the file, LINE 5 on 3. Lines
   and LINE05 on 6. Line Rates are the same line. The name typed on 3. Lines is
   the one printed.

@@ -1553,7 +1553,10 @@ def build_calc(wb):
                                   f'IF({cnt("OT")},"OVERTIME",""))))')
         ws[f"{LB['ovst']}{r_}"] = f'=IF({li}=0,"",INDEX({lkr("st")},{li}))'
         ov = A["ovst"]
-        ws[f"{LB['st']}{r_}"] = f'=IF({lk}=0,"",IF({ov}="NONE","",IF({ov}<>"",{ov},{A["der"]})))'
+        # (not picked and nothing from the file: NOT SCHEDULED - a line runs
+        # only when it is marked so)
+        ws[f"{LB['st']}{r_}"] = (f'=IF({lk}=0,"",IF({ov}="NONE","",IF({ov}<>"",{ov},'
+                                 f'IF({A["der"]}<>"",{A["der"]},"NOT SCHEDULED"))))')
         run = ",".join(f'{A["st"]}="{st}"' for st in RUN_STATUSES)
         ws[f"{LB['sched']}{r_}"] = f'=IF({lk}=0,0,IF(OR({run}),1,0))'
         nx = f"INDEX({lkr('nx')},{li})"
@@ -2556,7 +2559,8 @@ HOW_ROWS = [
     ("step", "3", "This shift: click the cell of each line in today's schedule, click the small arrow and pick its "
                   "status. RUNNING, PARTIAL SHIFT and OVERTIME lines get estimated times; READY LINE (set up, ready "
                   "to run), PM / CLEANING and NOT SCHEDULED lines don't. Empty = the Line Status column of your file "
-                  "(Ready, PM, OT). NONE = no status, even if your file has one."),
+                  "(Ready, PM, OT), else NOT SCHEDULED: a line only runs when you pick RUNNING (or type Yes). "
+                  "NONE = no status, even if your file has one."),
     ("step", "4", "Next shift: the same, for the next shift. It prints at the right edge of 4. Schedule. Leave it "
                   "empty if you don't know."),
     ("step", "5", "Crew (EE): type the number of people on each line (it prints in the EE column). Leave it empty if "
@@ -2592,8 +2596,8 @@ HOW_ROWS = [
                   "HIGHLIGHT (the row colors below)."),
     ("kv", "LINE", "Each line is a box with a border in its status color this shift (the BORDER legend, below): in "
                    "the middle of the box its name, and right under it its status, in the same color. A line with "
-                   "one work order shows its status by the color of its name. A line with no status has a navy "
-                   "border."),
+                   "one work order shows its status by the color of its name. A line left empty on 3. Lines "
+                   "(and with no Line Status in your file) is NOT SCHEDULED; one set to NONE has a navy border."),
 ] + [("swatch", strong, desc) for (st, strong, _, _), desc in zip(STATUSES, [
     "RUNNING - the line runs this shift. Estimated times.",
     "PARTIAL SHIFT - the line runs part of the shift. Estimated times (as if it ran the whole shift).",
