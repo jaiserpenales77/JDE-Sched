@@ -3,12 +3,45 @@
 `JDE_Production_Schedule.xlsm` replaces the web app's **Production Schedule** tab with
 a single Excel workbook - no app. It works in Excel 2010 and newer (Windows),
 Excel for Mac and Excel on the web / Teams. Everything is worksheet formulas;
-one small macro (`JDENotes.FitNotes`, run by the workbook's events - no
-button) only hides the empty notes rows on 4. Schedule, so the work orders
-sit right under each other. Before saving it shows them again
-(`JDENotes.Clean`) and hides them after, so the saved file is the plain
-layout: without macros (Excel on the web, or Enable Content not clicked)
-everything still works and those thin rows stay.
+the macros only help. `JDENotes.FitNotes` (run by the workbook's events - no
+button) hides the empty notes rows on 4. Schedule, so the work orders sit
+right under each other. Before saving it shows them again (`JDENotes.Clean`)
+and hides them after, so the saved file is the plain layout. `JDELines` runs
+the buttons on 3. Lines (below). Without macros (Excel on the web, or Enable
+Content not clicked) everything still works by hand: the buttons do nothing
+and those thin rows stay.
+
+## The buttons on 3. Lines
+
+A row of buttons under the instructions (they don't print):
+
+- **Guided setup** (green) asks step by step with Yes / No boxes: paste
+  today's schedule (if it was just copied), checks 2. Check Columns is GREEN,
+  the shift (1, 2 or 3) and the time (now, or typed), adds the lines missing
+  from the list, then each line in today's schedule - RUNNING? (Yes: its crew;
+  No: NOT SCHEDULED, PM / CLEANING, READY LINE, PARTIAL SHIFT or OVERTIME) -
+  then the next shift (the same lines, or line by line), and offers to print.
+  Cancel stops it; what was answered stays.
+- **Paste today's schedule**: what was copied goes into 1. Paste Schedule as
+  values (Paste Values), the rows and columns past it cleared; then it says
+  whether 2. Check Columns is GREEN.
+- **Add missing lines**: the lines of today's schedule that aren't in the list
+  go in its empty rows (VPKL09 as LINE 9).
+- **This shift: all RUNNING**: each line with work orders today that has no
+  status yet gets RUNNING, the others NOT SCHEDULED; statuses already picked
+  stay.
+- **Next shift = this shift**, **Clear statuses** (this shift, next shift and
+  crew - asks first), **Set time to now** (Schedule as of; the shift too when
+  it's empty, by the clock on 5. Settings), **Print 4. Schedule** (warns first
+  when 3. Lines shows a CHECK, then the Print dialog).
+- Double-click a status: RUNNING / NOT SCHEDULED; Breaks & lunch: Yes / No;
+  the yellow Schedule as of box: now.
+
+Ctrl+Z can't undo a macro, so the buttons that would overwrite something ask
+first. While a button works, Excel doesn't recalculate after every cell
+(manual calculation, restored after). The buttons are shapes with an assigned
+macro (`macro="[0]!GuidedSetup"` in the drawing) - in Excel, right-click one >
+Assign Macro to see it.
 
 It combines the app's report with the plant's **JDE Packaging Schedule** printout:
 each line's status this shift and next shift, the crew (EE), progress dots,
@@ -24,7 +57,7 @@ The daily job is three steps (load, set the lines, print); the first tab,
 | How To Use | Step-by-step instructions, how to read the schedule, changeover codes, tips |
 | 1. Paste Schedule | Paste today's schedule file here at A1 (any layout; up to 1000 rows, columns A-BH). Ships with the work orders of the JDE Packaging Schedule printout of Oct 29, 2026 |
 | 2. Check Columns | Which row holds the column titles and which column feeds each field, with Override cells, and the "Found N work orders on M lines" check |
-| 3. Lines | This copy's shift and the time the schedule is from; per line: status this shift and next shift, breaks & lunch (Yes / No), crew |
+| 3. Lines | This copy's shift and the time the schedule is from; per line: status this shift and next shift, breaks & lunch (Yes / No), crew. Buttons: Guided setup and one-step helpers |
 | 4. Schedule | The printable JDE Packaging Schedule - fills itself in, protected |
 | 5. Settings | Shift clock (1st shift start, break and lunch hours, their output), line efficiency, changeover minutes |
 | 6. Line Rates | Bottles per hour by line and item (2,263 rows from the router; add or paste more) |
@@ -146,10 +179,11 @@ python3 excel/build_workbook.py --demo   # JDE_Production_Schedule_DEMO.xlsm: re
 The build is deterministic (same script, same bytes) and checks every formula
 against the Excel 2007 function whitelist before saving. The Calc sheet layout
 and all defined names are documented at the top of `build_workbook.py`. The
-macro's source is in `build_workbook.py` (VBA_MODULE, VBA_THISWORKBOOK);
+macros' source is in `build_workbook.py` (VBA_MODULE, VBA_LINES, VBA_THISWORKBOOK);
 `vba_project.py` writes it into the file's vbaProject.bin (standard library
 only: [MS-OVBA] compression and a [MS-CFB] compound file; no compiled code, so
-Excel compiles the source when it opens the file). The macro is not signed.
+Excel compiles the source when it opens the file). The macros are not signed;
+the buttons are a DrawingML drawing added to 3. Lines (`button_drawing`).
 `products.csv` (8. Products) is the items of the router's work order table
 (Merge1, work orders 2024-2026): ITEM, DESCRIPTION, the bulk descriptions,
 the dosage form from tProduct (Attribute16), a suggestion (Oily when the form

@@ -31,7 +31,8 @@ Sheets (tab order)
   2. Check Columns    header row + field -> column mapping, overrides, status
   3. Lines            the shift of this copy, the "schedule as of" time, and
                       per line: status this shift / next shift, breaks &
-                      lunch (Yes/No), crew; + today's lines
+                      lunch (Yes/No), crew; + today's lines; buttons in row 2
+                      (a drawing; macros in JDELines)
   4. Schedule         the printable report (formulas only, protected)
   5. Settings         shift clock (1st shift start, break / lunch hours and
                       their output share), line efficiency, changeover minutes
@@ -1834,11 +1835,10 @@ def build_lines(wb):
         number_format="m/d/yyyy h:mm AM/PM", alignment=Alignment(horizontal="center", vertical="center"))
     put(ws, "M1", (f'=IF({SC["stale"]}=0,"",IF(ISNUMBER(L1),"CHECK: the statuses below were set for an earlier '
                    f'day than today.","CHECK: there is no date in the yellow box."))&IF({SC["stale"]}=0,"",'
-                   f'" Check them, then put today\'s date and time in the yellow box (Ctrl+; then a space, then '
-                   f'Ctrl+Shift+;).")'),
+                   f'" Check them, then click Set time to now (or double-click the yellow box).")'),
         font=font(10, True, "C00000"), alignment=Alignment(wrap_text=True, vertical="center"))
     cf(ws, "M1", '$M$1<>""', "FFC7CE", font(10, True, "9C0006"))
-    ws.row_dimensions[1].height = 54
+    ws.row_dimensions[1].height = LINES_ROW1_PT
     dvs = DataValidation(type="list", formula1='"' + ",".join(SHIFTS) + '"', allow_blank=True,
                          showErrorMessage=True, errorTitle="Shift", error="Pick 1st, 2nd or 3rd Shift.")
     ws.add_data_validation(dvs)
@@ -1848,20 +1848,20 @@ def build_lines(wb):
                          error="Type a date and time, like 10/29/2026 5:15 AM - or press Ctrl+; then a space, "
                                "then Ctrl+Shift+; for now.",
                          showInputMessage=True, promptTitle="Schedule as of",
-                         prompt="When the % Complete in today's file was taken. Ctrl+; (date), a space, "
-                                "Ctrl+Shift+; (time). The estimated times count from here.")
+                         prompt="When the % Complete in today's file was taken. Double-click for now (or "
+                                "Ctrl+; a space, Ctrl+Shift+;). The estimated times count from here.")
     ws.add_data_validation(dv0)
     dv0.add("L1")
     ws.merge_cells("A2:G2")
-    put(ws, "A2", "This shift / Next shift: pick each line's status (it colors the line on 4. Schedule). Empty = "
-                  "the Line Status column of your file. Lines that are RUNNING, PARTIAL SHIFT or OVERTIME get "
-                  "estimated times. Breaks & lunch: Yes if the line stops for breaks and lunch.",
+    put(ws, "A2", "The buttons (click Enable Content if Excel asks): Guided setup asks you step by step. By hand: "
+                  "pick each line's status - double-click one to switch RUNNING / NOT SCHEDULED - type the crew, "
+                  "and double-click the yellow time box for now.",
         font=font(10, italic=True, color="595959"), alignment=Alignment(wrap_text=True, vertical="top"))
     ws.merge_cells("I2:M2")
     put(ws, "I2", f'=IF(LINE_COUNT>{LINE_SLOTS},"WARNING: "&LINE_COUNT&" lines in today\'s schedule - only the first '
                   f'{LINE_SLOTS} are listed here.","")', font=font(10, True, "C00000"),
         alignment=Alignment(wrap_text=True, vertical="top"))
-    ws.row_dimensions[2].height = 42
+    ws.row_dimensions[2].height = LINES_ROW2_PT
     left = ["Line", "This shift", "Next shift", "Breaks & lunch", "Crew (EE)", "Work orders today", "Note"]
     right = ["Its row on the left", "Lines in today's schedule", "Work orders", "This shift (shown)", "Note"]
     for i, h in enumerate(left):
@@ -1928,8 +1928,63 @@ def build_lines(wb):
     fit_width(ws, "landscape")
     ws.print_area = f"A1:O{last}"
     ws.print_title_rows = "3:3"
-    protect(ws, formatColumns=False, formatRows=False)
+    protect(ws, formatColumns=False, formatRows=False, objects=True)     # the buttons stay put
     return ws
+
+
+# The buttons on 3. Lines (each runs a JDELines macro), in row 2 under the
+# instructions: (name, macro, label, fill, left and width in pixels). Excel
+# draws a column of width w trunc(7w + 0.49) pixels: A:G are 735 wide, L
+# starts at 1008 and M at 1155.
+LINES_ROW1_PT, LINES_ROW2_PT = 54, 72
+LINES_BTN_TOP_PT, LINES_BTN_PT = 30, 36
+C_BTN, C_BTN_GO, C_BTN_OFF = "2E75B6", "2E7D32", "7F7F7F"
+LINES_BUTTONS = [
+    ("btnSetup", "GuidedSetup", "Guided setup", C_BTN_GO, 2, 116),
+    ("btnPaste", "PasteSchedule", "Paste today's schedule", C_BTN, 125, 116),
+    ("btnAdd", "AddMissingLines", "Add missing lines", C_BTN, 248, 116),
+    ("btnRunning", "AllRunning", "This shift: all RUNNING", C_BTN, 371, 116),
+    ("btnNext", "NextSameAsThis", "Next shift = this shift", C_BTN, 494, 116),
+    ("btnClear", "ClearStatuses", "Clear statuses", C_BTN_OFF, 617, 116),
+    ("btnNow", "SetNow", "Set time to now", C_BTN, 1012, 140),
+    ("btnPrint", "PrintSchedule", "Print 4. Schedule", C_TITLE, 1161, 140),
+]
+
+
+def button_drawing(ws, buttons, row0):
+    """A DrawingML drawing of rounded buttons that run macros (Excel's
+    "Assign Macro" on a shape: macro="[0]!Name"), each anchored to the cell of
+    row row0 (0-based) it starts in, and left out of the printout."""
+    emu_px, emu_pt = 9525, 12700
+
+    def at(x):                                  # pixel x -> (0-based column, offset)
+        c = 0
+        while True:
+            w = int(7 * (ws.column_dimensions[L(c + 1)].width or 8.43) + 0.49)
+            if x < w:
+                return c, x
+            x -= w
+            c += 1
+    out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
+           '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '
+           'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">']
+    for i, (name, macro, label, color, x, w) in enumerate(buttons, start=2):
+        col, off = at(x)
+        dark = "".join(f"{int(int(color[k:k + 2], 16) * 0.75):02X}" for k in (0, 2, 4))
+        out.append(
+            f'<xdr:oneCellAnchor><xdr:from><xdr:col>{col}</xdr:col><xdr:colOff>{off * emu_px}'
+            f'</xdr:colOff><xdr:row>{row0}</xdr:row><xdr:rowOff>{LINES_BTN_TOP_PT * emu_pt}</xdr:rowOff>'
+            f'</xdr:from><xdr:ext cx="{w * emu_px}" cy="{LINES_BTN_PT * emu_pt}"/>'
+            f'<xdr:sp macro="[0]!{macro}" textlink=""><xdr:nvSpPr><xdr:cNvPr id="{i}" name="{name}" '
+            f'descr="{label}"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:prstGeom prst="roundRect"><a:avLst/>'
+            f'</a:prstGeom><a:solidFill><a:srgbClr val="{color}"/></a:solidFill><a:ln w="9525"><a:solidFill>'
+            f'<a:srgbClr val="{dark}"/></a:solidFill></a:ln></xdr:spPr><xdr:txBody><a:bodyPr vertOverflow="clip" '
+            f'horzOverflow="clip" wrap="square" lIns="45720" tIns="18288" rIns="45720" bIns="18288" anchor="ctr"/>'
+            f'<a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="1000" b="1"><a:solidFill>'
+            f'<a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="{FONT}"/></a:rPr><a:t>{label}</a:t></a:r>'
+            f'</a:p></xdr:txBody></xdr:sp><xdr:clientData fPrintsWithSheet="0"/></xdr:oneCellAnchor>')
+    out.append("</xdr:wsDr>")
+    return "".join(out)
 
 
 POS30 = "{" + ",".join(str(i) for i in range(1, 31)) + "}"
@@ -2556,8 +2611,9 @@ def add_conditional_formats(ws, last_row):
 
 
 # ----------------------------------------------------------------------------
-# The macro: hides the empty notes rows. ThisWorkbook's events run it by
-# itself (no button); the workbook works the same without it.
+# The macros: JDENotes hides the empty notes rows (ThisWorkbook's events run
+# it by itself); JDELines is the buttons on 3. Lines. The workbook works the
+# same without them.
 
 VBA_MODULE = """Option Explicit
 ' Hides the notes rows of 4. Schedule that have nothing to say (its hidden
@@ -2656,15 +2712,554 @@ Private Sub Workbook_AfterSave(ByVal Success As Boolean)
     JDENotes.FitNotes True
     ThisWorkbook.Saved = True
 End Sub
+
+' 3. Lines: double-click a status to switch it (see JDELines.DoubleClick)
+Private Sub Workbook_SheetBeforeDoubleClick(ByVal Sh As Object, ByVal Target As Range, Cancel As Boolean)
+    If Sh.Name = "{lines}" Then JDELines.DoubleClick Target, Cancel
+End Sub
+"""
+
+
+VBA_LINES = """Option Explicit
+' The buttons on 3. Lines, and double-clicking there (see ThisWorkbook):
+' Guided setup asks step by step; the others do one step each. All of it can
+' be done by hand too. Ctrl+Z can't undo a macro, so the buttons that would
+' overwrite something ask first.
+Public TestMode As Boolean      ' tests: no dialogs, the answers come from TestAnswers
+Public TestAnswers As String    ' "6|7|3|~" - MsgBox codes or InputBox texts (~ = the default)
+
+Private Const FIRST_ROW As Long = 4
+Private Const LAST_ROW As Long = {lines_last}
+Private Const TITLE As String = "JDE Production Schedule"
+Private savedCalc As Long
+Private savedEvents As Boolean
+
+Private Function LinesWs() As Worksheet
+    Set LinesWs = ThisWorkbook.Worksheets("{lines}")
+End Function
+
+' ---- dialogs (skipped in TestMode) ----
+
+Private Function NextAnswer(ByVal deflt As String) As String
+    Dim p As Long
+    If Len(TestAnswers) = 0 Then
+        NextAnswer = deflt
+        Exit Function
+    End If
+    p = InStr(TestAnswers, "|")
+    If p = 0 Then
+        NextAnswer = TestAnswers
+        TestAnswers = ""
+    Else
+        NextAnswer = Left$(TestAnswers, p - 1)
+        TestAnswers = Mid$(TestAnswers, p + 1)
+    End If
+End Function
+
+Private Function Ask(ByVal prompt As String, ByVal buttons As Long) As Long
+    If TestMode Then
+        Ask = CLng(Val(NextAnswer("2")))
+    Else
+        Ask = MsgBox(prompt, buttons, TITLE)
+    End If
+End Function
+
+Private Function AskText(ByVal prompt As String, ByVal deflt As String) As String
+    Dim a As String
+    If TestMode Then
+        a = NextAnswer("")
+        If a = "~" Then a = deflt
+        AskText = a
+    Else
+        AskText = InputBox(prompt, TITLE, deflt)
+    End If
+End Function
+
+Private Sub Tell(ByVal msg As String)
+    If Not TestMode Then MsgBox msg, vbInformation, TITLE
+End Sub
+
+' ---- while a button works: no recalculation after every cell, no events ----
+
+Private Sub BeginWork()
+    On Error Resume Next
+    savedEvents = Application.EnableEvents
+    savedCalc = Application.Calculation
+    Application.EnableEvents = False
+    Application.Calculation = -4135             ' manual
+End Sub
+
+Private Sub EndWork()
+    On Error Resume Next
+    Application.Calculation = savedCalc
+    Application.Calculate
+    Application.EnableEvents = savedEvents
+    Application.ScreenUpdating = True
+    JDENotes.FitNotes
+End Sub
+
+' ---- the left table ----
+
+Private Function LineName(ByVal r As Long) As String
+    LineName = Trim$(LinesWs.Cells(r, 1).Value & "")
+End Function
+
+Private Function WorkOrders(ByVal r As Long) As Long
+    Dim v As Variant
+    v = LinesWs.Cells(r, 6).Value
+    If IsError(v) Then Exit Function
+    WorkOrders = CLng(Val(v & ""))
+End Function
+
+Private Function CellText(ByVal r As Long, ByVal c As Long) As String
+    CellText = UCase$(Trim$(LinesWs.Cells(r, c).Value & ""))
+End Function
+
+Private Function MissingNames() As String
+    Dim v As Variant, i As Long, t As String
+    v = LinesWs.Range("O" & FIRST_ROW & ":O" & LAST_ROW).Value
+    For i = 1 To UBound(v, 1)
+        If Not IsError(v(i, 1)) Then
+            If Trim$(v(i, 1) & "") <> "" Then
+                If Len(t) > 0 Then t = t & ", "
+                t = t & Trim$(v(i, 1) & "")
+            End If
+        End If
+    Next i
+    MissingNames = t
+End Function
+
+' the lines of today's schedule that aren't in the left table go in its empty rows
+Private Function AddMissing() As Long
+    Dim ws As Worksheet, v As Variant, i As Long, r As Long, nm As String
+    Set ws = LinesWs
+    v = ws.Range("O" & FIRST_ROW & ":O" & LAST_ROW).Value
+    r = FIRST_ROW
+    For i = 1 To UBound(v, 1)
+        nm = ""
+        If Not IsError(v(i, 1)) Then nm = Trim$(v(i, 1) & "")
+        If nm <> "" Then
+            Do While r <= LAST_ROW
+                If LineName(r) = "" And CellText(r, 2) = "" And CellText(r, 3) = "" And CellText(r, 5) = "" Then Exit Do
+                r = r + 1
+            Loop
+            If r > LAST_ROW Then Exit For
+            ws.Cells(r, 1).Value = ListName(nm)
+            AddMissing = AddMissing + 1
+            r = r + 1
+        End If
+    Next i
+End Function
+
+' a line's name for the list, like the others there: VPKL09 -> LINE 9 (lines
+' match by their number); a name without a number as it is
+Private Function ListName(ByVal nm As String) As String
+    Dim i As Long, j As Long
+    j = Len(nm)
+    Do While j > 0
+        If IsDigit(Mid$(nm, j, 1)) Then Exit Do
+        j = j - 1
+    Loop
+    If j = 0 Then
+        ListName = nm
+        Exit Function
+    End If
+    i = j
+    Do While i > 1
+        If Not IsDigit(Mid$(nm, i - 1, 1)) Then Exit Do
+        i = i - 1
+    Loop
+    ListName = "LINE " & CLng(Val(Mid$(nm, i, j - i + 1)))
+End Function
+
+Private Function IsDigit(ByVal c As String) As Boolean
+    IsDigit = (c >= "0" And c <= "9" And Len(c) = 1)
+End Function
+
+Private Function ShiftAt(ByVal t As Date) As String
+    Dim st As Double, h As Double
+    st = 7.25 / 24
+    On Error Resume Next
+    st = CDbl(ThisWorkbook.Names("SET_START").RefersToRange.Value)
+    On Error GoTo 0
+    h = ((CDbl(t) - Int(CDbl(t))) - (st - Int(st))) * 24
+    If h < 0 Then h = h + 24
+    If h >= 24 Then h = 0
+    ShiftAt = Choose(Int(h / 8) + 1, "1st Shift", "2nd Shift", "3rd Shift")
+End Function
+
+Private Function NowToMinute() As Date
+    Dim t As Date
+    t = Now
+    NowToMinute = DateSerial(Year(t), Month(t), Day(t)) + TimeSerial(Hour(t), Minute(t), 0)
+End Function
+
+Private Function CheckOk() As Boolean
+    On Error Resume Next
+    CheckOk = (Val(ThisWorkbook.Worksheets("{check}").Range("J8").Value & "") = 1)
+End Function
+
+Private Function CheckText() As String
+    On Error Resume Next
+    CheckText = ThisWorkbook.Worksheets("{check}").Range("B8").Value & ""
+End Function
+
+' 1. Paste Schedule := what was copied, as values (like Paste Values); the
+' rows and columns past it are cleared. False when nothing was copied.
+Private Function PasteNow() As Boolean
+    Dim ws As Worksheet, back As Worksheet, rg As Range, r2 As Long, c2 As Long
+    Set back = ActiveSheet
+    Set ws = ThisWorkbook.Worksheets("{paste}")
+    On Error Resume Next
+    ws.Activate
+    ws.Range("A1").Select
+    Err.Clear
+    ws.Range("A1").PasteSpecial -4163           ' values
+    If Err.Number <> 0 Then
+        Err.Clear
+        back.Activate
+        Exit Function
+    End If
+    ' (Excel selects what it pasted; LibreOffice only A1 - then nothing is cleared)
+    Set rg = Selection
+    If rg.Rows.Count > 1 Or rg.Columns.Count > 1 Then
+        r2 = rg.Row + rg.Rows.Count - 1
+        c2 = rg.Column + rg.Columns.Count - 1
+        If r2 < ws.Rows.Count Then ws.Range(ws.Rows(r2 + 1), ws.Rows(ws.Rows.Count)).Clear
+        If c2 < ws.Columns.Count Then ws.Range(ws.Columns(c2 + 1), ws.Columns(ws.Columns.Count)).Clear
+    End If
+    Application.CutCopyMode = False
+    ws.Range("A1").Select
+    back.Activate
+    PasteNow = True
+End Function
+
+' ---- the buttons ----
+
+Public Sub PasteSchedule()
+    Dim ok As Boolean
+    On Error GoTo fail
+    BeginWork
+    ok = PasteNow()
+    EndWork
+    If Not ok Then
+        Tell "Nothing to paste." & vbLf & vbLf & "First open today's schedule file, click its corner triangle " & _
+             "(above row 1) and press Ctrl+C (if it has filter arrows: Data > Clear first). Then come back " & _
+             "and click Paste today's schedule."
+    ElseIf CheckOk() Then
+        Tell "Pasted. 2. Check Columns is GREEN." & vbLf & vbLf & "Next: set the lines (or click Guided setup)."
+    Else
+        Tell "Pasted - but 2. Check Columns is not GREEN:" & vbLf & vbLf & CheckText() & vbLf & vbLf & _
+             "Open the tab 2. Check Columns to fix it."
+    End If
+    Exit Sub
+fail:
+    EndWork
+    Tell "Something went wrong: " & Err.Description
+End Sub
+
+Public Sub SetNow()
+    Dim ws As Worksheet, t As Date
+    Set ws = LinesWs
+    t = NowToMinute()
+    ws.Range("L1").Value = t
+    If Trim$(ws.Range("C1").Value & "") = "" Then ws.Range("C1").Value = ShiftAt(t)
+End Sub
+
+Public Sub AddMissingLines()
+    Dim n As Long
+    On Error GoTo fail
+    BeginWork
+    n = AddMissing()
+    EndWork
+    If n = 0 Then
+        Tell "Every line in today's schedule is already in your list."
+    Else
+        Tell n & " line(s) added to the left table. Now pick their status."
+    End If
+    Exit Sub
+fail:
+    EndWork
+    Tell "Something went wrong: " & Err.Description
+End Sub
+
+' This shift: RUNNING for each line in today's schedule that has no status
+' yet (NOT SCHEDULED for the rest); statuses already picked stay
+Public Sub AllRunning()
+    Dim ws As Worksheet, r As Long, n As Long
+    Set ws = LinesWs
+    On Error GoTo fail
+    BeginWork
+    For r = FIRST_ROW To LAST_ROW
+        If LineName(r) <> "" And CellText(r, 2) = "" Then
+            If WorkOrders(r) > 0 Then
+                ws.Cells(r, 2).Value = "RUNNING"
+            Else
+                ws.Cells(r, 2).Value = "NOT SCHEDULED"
+            End If
+            n = n + 1
+        End If
+    Next r
+    EndWork
+    If n = 0 Then Tell "Every line already has a status this shift - change the ones you need in the This shift " & _
+                       "column (double-click one to switch RUNNING / NOT SCHEDULED), or click Clear statuses first."
+    Exit Sub
+fail:
+    EndWork
+    Tell "Something went wrong: " & Err.Description
+End Sub
+
+Public Sub NextSameAsThis()
+    Dim ws As Worksheet, r As Long, differ As Boolean
+    Set ws = LinesWs
+    For r = FIRST_ROW To LAST_ROW
+        If LineName(r) <> "" And CellText(r, 3) <> "" And CellText(r, 3) <> CellText(r, 2) Then differ = True
+    Next r
+    If differ Then
+        If Ask("Next shift already has statuses that differ from this shift." & vbLf & vbLf & _
+               "Replace them with this shift's? (Ctrl+Z can't undo this.)", vbYesNo + vbQuestion) <> vbYes Then Exit Sub
+    End If
+    On Error GoTo fail
+    BeginWork
+    For r = FIRST_ROW To LAST_ROW
+        If LineName(r) <> "" Then ws.Cells(r, 3).Value = ws.Cells(r, 2).Value
+    Next r
+    EndWork
+    Exit Sub
+fail:
+    EndWork
+    Tell "Something went wrong: " & Err.Description
+End Sub
+
+Public Sub ClearStatuses()
+    Dim ws As Worksheet
+    Set ws = LinesWs
+    If Ask("Clear This shift, Next shift and Crew (EE) for every line?" & vbLf & vbLf & _
+           "The line names and Breaks & lunch stay. Ctrl+Z can't undo this.", _
+           vbYesNo + vbExclamation + vbDefaultButton2) <> vbYes Then Exit Sub
+    On Error GoTo fail
+    BeginWork
+    ws.Range("B" & FIRST_ROW & ":C" & LAST_ROW).ClearContents
+    ws.Range("E" & FIRST_ROW & ":E" & LAST_ROW).ClearContents
+    EndWork
+    Exit Sub
+fail:
+    EndWork
+    Tell "Something went wrong: " & Err.Description
+End Sub
+
+Public Sub PrintSchedule()
+    Dim ws As Worksheet, msg As String
+    On Error Resume Next
+    msg = Trim$(LinesWs.Range("M1").Value & "")
+    If msg <> "" Then
+        If Ask(msg & vbLf & vbLf & "Print anyway?", vbYesNo + vbExclamation + vbDefaultButton2) <> vbYes Then Exit Sub
+    End If
+    Set ws = ThisWorkbook.Worksheets("{sched}")
+    ws.Activate
+    JDENotes.FitNotes True
+    If TestMode Then Exit Sub
+    Err.Clear
+    Application.Dialogs(8).Show                 ' the Print dialog
+    If Err.Number <> 0 Then
+        Err.Clear
+        ws.PrintPreview
+    End If
+End Sub
+
+' Guided setup: today's schedule, the shift and time, missing lines, each
+' line this shift (and its crew), the next shift, then print
+Public Sub GuidedSetup()
+    Dim ws As Worksheet, a As Long, s As String, r As Long, nm As String, t As Date, miss As String
+    Set ws = LinesWs
+    On Error GoTo fail
+    a = Ask("Step 1 of 5 - Today's schedule" & vbLf & vbLf & "Did you just copy today's schedule (its corner " & _
+            "triangle above row 1, Ctrl+C)?" & vbLf & vbLf & "Yes = paste it now." & vbLf & _
+            "No = keep the schedule already pasted.", vbYesNoCancel + vbQuestion)
+    If a = vbCancel Then Exit Sub
+    BeginWork
+    If a = vbYes Then
+        If Not PasteNow() Then
+            EndWork
+            Tell "Nothing was copied. Open today's schedule file, click its corner triangle (above row 1), press " & _
+                 "Ctrl+C, then click Guided setup again."
+            Exit Sub
+        End If
+    End If
+    Application.Calculate
+    If Not CheckOk() Then
+        If Ask("2. Check Columns is not GREEN:" & vbLf & vbLf & CheckText() & vbLf & vbLf & "Go on anyway?", _
+               vbYesNo + vbExclamation + vbDefaultButton2) <> vbYes Then
+            EndWork
+            ThisWorkbook.Worksheets("{check}").Activate
+            Exit Sub
+        End If
+    End If
+    ' step 2: the shift and the time
+    s = Left$(Trim$(ws.Range("C1").Value & ""), 1)
+    If s = "" Then s = Left$(ShiftAt(Now), 1)
+    Do
+        s = Trim$(AskText("Step 2 of 5 - Which shift is this copy for?" & vbLf & vbLf & "Type 1, 2 or 3.", s))
+        If s = "" Then GoTo done
+    Loop Until s = "1" Or s = "2" Or s = "3"
+    ws.Range("C1").Value = Choose(Val(s), "1st Shift", "2nd Shift", "3rd Shift")
+    t = NowToMinute()
+    a = Ask("Step 2 of 5 - Schedule as of" & vbLf & vbLf & "Use now, " & Format(t, "m/d/yyyy h:mm AM/PM") & _
+            "? (When the % Complete in today's file was taken.)" & vbLf & vbLf & "Yes = now." & vbLf & _
+            "No = type another time.", vbYesNoCancel + vbQuestion)
+    If a = vbCancel Then GoTo done
+    If a = vbNo Then
+        Do
+            s = Trim$(AskText("Type the date and time, like " & Format(t, "m/d/yyyy h:mm AM/PM") & ".", _
+                              Format(t, "m/d/yyyy h:mm AM/PM")))
+            If s = "" Then GoTo done
+        Loop Until IsDate(s)
+        t = CDate(s)
+    End If
+    ws.Range("L1").Value = t
+    ' step 3: lines missing from the list
+    Application.Calculate
+    miss = MissingNames()
+    If miss <> "" Then
+        a = Ask("Step 3 of 5 - Lines" & vbLf & vbLf & "Today's schedule has lines that aren't in your list:" & _
+                vbLf & miss & vbLf & vbLf & "Add them?", vbYesNoCancel + vbQuestion)
+        If a = vbCancel Then GoTo done
+        If a = vbYes Then
+            AddMissing
+            Application.Calculate
+        End If
+    End If
+    ' step 4: this shift, line by line (the lines with work orders today)
+    For r = FIRST_ROW To LAST_ROW
+        nm = LineName(r)
+        If nm <> "" Then
+            If WorkOrders(r) = 0 Then
+                If CellText(r, 2) = "" Then ws.Cells(r, 2).Value = "NOT SCHEDULED"
+            Else
+                a = Ask("Step 4 of 5 - This shift" & vbLf & vbLf & nm & ": " & WorkOrders(r) & _
+                        " work order(s) today." & vbLf & vbLf & "Is " & nm & " RUNNING this shift?" & vbLf & vbLf & _
+                        "Yes = running.   No = not running.   Cancel = stop here.", vbYesNoCancel + vbQuestion)
+                If a = vbCancel Then GoTo done
+                If a = vbYes Then
+                    ws.Cells(r, 2).Value = "RUNNING"
+                    s = Trim$(AskText("How many people (EE) on " & nm & "? (Leave it empty to skip.)", _
+                                      Trim$(ws.Cells(r, 5).Value & "")))
+                    If IsNumeric(s) And s <> "" Then
+                        If Val(s) >= 0 And Val(s) <= 99 Then ws.Cells(r, 5).Value = CLng(Val(s))
+                    End If
+                Else
+                    s = Trim$(AskText("What is " & nm & " this shift? Type a number:" & vbLf & vbLf & _
+                                      "1 = NOT SCHEDULED" & vbLf & "2 = PM / CLEANING" & vbLf & "3 = READY LINE" & _
+                                      vbLf & "4 = PARTIAL SHIFT (runs part of the shift)" & vbLf & _
+                                      "5 = OVERTIME", "1"))
+                    Select Case s
+                        Case "2": ws.Cells(r, 2).Value = "PM / CLEANING"
+                        Case "3": ws.Cells(r, 2).Value = "READY LINE"
+                        Case "4": ws.Cells(r, 2).Value = "PARTIAL SHIFT"
+                        Case "5": ws.Cells(r, 2).Value = "OVERTIME"
+                        Case Else: ws.Cells(r, 2).Value = "NOT SCHEDULED"
+                    End Select
+                End If
+            End If
+        End If
+    Next r
+    ' step 5: the next shift
+    a = Ask("Step 5 of 5 - Next shift" & vbLf & vbLf & "Will the next shift run the same lines as this shift?" & _
+            vbLf & vbLf & "Yes = the same as this shift." & vbLf & "No = ask me for each line.", _
+            vbYesNoCancel + vbQuestion)
+    If a = vbCancel Then GoTo done
+    For r = FIRST_ROW To LAST_ROW
+        nm = LineName(r)
+        If nm <> "" Then
+            If a = vbYes Or WorkOrders(r) = 0 Then
+                ws.Cells(r, 3).Value = ws.Cells(r, 2).Value
+            Else
+                Select Case Ask("Step 5 of 5 - Next shift" & vbLf & vbLf & "Is " & nm & " RUNNING next shift?", _
+                                vbYesNoCancel + vbQuestion)
+                    Case vbYes: ws.Cells(r, 3).Value = "RUNNING"
+                    Case vbNo: ws.Cells(r, 3).Value = "NOT SCHEDULED"
+                    Case Else: GoTo done
+                End Select
+            End If
+        End If
+    Next r
+    EndWork
+    If Ask("All set. Check 4. Schedule." & vbLf & vbLf & "Print it now?", vbYesNo + vbQuestion) = vbYes Then
+        PrintSchedule
+    Else
+        ThisWorkbook.Worksheets("{sched}").Activate
+    End If
+    Exit Sub
+done:
+    EndWork
+    Tell "Stopped. What you answered so far is filled in - the rest is as it was."
+    Exit Sub
+fail:
+    EndWork
+    Tell "Something went wrong: " & Err.Description
+End Sub
+
+' ---- for the tests (LibreOffice runs these; a person never needs them) ----
+
+Public Sub TestSetup(ByVal answers As String)
+    TestMode = (answers <> "off")
+    TestAnswers = answers
+    If answers = "off" Then TestAnswers = ""
+End Sub
+
+Public Function TestAnswersLeft() As String
+    TestAnswersLeft = TestAnswers
+End Function
+
+Public Sub TestDoubleClick(ByVal addr As String)
+    Dim c As Boolean
+    DoubleClick LinesWs.Range(addr), c
+End Sub
+
+Public Sub TestCopy(ByVal sheetName As String, ByVal addr As String)
+    ThisWorkbook.Worksheets(sheetName).Range(addr).Copy
+End Sub
+
+' Double-click on 3. Lines: a status switches RUNNING / NOT SCHEDULED, Breaks &
+' lunch Yes / No, and the Schedule as of box takes the time now
+Public Sub DoubleClick(ByVal Target As Range, ByRef Cancel As Boolean)
+    If Target.Cells.Count <> 1 Then Exit Sub
+    If Target.Row = 1 And Target.Column = 12 Then
+        SetNow
+        Cancel = True
+        Exit Sub
+    End If
+    If Target.Row < FIRST_ROW Or Target.Row > LAST_ROW Then Exit Sub
+    If LineName(Target.Row) = "" Then Exit Sub
+    Select Case Target.Column
+        Case 2, 3
+            If CellText(Target.Row, Target.Column) = "RUNNING" Then
+                Target.Value = "NOT SCHEDULED"
+            Else
+                Target.Value = "RUNNING"
+            End If
+            Cancel = True
+        Case 4
+            If CellText(Target.Row, 4) = "YES" Then
+                Target.Value = "No"
+            Else
+                Target.Value = "Yes"
+            End If
+            Cancel = True
+    End Select
+End Sub
 """
 
 
 def vba_bin():
     from vba_project import vba_project_bin
     fill_in = lambda t: (t.replace("{hide}", HIDE_COL).replace("{sched}", S_SCHED)
-                         .replace("{first}", str(SCHED_ROW0)).replace("{last}", str(SCHED_LAST)))
+                         .replace("{first}", str(SCHED_ROW0)).replace("{last}", str(SCHED_LAST))
+                         .replace("{lines}", S_LINES).replace("{lines_last}", str(3 + LINE_SLOTS))
+                         .replace("{check}", S_CHECK).replace("{paste}", S_PASTE))
     return vba_project_bin([("ThisWorkbook", "document", fill_in(VBA_THISWORKBOOK)),
-                            ("JDENotes", "module", fill_in(VBA_MODULE))])
+                            ("JDENotes", "module", fill_in(VBA_MODULE)),
+                            ("JDELines", "module", fill_in(VBA_LINES))])
 
 
 # ----------------------------------------------------------------------------
@@ -2676,16 +3271,18 @@ HOW_ROWS = [
     ("gap",),
     ("head", "", "QUICK CARD - A Load, B Set the lines, C Print (this page prints on its own: post it at the computer)"),
     ("qc", "A1", "Open YOUR shift's copy of this file. Yellow bar? Click Enable Editing, then Enable Content."),
-    ("qc", "A2", "Tab 1. Paste Schedule: click the corner triangle (above row 1), then Home > Clear > Clear All."),
-    ("qc", "A3", "Today's schedule file: Data > Clear (if it has filter arrows), click its corner triangle, Ctrl+C."),
-    ("qc", "A4", "Back in THIS file, 1. Paste Schedule: right-click A1 > Paste Options > Values (123)."),
+    ("qc", "A2", "Today's schedule file: Data > Clear (if it has filter arrows), click its corner triangle, Ctrl+C."),
+    ("qc", "A3", "Back in THIS file, tab 3. Lines: click the green Guided setup and answer its questions. It pastes "
+                 "and sets the lines (A4 to B4) for you, then offers to print."),
+    ("qc", "A4", "Or by hand: tab 1. Paste Schedule, corner triangle, Home > Clear > Clear All; right-click A1 > "
+                 "Paste Options > Values (123). (Or click Paste today's schedule on 3. Lines.)"),
     ("qc", "A5", "Tab 2. Check Columns: the box is GREEN; First / Last work order = first / last row of today's file."),
-    ("qc", "B1", "Tab 3. Lines: a line marked NOT IN YOUR LIST? Type its name in an empty row of the left table."),
-    ("qc", "B2", "This shift: pick each line's status (RUNNING, NOT SCHEDULED, PM / CLEANING, ...). Next shift: the same."),
+    ("qc", "B1", "Tab 3. Lines: a line marked NOT IN YOUR LIST? Click Add missing lines."),
+    ("qc", "B2", "This shift: pick each line's status (double-click one: RUNNING / NOT SCHEDULED). Next shift: the same."),
     ("qc", "B3", "Crew (EE): type the number of people on each running line."),
-    ("qc", "B4", "Click the yellow box Schedule as of: Ctrl+; then a space, then Ctrl+Shift+; (now). Press Enter."),
+    ("qc", "B4", "Click Set time to now (or double-click the yellow box Schedule as of)."),
     ("qc", "B5", "Press Ctrl+S."),
-    ("qc", "C1", "Tab 4. Schedule: press Ctrl+P, pick the printer, click Print."),
+    ("qc", "C1", "Click Print 4. Schedule on 3. Lines (or tab 4. Schedule, Ctrl+P), pick the printer, click Print."),
     ("qc", "C2", "Check: your shift and today's date at the top, each line's status, no red line under the title."),
     ("qc", "C3", "Post it."),
     ("qc", "C4", "Press Ctrl+S."),
@@ -2693,9 +3290,9 @@ HOW_ROWS = [
     ("kv", "For", "Anyone printing the Production Schedule (1st, 2nd or 3rd shift). About 5 minutes."),
     ("kv", "This file", "Replaces the Production Schedule tab of the JDE Sched web app and the JDE Packaging Schedule "
                         "printout, in one. It works in Excel 2010 and newer, Excel for Mac and Excel on the web / "
-                        "Teams. One small macro hides the empty notes rows on 4. Schedule by itself - click Enable "
-                        "Content when Excel asks. Without it (Excel on the web, or macros off) everything still "
-                        "works; those thin rows just stay."),
+                        "Teams. Its macros hide the empty notes rows on 4. Schedule and run the buttons on 3. Lines - "
+                        "click Enable Content when Excel asks. Without them (Excel on the web, or macros off) "
+                        "everything still works by hand: the buttons do nothing and those thin rows just stay."),
     ("kv", "Mac", "The keys below are for Windows. On a Mac use Cmd instead of Ctrl (Cmd+C, Cmd+V, Cmd+Z, Cmd+Y, "
                   "Cmd+S, Cmd+P, Cmd+H). Today's date is Control+; and the time Cmd+; on a Mac."),
     ("gap",),
@@ -2780,18 +3377,27 @@ HOW_ROWS = [
     ("gap",),
     ("part", "B", "Set the lines - each line's status this shift and next shift, the crew, and the time the "
                   "schedule is from."),
+    ("kv", "The buttons", "Guided setup (green) asks you step by step: paste today's schedule, the shift, the "
+                          "time, the missing lines, each line this shift and its crew, the next shift - then it "
+                          "offers to print. Or one step at a time: Paste today's schedule, Add missing lines, This "
+                          "shift: all RUNNING (each line in today's schedule that has no status yet), Next shift = "
+                          "this shift, Clear statuses (this shift, next shift and crew - for a new day), Set time to "
+                          "now, Print 4. Schedule. Double-click a status to switch RUNNING / NOT SCHEDULED, a "
+                          "Breaks & lunch to switch Yes / No, the yellow time box for now. Ctrl+Z can't undo a "
+                          "button: the ones that would overwrite something ask first."),
     ("step", "1", "Click the tab 3. Lines. The left table (yellow cells) is your list of production lines - you "
                   "type there. The right table lists the lines in today's schedule and fills itself in; its first "
                   "column, Its row on the left, says which row of the left table belongs to that line. A line is "
                   "found by its number: VPKL05 in the file is LINE 5 in the list."),
-    ("step", "2a", "A line marked NOT IN YOUR LIST (in red) can't get a status yet: type its name in an empty row of "
-                   "the left table. (The names are also listed under Lines to add, on the far right.)"),
+    ("step", "2a", "A line marked NOT IN YOUR LIST (in red) can't get a status yet: click Add missing lines, or "
+                   "type its name in an empty row of the left table. (The names are also listed under Lines to "
+                   "add, on the far right.)"),
     ("careful", "CAREFUL", "Copying names from Lines to add? Paste them with right-click > Paste Options > Values "
                            "(123) - NOT Ctrl+V. Ctrl+V pastes formulas and Excel warns about a circular reference: "
                            "press Ctrl+Z and paste as Values, or type the names."),
     ("step", "2b", "To take a line off your list, clear its whole row (Line, This shift, Next shift, Crew)."),
     ("step", "3", "This shift: click the cell of each line in today's schedule, click the small arrow and pick its "
-                  "status. RUNNING, PARTIAL SHIFT and OVERTIME lines get estimated times; READY LINE (set up, ready "
+                  "status (or double-click it: RUNNING / NOT SCHEDULED). RUNNING, PARTIAL SHIFT and OVERTIME lines get estimated times; READY LINE (set up, ready "
                   "to run), PM / CLEANING and NOT SCHEDULED lines don't. Empty = the Line Status column of your file "
                   "(Ready, PM, OT), else NOT SCHEDULED: a line only runs when you pick RUNNING (or type Yes). "
                   "NONE = no status, even if your file has one."),
@@ -2799,8 +3405,9 @@ HOW_ROWS = [
                   "NOT SCHEDULED; NONE = no status."),
     ("step", "5", "Crew (EE): type the number of people on each line (it prints in the EE column). Leave it empty if "
                   "you don't use it."),
-    ("step", "6", "Click the yellow box Schedule as of (top right). Press Ctrl+; (semicolon: today's date), a space, "
-                  "and Ctrl+Shift+; (the time now), then Enter. Better still, type the time today's file was taken "
+    ("step", "6", "Click Set time to now (or double-click the yellow box Schedule as of, top right; without "
+                  "macros: click it, press Ctrl+; for today's date, a space, Ctrl+Shift+; for the time, Enter). "
+                  "Better still, type the time today's file was taken "
                   "(for example 10/29/2026 5:15 AM): the % Complete is from then, and the estimated times count "
                   "from it. A date without a time counts from the time it is now."),
     ("see", "", "You should see: today's date and time in the yellow box, and no red CHECK message next to it."),
@@ -3186,15 +3793,43 @@ def audit(wb):
     return len(texts)
 
 
-def deterministic_zip(data, vba=None):
+def deterministic_zip(data, vba=None, drawings=None):
     """Rewrite the package with fixed timestamps so rebuilds are identical
-    (and, given a vbaProject.bin, as a macro-enabled .xlsm)."""
+    (and, given a vbaProject.bin, as a macro-enabled .xlsm). drawings: {sheet
+    part: DrawingML} - a drawing (the buttons) added to a sheet."""
     src = zipfile.ZipFile(io.BytesIO(data))
     out = io.BytesIO()
     stamp = FIXED_TIME.strftime("%Y-%m-%dT%H:%M:%SZ")
+    drawings = drawings or {}
+    rel_ns = b"http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    rels_new = {}                                   # sheet rels part -> drawing part
+    extra = {}                                      # new parts
+    for k, (sheet, xml) in enumerate(sorted(drawings.items()), start=1):
+        rels = sheet.replace("worksheets/", "worksheets/_rels/") + ".rels"
+        rels_new[rels] = f"../drawings/drawing_jde{k}.xml"
+        extra[f"xl/drawings/drawing_jde{k}.xml"] = xml.encode()
+    rel = lambda target: (f'<Relationship Id="rIdJDE1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+                          f'relationships/drawing" Target="{target}"/>').encode()
+    for rels, target in rels_new.items():
+        if rels not in src.namelist():
+            extra[rels] = (b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://'
+                           b'schemas.openxmlformats.org/package/2006/relationships">' + rel(target) + b"</Relationships>")
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as dst:
         for info in src.infolist():
             body = src.read(info.filename)
+            if info.filename in drawings:
+                if b'xmlns:r="' not in body[:1000]:
+                    body = body.replace(b"<worksheet ", b'<worksheet xmlns:r="' + rel_ns + b'" ', 1)
+                m = re.search(rb"<(legacyDrawing|legacyDrawingHF|picture|oleObjects|controls|webPublishItems|"
+                              rb"tableParts|extLst)\b|</worksheet>", body)
+                body = body[:m.start()] + b'<drawing r:id="rIdJDE1"/>' + body[m.start():]
+            if info.filename in rels_new:
+                body = body.replace(b"</Relationships>", rel(rels_new[info.filename]) + b"</Relationships>")
+            if info.filename == "[Content_Types].xml":
+                for part in extra:
+                    if part.startswith("xl/drawings/"):
+                        body = body.replace(b"</Types>", f'<Override PartName="/{part}" ContentType="application/'
+                                            f'vnd.openxmlformats-officedocument.drawing+xml"/></Types>'.encode())
             if info.filename.startswith("xl/worksheets/sheet"):
                 # formulas carry no cached value (Excel calculates on load): an
                 # empty <v></v> per formula cell would push Calc's rows past the
@@ -3216,10 +3851,12 @@ def deterministic_zip(data, vba=None):
             zi.external_attr = 0o644 << 16
             dst.writestr(zi, body, compresslevel=9)
         if vba is not None:
-            zi = zipfile.ZipInfo("xl/vbaProject.bin", date_time=(1980, 1, 1, 0, 0, 0))
+            extra["xl/vbaProject.bin"] = vba
+        for name, body in extra.items():
+            zi = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
             zi.compress_type = zipfile.ZIP_DEFLATED
             zi.external_attr = 0o644 << 16
-            dst.writestr(zi, vba, compresslevel=9)
+            dst.writestr(zi, body, compresslevel=9)
     return out.getvalue()
 
 
@@ -3301,7 +3938,9 @@ def main():
     out = DEMO_OUT if demo else OUT
     buf = io.BytesIO()
     wb.save(buf)
-    out.write_bytes(deterministic_zip(buf.getvalue(), vba_bin()))
+    lines_part = f"xl/worksheets/sheet{wb.sheetnames.index(S_LINES) + 1}.xml"
+    out.write_bytes(deterministic_zip(buf.getvalue(), vba_bin(),
+                                      {lines_part: button_drawing(wb[S_LINES], LINES_BUTTONS, 1)}))
     print(f"Wrote {out} ({out.stat().st_size // 1024} KB, {n} formulas audited)")
 
 
