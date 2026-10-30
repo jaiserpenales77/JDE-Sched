@@ -29,7 +29,7 @@ The daily job is three steps (load, set the lines, print); the first tab,
 | 5. Settings | Shift clock (1st shift start, break and lunch hours, their output), line efficiency, changeover minutes |
 | 6. Line Rates | Bottles per hour by line and item (2,263 rows from the router; add or paste more) |
 | 7. Washroom | The washroom attendants' prep list: every changeover expected this shift, first to last - fills itself in |
-| 8. Products | The items of the router's work orders (292, in `products.csv`), to tick Oily or Powdery for 7. Washroom |
+| 8. Products | The items of the router's work orders (292, in `products.csv`), to tick Oily or Powdery for 7. Washroom, and International or Domestic (filled in from the router) |
 
 Everything on 2-4 is worksheet formulas: the import, grouping, Seq order,
 changeover codes and highlights are ported from `src/importColumns.ts`,
@@ -52,7 +52,10 @@ holds the machinery.
   A line that isn't scheduled prints in grey.
 - PROGRESS / CHANGEOVER: ten dots and the % on the running work order; on the
   next ones the changeover type (Minor · S1, Minor · Count, MAJOR · S3,
-  MAJOR · S4) in its color. LEFT / C.O.: bottles left (32.9k), then the
+  MAJOR · S4) in its color, with · INTL after it for an international work
+  order (its item is International on 8. Products - filled in from the
+  router, editable - or, for an item not on it, INTL / INTERNATIONAL in its
+  description). LEFT / C.O.: bottles left (32.9k), then the
   changeover minutes.
 - CAP as size-type (45-CRC), in bold orange when it differs from the work
   order before it (the app's Cap Change). CT in red bold on a count change.
@@ -61,8 +64,9 @@ holds the machinery.
   changeover into it changes from the work order before it: Cap / Count /
   Bottle Change (in one phrase, e.g. Cap & Bottle Change; Count Change only
   on an S1 Count Change), Add / Remove
-  / Change Cotton, Add / Remove / Change Desiccant, and Dumping for a dumping
-  work order (bulk A662 / A624) - only for changeovers that start before the
+  / Change Cotton, Add / Remove / Change Desiccant, Dumping for a dumping
+  work order (bulk A662 / A624), and Prepare For INTERNATIONAL WO for an
+  international one - only for changeovers that start before the
   end of the shift (the same ones the summary counts). Under it, on its own
   row, **Remarks:** and its remark. A long row shrinks to fit. Merged cells,
   font sizes and row heights can't follow the data, so both rows are there
@@ -150,7 +154,9 @@ Excel compiles the source when it opens the file). The macro is not signed.
 (Merge1, work orders 2024-2026): ITEM, DESCRIPTION, the bulk descriptions,
 the dosage form from tProduct (Attribute16), a suggestion (Oily when the form
 is a softgel or the item's or its bulk's description has SG / LSG / S/G), the
-number of work orders and the latest one.
+market from tProduct (Attribute08: International when any line has it so,
+else Domestic; empty for an item not in tProduct), the number of work orders
+and the latest one.
 `line_rates.csv` (LINE, ITEM, DESCRIPTION, BOTTLES PER HOUR, SOURCE) is the
 Router BPH of each line and item from the router's tProduct table, or the JDE
 router rate (10000 / JDE_Router) where there is no Router BPH.

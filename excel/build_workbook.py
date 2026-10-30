@@ -40,7 +40,8 @@ Sheets (tab order)
   7. Washroom         the washroom attendants' prep list: this shift's
                       changeovers, first to last (formulas only, protected)
   8. Products         the work orders' items (from the router) to tick Oily or
-                      Powdery for 7. Washroom (unprotected), hidden KEY column I
+                      Powdery for 7. Washroom and International or Domestic
+                      (unprotected), hidden KEY column J
   Calc                hidden helper sheet (protected), layout below
 
 Workbook-scope defined names
@@ -334,6 +335,7 @@ EXPORT_HEADERS = ["LINE", "WO", "SEQ", "ITEM", "PRODUCT DESCRIPTION", "Count", "
 
 # Row highlights and the count-change red (src/seedData.ts defaultSchedulePrintSettings).
 C_HEADER, C_ALLERGEN, C_OIL, C_BULK = "D9D9D9", "F8CBAD", "FFF2CC", "BDD7EE"
+C_INTL = "DDEBF7"            # International on 8. Products
 C_COUNT_CHANGED = "FF0000"
 
 # 4. Schedule columns: (title, Calc output key). The layout combines the app's
@@ -717,7 +719,7 @@ W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "
           # combined report (v2): the line's number, statuses and crew (from the
           # lines table LB), changeovers, notes, estimates
           "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "cotv", "cotprev", "cotnote",
-          "desv", "szchg", "desnote", "conote", "colist", "ptype", "oily", "wm", "wrk", "note", "cotext", "remtext", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
+          "desv", "szchg", "desnote", "conote", "colist", "pidx", "ptype", "oily", "intl", "wm", "wrk", "note", "cotext", "remtext", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
           "est", "estt", "nextco", "cot_t", "prog", "left", "capc"])
 # (Calc rows 5-704 hold a window row and a report slot: keep their XML under
 # 32 KB - the zip's compression window - or the file grows by about a fifth)
@@ -819,12 +821,14 @@ def window_v2(ws, c, A, s, r_):
                       f'+4*{diff("bottle")})')
     # Changeover notes - only when the changeover into it starts (the work
     # order before it ends) before the end of the shift: the cap / count /
-    # bottle change, the cotton, the desiccant, and Dumping for a dumping work
-    # order (bulk A662 / A624, as its highlight)
+    # bottle change, the cotton, the desiccant, Dumping for a dumping work
+    # order (bulk A662 / A624, as its highlight), and Prepare For INTERNATIONAL
+    # WO for an international one
     sz, te = A["szchg"], ix("est", kp)
     part = lambda n: f'IF({A[n]}<>"",", "&{A[n]},"")'
     lst = (f'IF({sz}=0,"",", "&INDEX(${CO_SIZE_COL}$5:${CO_SIZE_COL}${4 + len(CO_SIZE)},{sz}))&{part("cotnote")}&'
-           f'{part("desnote")}&IF(OR(EXACT({A["bulk"]},"A662"),EXACT({A["bulk"]},"A624")),", Dumping","")')
+           f'{part("desnote")}&IF(OR(EXACT({A["bulk"]},"A662"),EXACT({A["bulk"]},"A624")),", Dumping","")'
+           f'&IF({A["intl"]}=1,", Prepare For INTERNATIONAL WO","")')
     ws[c["colist"]] = f'=IF(OR({keep}=0,{fw}=1),"",MID({lst},3,250))'
     ws[c["conote"]] = f'=IF(OR({te}="",{te}>={s["sh_end"]}),"",{A["colist"]})'
     # 7. Washroom: oily (a softgel: the description has a word of 5. Settings'
@@ -834,11 +838,19 @@ def window_v2(ws, c, A, s, r_):
     # (ties by paste order)
     d = f'" "&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({A["desc"]}&"","-"," "),","," "),"("," "),")"," ")&" "'
     # (the item's tick on 8. Products first: Oily or Powdery)
-    ws[c["ptype"]] = (f'=IF({keep}=0,"",IFERROR(UPPER(TRIM(INDEX({PRODS}!$F$5:$F${4 + PROD_ROWS},MATCH(UPPER('
-                      f'TRIM({A["item"]}&"")),{PRODS}!$I$5:$I${4 + PROD_ROWS},0))&"")),""))')
+    ws[c["pidx"]] = (f'=IF({keep}=0,0,IFERROR(MATCH(UPPER(TRIM({A["item"]}&"")),{PRODS}!$J$5:$J${4 + PROD_ROWS},'
+                     f'0),0))')
+    px = A["pidx"]
+    ptick = lambda col: f'IF({px}=0,"",UPPER(TRIM(INDEX({PRODS}!${col}$5:${col}${4 + PROD_ROWS},{px})&"")))'
+    ws[c["ptype"]] = f"={ptick('F')}"
     pt = A["ptype"]
     ws[c["oily"]] = (f'=IF({keep}=0,0,IF({pt}="OILY",1,IF({pt}="POWDERY",0,IF(SUMPRODUCT(ISNUMBER(SEARCH(" "&'
                      f'TRIM(SET_OILY&"")&" ",{d}))*(TRIM(SET_OILY&"")<>""))>0,1,0))))')
+    # international: the item's International / Domestic on 8. Products, else
+    # INTL or INTERNATIONAL in its description
+    mk, dd = ptick("G"), f'" "&{A["desc"]}&" "'
+    ws[c["intl"]] = (f'=IF({keep}=0,0,IF({mk}="INTERNATIONAL",1,IF({mk}="DOMESTIC",0,'
+                     f'IF(OR(ISNUMBER(SEARCH(" INTL ",{dd})),ISNUMBER(SEARCH(" INTERNATIONAL ",{dd}))),1,0))))')
     ws[c["wm"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF({te}="","",IF(AND({te}>={s["asof"]},{te}<{s["sh_end"]}),'
                    f'ROUND({te}*1440,0),"")))')
     ws[c["wrk"]] = (f'=IF({A["wm"]}="","",COUNTIF({wr("wm")},"<"&{A["wm"]})+COUNTIFS({wr("wm")},{A["wm"]},'
@@ -879,7 +891,7 @@ def window_v2(ws, c, A, s, r_):
     n = f"MAX(0,MIN(10,ROUND({pa}*10,0)))"
     label = "".join(f'IF({cc}="{code}","{lab}",' for code, lab, _ in CO_LABELS) + '"—"' + ")" * len(CO_LABELS)
     ws[c["prog"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({pa}="","Not Started Yet",REPT("●",{n})&REPT("○",10-{n})'
-                     f'&"  "&ROUND({pa}*100,0)&"%"),{label}))')
+                     f'&"  "&ROUND({pa}*100,0)&"%"),{label}&IF(AND({cc}<>"",{A["intl"]}=1)," · INTL","")))')
     b = A["bott"]
     ws[c["left"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({b}="","",IF({b}>=1000,ROUND({b}/1000,1)&"k",{b}&"")),'
                      f'IF({A["comin"]}="","",{A["comin"]}&" min")))')
@@ -2044,7 +2056,8 @@ def build_rates(wb):
 
 
 PROD_COLS = [("ITEM", 12), ("DESCRIPTION", 38), ("BULK (from the work orders)", 44), ("ROUTER FORM", 26),
-             ("SUGGESTED", 11), ("OILY OR POWDERY", 14), ("WORK ORDERS", 10), ("LAST WORK ORDER", 13)]
+             ("SUGGESTED", 11), ("OILY OR POWDERY", 14), ("INTERNATIONAL OR DOMESTIC", 16), ("WORK ORDERS", 10),
+             ("LAST WORK ORDER", 13)]
 
 
 def build_products(wb):
@@ -2052,14 +2065,19 @@ def build_products(wb):
     Router's work order table), for the supervisor to tick Oily or Powdery
     (7. Washroom uses the tick; an item without one goes by the oily words on
     5. Settings). SUGGESTED is the router's dosage form (SoftGel) or SG / LSG
-    / S/G in the item's or its bulk's description - a hint only."""
+    / S/G in the item's or its bulk's description - a hint only. International
+    or Domestic is filled in from the router (tProduct's market, International
+    when any line has it so) and can be changed: an International work order
+    shows INTL by its changeover type and "Prepare For INTERNATIONAL WO" in its
+    changeover notes (an item without one: INTL or INTERNATIONAL in its
+    description)."""
     import csv
     ws = wb.create_sheet(S_PROD)
     ws.sheet_properties.tabColor = "7F7F7F"
     ws.sheet_view.showGridLines = False
     for i, (_, w) in enumerate(PROD_COLS, start=1):
         ws.column_dimensions[L(i)].width = w
-    put(ws, "A1", "8. Products - oily or powdery (for 7. Washroom)", font=font(16, True))
+    put(ws, "A1", "8. Products - oily or powdery (for 7. Washroom), international or domestic", font=font(16, True))
     for i, (h, _) in enumerate(PROD_COLS, start=1):
         put(ws, f"{L(i)}4", h, font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK,
             alignment=Alignment(wrap_text=True, vertical="center", horizontal="center"))
@@ -2073,26 +2091,32 @@ def build_products(wb):
         r = 5 + i
         pr = prods[i] if i < len(prods) else None
         vals = ([pr["ITEM"], pr["DESCRIPTION"], pr["BULK"], pr["ROUTER FORM"], pr["SUGGESTED"], None,
-                 int(pr["WORK ORDERS"]), pr["LAST WORK ORDER"]] if pr else [None] * 8)
+                 pr["MARKET"] or None, int(pr["WORK ORDERS"]), pr["LAST WORK ORDER"]] if pr else [None] * 9)
         for j, v in enumerate(vals, start=1):
             c = ws.cell(r, j, v)
-            c.font = font(10, j in (1, 6))
+            c.font = font(10, j in (1, 6, 7))
             c.border = THIN_GRAY
-            c.alignment = Alignment(horizontal="center" if j in (5, 6, 7, 8) else "left", vertical="center",
+            c.alignment = Alignment(horizontal="center" if j >= 5 else "left", vertical="center",
                                     shrink_to_fit=j in (2, 3, 4))
-            if j == 6:
+            if j in (6, 7):
                 c.fill = INPUT_FILL
-        ws[f"I{r}"] = f'=IF(TRIM(A{r}&"")="","",UPPER(TRIM(A{r}&"")))'
-    put(ws, "I4", "KEY", font=font(9, True))
-    ws.column_dimensions["I"].hidden = True
+        ws[f"J{r}"] = f'=IF(TRIM(A{r}&"")="","",UPPER(TRIM(A{r}&"")))'
+    put(ws, "J4", "KEY", font=font(9, True))
+    ws.column_dimensions["J"].hidden = True
     dv = DataValidation(type="list", formula1='"Oily,Powdery"', allow_blank=True, showErrorMessage=True,
                         errorTitle="Oily or Powdery", error="Pick Oily or Powdery (or leave it empty).")
     ws.add_data_validation(dv)
     dv.add(f"F5:F{last}")
+    dv = DataValidation(type="list", formula1='"International,Domestic"', allow_blank=True, showErrorMessage=True,
+                        errorTitle="International or Domestic",
+                        error="Pick International or Domestic (or leave it empty).")
+    ws.add_data_validation(dv)
+    dv.add(f"G5:G{last}")
+    cf(ws, f"G5:G{last}", '$G5="International"', C_INTL, font(10, True, "1F3864"))
     for col in ("E", "F"):
         cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL if col == "F" else None, font(10, True, "7F6000"))
         cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED" if col == "F" else None, font(10, True, "595959"))
-    ws.auto_filter.ref = f"A4:H{4 + len(prods)}"
+    ws.auto_filter.ref = f"A4:I{4 + len(prods)}"
     ws.freeze_panes = "A5"
     fit_width(ws, "landscape")
     ws.print_title_rows = "4:4"
@@ -2339,7 +2363,8 @@ def build_schedule(wb):
     parts = [("CHANGEOVER  ", C_TITLE, True)]
     for _, lab, col in CO_LABELS:
         parts += [("● ", col, False), (lab.replace(" · ", " ") + "   ", col, lab.startswith("MAJOR"))]
-    parts += [("CAP", C_CAP_CHANGED, True), (" = new cap ", "262626", False)]
+    parts += [("CAP", C_CAP_CHANGED, True), (" = new cap   ", "262626", False), ("INTL", C_TITLE, True),
+              (" = international ", "262626", False)]
     put(ws, f"{split}2", rich(parts), fill=light, font=font(BODY_PT),
         alignment=Alignment(horizontal="right", vertical="center", indent=1, shrink_to_fit=True))
     ws.row_dimensions[2].height = 16
@@ -2834,8 +2859,9 @@ HOW_ROWS = [
                   "different cap from the work order before it (the web app's Cap Change)."),
     ("kv", "NOTES", "Thin rows under a work order, from SQ to EST. TIME, in small italics on cream. Changeover Notes: what the changeover into the work order changes from the one "
                     "before it - Cap / Count / Bottle Change (Count Change only on an S1 Count Change), Add / Remove / Change Cotton (the COT column of your "
-                    "file: Yes for Y / Yes / X, nothing for N or blank), Add / Remove / Change Desiccant, and "
-                    "Dumping (bulk A662 / A624); only for changeovers that start before the end of the shift (the "
+                    "file: Yes for Y / Yes / X, nothing for N or blank), Add / Remove / Change Desiccant, "
+                    "Dumping (bulk A662 / A624), and Prepare For INTERNATIONAL WO (an international work order: "
+                    "8. Products); only for changeovers that start before the end of the shift (the "
                     "summary's count at the top). Under it, on its own row, Remarks: and its remark. A long row "
                     "gets smaller to fit - the whole remark is on 1. Paste Schedule."),
     ("swatch", C_ALLERGEN, "Allergen (anything but N) - the row, from WO to EST. TIME. Highlights go allergen "
@@ -2849,6 +2875,9 @@ HOW_ROWS = [
     ("kv", "Minor · Count", "The count differs (S1 Count Change). Amber."),
     ("kv", "MAJOR · S3", "The bulk item differs. Purple."),
     ("kv", "MAJOR · S4", "The bottle size differs. Red."),
+    ("kv", "· INTL", "Added to the code (MAJOR · S4 · INTL) when the work order is international: its item is "
+                     "International on 8. Products (filled in from the router - change it there), or, for an item "
+                     "not on it, INTL or INTERNATIONAL in its description."),
     ("text", "", "Each code is shown on the work order the changeover happens on: compared with the work order "
                  "before it on the same line. A dash when either Bottle Size is missing."),
     ("gap",),
