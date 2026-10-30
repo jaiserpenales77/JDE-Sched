@@ -83,11 +83,11 @@ holds the machinery.
 The washroom attendants' prep list: every changeover expected from Schedule
 as of to the end of this copy's shift (other shifts may run other lines - the
 same changeovers the summary on 4. Schedule counts), first to last, numbered,
-with the totals on top (changeovers, oily / powdery parts, Cremer / Merrill).
-Per changeover: the time; the line and its filler - Cremer (lines
+with the totals on top (changeovers, oily / powdery parts, allergens, Cremer /
+Merrill). Per changeover: the time; the line and its filler - Cremer (lines
 1, 5, 9, 10, 12) or Merrill (3, 7, 8, 11), editable on 5. Settings; the
-changeover type; the work order coming off the line (its parts are washed)
-and its type - **Oily** (a softgel) or **Powdery** (a tablet): the item's
+changeover type and its minutes; the work order coming off the line (its
+parts are washed), its allergen (orange) and its type - **Oily** (a softgel) or **Powdery** (a tablet): the item's
 tick on **8. Products**, else SG, LSG or S/G in the description (the oily
 words on 5. Settings, where more can be added; they don't change 4.
 Schedule's Oil highlight);

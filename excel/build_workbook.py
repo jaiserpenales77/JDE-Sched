@@ -2099,8 +2099,9 @@ def build_products(wb):
     return ws
 
 
-WASH_COLS = [("#", 4), ("TIME", 14), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13),
-             ("OFF THE LINE - PARTS TO WASH", 40), ("TYPE", 9), ("NEXT ON THE LINE", 40), ("TYPE", 9)]
+WASH_COLS = [("#", 4), ("TIME", 14), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13), ("MIN", 7),
+             ("OFF THE LINE - PARTS TO WASH", 38), ("TYPE", 9), ("ALLERGEN", 10), ("NEXT ON THE LINE", 38),
+             ("TYPE", 9)]
 
 
 def build_wash(wb):
@@ -2134,9 +2135,9 @@ def build_wash(wb):
     ws.row_dimensions[2].height = 16
     rng_ = lambda col: f"${col}$5:${col}${last}"
     ws.merge_cells(f"A3:{lc}3")
-    put(ws, "A3", (f'=COUNT({wm})&" changeovers  |  Oily parts: "&COUNTIF({rng_("G")},"Oily")&"  ·  Powdery parts: "'
-                   f'&COUNTIF({rng_("G")},"Powdery")&"  |  Cremer: "&COUNTIF({rng_("D")},"Cremer")&"  ·  Merrill: "'
-                   f'&COUNTIF({rng_("D")},"Merrill")&IF(COUNT({wm})>{WASH_ROWS},"  |  only the first {WASH_ROWS} '
+    put(ws, "A3", (f'=COUNT({wm})&" changeovers  |  Oily parts: "&COUNTIF({rng_("H")},"Oily")&"  ·  Powdery parts: "'
+                   f'&COUNTIF({rng_("H")},"Powdery")&"  |  Allergen: "&COUNTIF({rng_("I")},"?*")&"  |  Cremer: "'
+                   f'&COUNTIF({rng_("D")},"Cremer")&"  ·  Merrill: "&COUNTIF({rng_("D")},"Merrill")&IF(COUNT({wm})>{WASH_ROWS},"  |  only the first {WASH_ROWS} '
                    f'are listed","")'),
         font=font(10, True, "262626"), alignment=Alignment(horizontal="left", vertical="center", indent=1))
     ws.row_dimensions[3].height = 18
@@ -2149,7 +2150,7 @@ def build_wash(wb):
     put(ws, "N4", "K BEFORE", font=font(8, True))
     ws.column_dimensions["M"].hidden = ws.column_dimensions["N"].hidden = True
     filler = lambda ln, lst: f'ISNUMBER(SEARCH(","&{ln}&",",","&SUBSTITUTE({lst}&""," ","")&","))'
-    center = {"#", "FILLER", "TYPE"}
+    center = {"#", "FILLER", "TYPE", "MIN", "ALLERGEN"}
     grid = side("D9D9D9")
     for n in range(1, WASH_ROWS + 1):
         r = 4 + n
@@ -2157,6 +2158,7 @@ def build_wash(wb):
         ws[f"M{r}"] = f"=IFERROR(MATCH({n},{rk},0),0)"
         ws[f"N{r}"] = f"=IF({k}=0,0,{at('kprev', k)})"
         t = f"({at('wm', k)}/1440)"
+        al = f'TRIM({at("allergen", kp)}&"")'               # the allergen of what comes off
         ln = at("lnum", k)
         f = {
             "A": f"={n}",
@@ -2164,22 +2166,25 @@ def build_wash(wb):
             "C": f"={at('dname', k)}",
             "D": f'=IF({ln}="","",IF({filler(ln, "SET_CREMER")},"Cremer",IF({filler(ln, "SET_MERRILL")},"Merrill","")))',
             "E": f"={at('prog', k)}",
-            "F": f'={at("item", kp)}&"   "&{at("desc", kp)}',
-            "G": f'=IF({at("oily", kp)}=1,"Oily","Powdery")',
-            "H": f'={at("item", k)}&"   "&{at("desc", k)}',
-            "I": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
+            "F": f'=IF({at("comin", k)}="","",{at("comin", k)}&" min")',
+            "G": f'={at("item", kp)}&"   "&{at("desc", kp)}',
+            "H": f'=IF({at("oily", kp)}=1,"Oily","Powdery")',
+            "I": f'=IF(OR({al}="",UPPER({al})="N"),"",{al})',
+            "J": f'={at("item", k)}&"   "&{at("desc", k)}',
+            "K": f'=IF({at("oily", k)}=1,"Oily","Powdery")',
         }
         for i, (h, _) in enumerate(WASH_COLS, start=1):
             col = L(i)
             body = f[col][1:]
             c = ws.cell(r, i, f'=IF({k}=0,"",{body})')
-            c.font = font(BODY_PT + 1, col in "ACE")
+            c.font = font(BODY_PT + 1, col in "ACEF")
             c.alignment = Alignment(horizontal="center" if h in center else "left", vertical="center",
                                     shrink_to_fit=True)
             c.border = Border(bottom=grid)
         ws.row_dimensions[r].height = 15
     # looks: oily / powdery, the changeover in its color, the filler
-    for col in ("G", "I"):
+    cf(ws, f"I5:I{last}", '$I5<>""', C_ALLERGEN, font(BODY_PT, True, "843C0C"))
+    for col in ("H", "K"):
         cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL, font(BODY_PT, True, "7F6000"))
         cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))
     for _, lab, color in CO_LABELS:
@@ -2929,9 +2934,10 @@ HOW_ROWS = [
                          "so only RUNNING, PARTIAL SHIFT and OVERTIME lines with a line rate are on it. Print it the "
                          "same way (Ctrl+P) and give it to the washroom."),
     ("kv", "The columns", "TIME of the changeover; the LINE and its FILLER (Cremer or Merrill, from "
-                          "5. Settings); the CHANGEOVER type; OFF THE LINE - the work order whose parts come off to "
-                          "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); and NEXT ON THE LINE "
-                          "and its type."),
+                          "5. Settings); the CHANGEOVER type and its MINutes (5. Settings) - how long the line is "
+                          "down; OFF THE LINE - the work order whose parts come off to be washed - its TYPE: Oily "
+                          "(a softgel) or Powdery (a tablet) and its ALLERGEN (in orange: wash for allergens); and NEXT "
+                          "ON THE LINE and its type."),
     ("kv", "Oily or powdery", "By the item's tick on 8. Products (Oily or Powdery - the supervisor picks it once "
                               "per item). An item without one: oily (a softgel) when its description has SG, LSG "
                               "or S/G (the oily words on 5. Settings), else powdery. (This list is "
