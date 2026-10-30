@@ -353,7 +353,7 @@ ROW_HEIGHT = 11.25     # points: one line of 8 pt text
 # HL000430, BULK BU001565, a 6-digit quantity, ten progress dots and "100%",
 # "10/29 12:51 PM"). Longer values shrink to fit.
 SCHED_WIDTHS = {
-    "LINE": 9.5, "WO": 7.3, "SQ": 3.6, "ITEM": 8.1, "ITEM DESCRIPTION": 25.0, "CT": 4.4, "BULK": 8.3,
+    "LINE": 11.0, "WO": 7.3, "SQ": 3.6, "ITEM": 8.1, "ITEM DESCRIPTION": 25.0, "CT": 4.4, "BULK": 8.3,
     "BTL": 4.6, "CAP": 7.0, "A": 3.0, "DES": 5.2, "WO QTY": 7.2, "PROGRESS / CHANGEOVER": 15.5,
     "LEFT / C.O.": 7.6, "EE": 3.4, "EST. TIME": 12.2, "NEXT SHIFT": 12.0,
 }
@@ -387,8 +387,7 @@ STATUSES = [
 ]
 STATUS_NAMES = [st for st, _, _, _ in STATUSES]
 # the status chips (under the line name, NEXT SHIFT): bold text in this ink on
-# the status's light tint, outlined in its color (gold and orange darker, to
-# read on the tint)
+# the status's light tint (gold and orange darker, to read on the tint)
 STATUS_INK = {"RUNNING": "2E7D32", "PARTIAL SHIFT": "C55A11", "OVERTIME": "9C6500", "READY LINE": "7030A0",
               "PM / CLEANING": "0070C0", "NOT SCHEDULED": "6E6E6E"}
 # Statuses whose line is producing this shift: they get estimated times.
@@ -2249,8 +2248,7 @@ def add_conditional_formats(ws, last_row):
 
     grey = font(BODY_PT, False, C_NOT_SCHED_TEXT)
     # LINE: the line's tab on its light tint: the name in bold navy and right
-    # under it the status tag, in bold in the status's ink and outlined in its
-    # color (a line with one work order: its name in that ink); the box's
+    # under it the status tag, in bold in the status's ink (a line with one work order: its name in that ink); the box's
     # left side in the status color. (Role 3 / 4 at edge 3 or 4 is a work
     # order's row or a notes row - they look alike.)
     ink = {0: C_TITLE, **{i: STATUS_INK[n] for i, (n, _, _, _) in enumerate(STATUSES, start=1)}}
@@ -2258,11 +2256,7 @@ def add_conditional_formats(ws, last_row):
         for st, strong, txt, tint in st_colors:
             fr = frame_of[st]
             for e in edges:
-                if role == 2:
-                    chip = side(strong if st else C_FRAME)
-                    b = Border(left=fr, right=chip, top=chip, bottom=fr if e == 3 else chip)
-                else:
-                    b = Border(left=fr, right=inner, top=fr if e in (1, 2) else None, bottom=fr if e in (1, 3) else None)
+                b = Border(left=fr, right=inner, top=fr if e in (1, 2) else None, bottom=fr if e in (1, 3) else None)
                 if role in (2, 4):
                     fc, fo = tint, font(LINE_PT, True, ink[st])
                 else:
@@ -2304,18 +2298,14 @@ def add_conditional_formats(ws, last_row):
     # line's status tag (looks 1-6, 7 = none), plain on the other work order
     # rows (8) and the notes rows (9)
     q = rng(("Q", "Q"))
-    # (the chip: the next status's tint, bold ink, outlined in its color -
-    # the box's own top / bottom / right side where it is on the edge)
-    chips = [(v, strong, STATUS_INK[n], tint) for v, (n, strong, _, tint) in enumerate(STATUSES, start=1)]
-    for v, strong, txt, tint in chips + [(7, None, None, None), (8, None, None, None)]:
+    # (the chip: the next status's tint and bold ink; no lines across the
+    # column but the box's own top and bottom)
+    chips = [(v, STATUS_INK[n], tint) for v, (n, _, _, tint) in enumerate(STATUSES, start=1)]
+    for v, txt, tint in chips + [(7, None, None), (8, None, None)]:
         for e in (1, 2, 3, 4):
             for st in range(7):
                 fr = frame_of[st]
-                if strong:
-                    chip = side(strong)
-                    b = Border(left=chip, right=fr, top=fr if e in (1, 2) else chip, bottom=fr if e in (1, 3) else chip)
-                else:
-                    b = Border(left=inner, right=fr, top=fr if e in (1, 2) else inner, bottom=fr if e in (1, 3) else None)
+                b = Border(left=inner, right=fr, top=fr if e in (1, 2) else None, bottom=fr if e in (1, 3) else None)
                 cf(ws, q, f"$AL{r0}+$AP{r0}={st * 1000 + v * 10 + e}", tint, font(BODY_PT, True, txt) if txt else None, b)
     for st in range(7):
         cf(ws, q, f"$AL{r0}+$AP{r0}={st * 1000 + 94}", None, None, Border(left=inner, right=frame_of[st]))
