@@ -39,6 +39,8 @@ Sheets (tab order)
                       hidden key column F (line number | ITEM)
   7. Washroom         the washroom attendants' prep list: the changeovers of the
                       hours ahead, first to last (formulas only, protected)
+  8. Products         the work orders' items (from the router) to tick Oily or
+                      Powdery for 7. Washroom (unprotected), hidden KEY column I
   Calc                hidden helper sheet (protected), layout below
 
 Workbook-scope defined names
@@ -247,11 +249,13 @@ LINE_SLOTS = 100       # 3. Lines rows
 NBSP = " "
 SEP = "␟"         # joins the cells of a row for the duplicate check
 
-S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_WASH, S_CALC = (
+S_HOW, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_WASH, S_PROD, S_CALC = (
     "How To Use", "1. Paste Schedule", "2. Check Columns", "3. Lines", "4. Schedule", "5. Settings",
-    "6. Line Rates", "7. Washroom", "Calc")
+    "6. Line Rates", "7. Washroom", "8. Products", "Calc")
 PASTE, CHECK, LINES, SCHED = "'1. Paste Schedule'", "'2. Check Columns'", "'3. Lines'", "'4. Schedule'"
-SETTINGS, RATES, WASH = "'5. Settings'", "'6. Line Rates'", "'7. Washroom'"
+SETTINGS, RATES, WASH, PRODS = "'5. Settings'", "'6. Line Rates'", "'7. Washroom'", "'8. Products'"
+PROD_ROWS = 1000        # 8. Products rows 5:1004
+PRODUCTS_CSV = Path(__file__).resolve().parent / "products.csv"
 WASH_ROWS = 150         # 7. Washroom: up to 150 changeovers (rows 5:154)
 # softgels are marked SG, LSG or S/G in the item description (9 more cells to add words)
 OILY_WORDS = ["SG", "LSG", "S/G"] + [""] * 9
@@ -713,7 +717,7 @@ W = Band(LN_BAND.end + 2, ["kn", "pr", "valid", "line", "key", "dup", "keep0", "
           # combined report (v2): the line's number, statuses and crew (from the
           # lines table LB), changeovers, notes, estimates
           "lnum", "dname", "nxt", "brk", "crew", "kprev", "fw", "co", "comin", "capchg", "cotv", "cotprev", "cotnote",
-          "desv", "szchg", "desnote", "conote", "colist", "oily", "wm", "wrk", "note", "cotext", "remtext", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
+          "desv", "szchg", "desnote", "conote", "colist", "ptype", "oily", "wm", "wrk", "note", "cotext", "remtext", "rkey", "rate", "bott", "fhe", "norate", "cumfe", "f2", "cq", "cr", "cm",
           "est", "estt", "nextco", "cot_t", "prog", "left", "capc"])
 # (Calc rows 5-704 hold a window row and a report slot: keep their XML under
 # 32 KB - the zip's compression window - or the file grows by about a fifth)
@@ -828,8 +832,12 @@ def window_v2(ws, c, A, s, r_):
     # is within the hours ahead of Schedule as of, and its place in time order
     # (ties by paste order)
     d = f'" "&SUBSTITUTE(SUBSTITUTE(SUBSTITUTE(SUBSTITUTE({A["desc"]}&"","-"," "),","," "),"("," "),")"," ")&" "'
-    ws[c["oily"]] = (f'=IF({keep}=0,0,IF(SUMPRODUCT(ISNUMBER(SEARCH(" "&TRIM(SET_OILY&"")&" ",{d}))'
-                     f'*(TRIM(SET_OILY&"")<>""))>0,1,0))')
+    # (the item's tick on 8. Products first: Oily or Powdery)
+    ws[c["ptype"]] = (f'=IF({keep}=0,"",IFERROR(UPPER(TRIM(INDEX({PRODS}!$F$5:$F${4 + PROD_ROWS},MATCH(UPPER('
+                      f'TRIM({A["item"]}&"")),{PRODS}!$I$5:$I${4 + PROD_ROWS},0))&"")),""))')
+    pt = A["ptype"]
+    ws[c["oily"]] = (f'=IF({keep}=0,0,IF({pt}="OILY",1,IF({pt}="POWDERY",0,IF(SUMPRODUCT(ISNUMBER(SEARCH(" "&'
+                     f'TRIM(SET_OILY&"")&" ",{d}))*(TRIM(SET_OILY&"")<>""))>0,1,0))))')
     ws[c["wm"]] = (f'=IF(OR({keep}=0,{fw}=1),"",IF({te}="","",IF(AND({te}>={s["asof"]},{te}<{s["asof"]}'
                    f'+SET_WR_HOURS/24),ROUND({te}*1440,0),"")))')
     ws[c["wrk"]] = (f'=IF({A["wm"]}="","",COUNTIF({wr("wm")},"<"&{A["wm"]})+COUNTIFS({wr("wm")},{A["wm"]},'
@@ -2035,6 +2043,69 @@ def build_rates(wb):
     return ws
 
 
+PROD_COLS = [("ITEM", 12), ("DESCRIPTION", 38), ("BULK (from the work orders)", 44), ("ROUTER FORM", 26),
+             ("SUGGESTED", 11), ("OILY OR POWDERY", 14), ("WORK ORDERS", 10), ("LAST WORK ORDER", 13)]
+
+
+def build_products(wb):
+    """8. Products: the items of the work orders (from the Line Lead MDI
+    Router's work order table), for the supervisor to tick Oily or Powdery
+    (7. Washroom uses the tick; an item without one goes by the oily words on
+    5. Settings). SUGGESTED is the router's dosage form (SoftGel) or SG / LSG
+    / S/G in the item's or its bulk's description - a hint only."""
+    import csv
+    ws = wb.create_sheet(S_PROD)
+    ws.sheet_properties.tabColor = "7F7F7F"
+    ws.sheet_view.showGridLines = False
+    for i, (_, w) in enumerate(PROD_COLS, start=1):
+        ws.column_dimensions[L(i)].width = w
+    put(ws, "A1", "8. Products - oily or powdery (for 7. Washroom)", font=font(16, True))
+    ws.merge_cells("A2:H2")
+    put(ws, "A2", "Pick Oily or Powdery for each item in the yellow column (the arrow in the cell). 7. Washroom "
+                  "uses it; an item left empty goes by the oily words on 5. Settings (SG, LSG, S/G). SUGGESTED is "
+                  "only a hint: the router's dosage form, or SG in the description. A new item: type it under the "
+                  "last one. The arrows in the titles sort and filter.",
+        font=font(10, italic=True, color="595959"), alignment=Alignment(wrap_text=True, vertical="top"))
+    ws.row_dimensions[2].height = 42
+    for i, (h, _) in enumerate(PROD_COLS, start=1):
+        put(ws, f"{L(i)}4", h, font=font(10, True, "FFFFFF"), fill=fill(C_COLHEAD), border=THIN_BLACK,
+            alignment=Alignment(wrap_text=True, vertical="center", horizontal="center"))
+    ws.row_dimensions[4].height = 30
+    with open(PRODUCTS_CSV, newline="") as fh:
+        prods = list(csv.DictReader(fh))
+    if len(prods) > PROD_ROWS:
+        raise SystemExit(f"{len(prods)} products don't fit in {PROD_ROWS} rows")
+    last = 4 + PROD_ROWS
+    for i in range(PROD_ROWS):
+        r = 5 + i
+        pr = prods[i] if i < len(prods) else None
+        vals = ([pr["ITEM"], pr["DESCRIPTION"], pr["BULK"], pr["ROUTER FORM"], pr["SUGGESTED"], None,
+                 int(pr["WORK ORDERS"]), pr["LAST WORK ORDER"]] if pr else [None] * 8)
+        for j, v in enumerate(vals, start=1):
+            c = ws.cell(r, j, v)
+            c.font = font(10, j in (1, 6))
+            c.border = THIN_GRAY
+            c.alignment = Alignment(horizontal="center" if j in (5, 6, 7, 8) else "left", vertical="center",
+                                    shrink_to_fit=j in (2, 3, 4))
+            if j == 6:
+                c.fill = INPUT_FILL
+        ws[f"I{r}"] = f'=IF(TRIM(A{r}&"")="","",UPPER(TRIM(A{r}&"")))'
+    put(ws, "I4", "KEY", font=font(9, True))
+    ws.column_dimensions["I"].hidden = True
+    dv = DataValidation(type="list", formula1='"Oily,Powdery"', allow_blank=True, showErrorMessage=True,
+                        errorTitle="Oily or Powdery", error="Pick Oily or Powdery (or leave it empty).")
+    ws.add_data_validation(dv)
+    dv.add(f"F5:F{last}")
+    for col in ("E", "F"):
+        cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL if col == "F" else None, font(10, True, "7F6000"))
+        cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED" if col == "F" else None, font(10, True, "595959"))
+    ws.auto_filter.ref = f"A4:H{4 + len(prods)}"
+    ws.freeze_panes = "A5"
+    fit_width(ws, "landscape")
+    ws.print_title_rows = "4:4"
+    return ws
+
+
 WASH_COLS = [("#", 4), ("TIME", 14), ("SHIFT", 6.5), ("LINE", 9), ("FILLER", 9), ("CHANGEOVER", 13),
              ("OFF THE LINE - PARTS TO WASH", 40), ("TYPE", 9), ("NEXT ON THE LINE", 40), ("TYPE", 9)]
 
@@ -2879,8 +2950,9 @@ HOW_ROWS = [
                           "5. Settings); the CHANGEOVER type; OFF THE LINE - the work order whose parts come off to "
                           "be washed - and its TYPE: Oily (a softgel) or Powdery (a tablet); and NEXT ON THE LINE "
                           "and its type. A line across the list marks where a new shift starts."),
-    ("kv", "Oily or powdery", "Oily (a softgel) when the item description has SG, LSG or S/G (the oily words on "
-                              "5. Settings), else powdery. A product sorted wrong: add or change a word there. (This list is "
+    ("kv", "Oily or powdery", "By the item's tick on 8. Products (Oily or Powdery - the supervisor picks it once "
+                              "per item). An item without one: oily (a softgel) when its description has SG, LSG "
+                              "or S/G (the oily words on 5. Settings), else powdery. (This list is "
                               "only for 7. Washroom - the Oil highlight on 4. Schedule still goes by OIL in the "
                               "description.) The hours ahead and the Cremer / Merrill line numbers are "
                               "there too."),
@@ -3172,6 +3244,7 @@ def main():
     settings = build_settings(wb)
     build_rates(wb)
     build_wash(wb)
+    build_products(wb)
     build_calc(wb)
 
     add_name(wb, "PASTE_ALL", f"{PASTE}!$1:$1048576")
