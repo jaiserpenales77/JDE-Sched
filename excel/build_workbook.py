@@ -1560,7 +1560,9 @@ def build_calc(wb):
         run = ",".join(f'{A["st"]}="{st}"' for st in RUN_STATUSES)
         ws[f"{LB['sched']}{r_}"] = f'=IF({lk}=0,0,IF(OR({run}),1,0))'
         nx = f"INDEX({lkr('nx')},{li})"
-        ws[f"{LB['nxt']}{r_}"] = f'=IF({li}=0,"",IF({nx}="NONE","",{nx}))'
+        # (not picked, or not on 3. Lines: NOT SCHEDULED, as This shift)
+        ws[f"{LB['nxt']}{r_}"] = (f'=IF({lk}=0,"",IF({li}=0,"NOT SCHEDULED",IF({nx}="NONE","",'
+                                  f'IF({nx}="","NOT SCHEDULED",{nx}))))')
         ws[f"{LB['brk']}{r_}"] = f'=IF({li}=0,1,INDEX({lkr("brk")},{li}))'
         ws[f"{LB['crew']}{r_}"] = f'=IF({li}=0,"",INDEX({lkr("crew")},{li}))'
         ws[f"{LB['note']}{r_}"] = (f'=IF({lk}=0,"",IF({li}>0,"",'
@@ -2561,8 +2563,8 @@ HOW_ROWS = [
                   "to run), PM / CLEANING and NOT SCHEDULED lines don't. Empty = the Line Status column of your file "
                   "(Ready, PM, OT), else NOT SCHEDULED: a line only runs when you pick RUNNING (or type Yes). "
                   "NONE = no status, even if your file has one."),
-    ("step", "4", "Next shift: the same, for the next shift. It prints at the right edge of 4. Schedule. Leave it "
-                  "empty if you don't know."),
+    ("step", "4", "Next shift: the same, for the next shift. It prints at the right edge of 4. Schedule. Empty = "
+                  "NOT SCHEDULED; NONE = no status."),
     ("step", "5", "Crew (EE): type the number of people on each line (it prints in the EE column). Leave it empty if "
                   "you don't use it."),
     ("step", "6", "Click the yellow box Schedule as of (top right). Press Ctrl+; (semicolon: today's date), a space, "
