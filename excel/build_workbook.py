@@ -842,7 +842,7 @@ def window_v2(ws, c, A, s, r_):
     ws[c["est"]] = (f'=IF({F}="","",IFERROR(IF({brk}=0,{t0}+{F}/24,IF({A["f2"]}<=0,{t0}+{F}/{s["f0"]}/24,'
                     f'{t0}+({s["cu"]}+8*{A["cq"]}+({A["cm"]}-1)+({A["cr"]}-INDEX($B${CY_S}:$I${CY_S},{A["cm"]}))'
                     f'/INDEX($C${CY_F}:$J${CY_F},{A["cm"]}))/24)),""))')
-    ws[c["estt"]] = f'=IF({A["est"]}="","",{clock_text(A["est"], t0)})'
+    ws[c["estt"]] = f'=IF({A["est"]}="","",{clock_text(A["est"], t0, "Today ")})'
     ws[c["nextco"]] = (f'=IF({fw}=0,"",IF({A["est"]}="","",IF(COUNTIF({wr("lno")},{lno})>1,{A["est"]},"")))')
     # when the changeover into this work order starts: the work order before it is done
     ws[c["cot_t"]] = f'=IF(OR({keep}=0,{fw}=1),"",IF({cc}="","",IFERROR(IF({ix("est", kp)}="","",{ix("est", kp)}),"")))'
@@ -881,12 +881,13 @@ def clock12(t):
     return (f'(MOD(HOUR({t})+11,12)+1)&":"&RIGHT("0"&MINUTE({t}),2)&IF(HOUR({t})<12," AM"," PM")')
 
 
-def clock_text(t, ref):
+def clock_text(t, ref, today=""):
     """Time t to the nearest minute as "3:31 PM", with the month/day in front
-    ("10/30 2:05 AM") when it isn't the day of ref. Half a second is added to
-    the rounded minute so HOUR / MINUTE never land a hair below it."""
+    ("10/30 2:05 AM") when it isn't the day of ref (and today in front when it
+    is: "Today 3:31 PM"). Half a second is added to the rounded minute so
+    HOUR / MINUTE never land a hair below it."""
     m = f"(ROUND({t}*1440,0)/1440+1/172800)"
-    return f'IF(INT({m})=INT({ref}),"",MONTH({m})&"/"&DAY({m})&" ")&{clock12(m)}'
+    return f'IF(INT({m})=INT({ref}),"{today}",MONTH({m})&"/"&DAY({m})&" ")&{clock12(m)}'
 
 
 def shift_end_expr(s):
@@ -2611,7 +2612,7 @@ HOW_ROWS = [
                         "counts from Schedule as of: the changeovers, then the bottles at the line's bottles per hour "
                         "(6. Line Rates) x the line efficiency (5. Settings), slower in the break and lunch hours on "
                         "lines with Breaks & lunch = Yes. Only RUNNING, PARTIAL SHIFT and OVERTIME lines get times; "
-                        "the date is in front of a time that isn't today. no rate = the line and item are not on "
+                        "Today in front of a time on the day of Schedule as of, the date in front of another day's. no rate = the line and item are not on "
                         "6. Line Rates (add them there); no qty = the work order has no WO Qty; a dash = a work "
                         "order above it on the line has no time, so this one can't have one either."),
     ("kv", "NEXT SHIFT", "The line's status next shift (Next shift on 3. Lines), in its color, in the middle of "
