@@ -257,6 +257,7 @@ S_HOW, S_SETUP, S_PASTE, S_CHECK, S_LINES, S_SCHED, S_SET, S_RATES, S_WASH, S_PR
     "How To Use", "Guided Setup", "1. Paste Schedule", "2. Check Columns", "3. Lines", "4. Schedule", "5. Settings",
     "6. Line Rates", "7. Washroom", "8. Products", "Calc")
 PASTE, CHECK, LINES, SCHED = "'1. Paste Schedule'", "'2. Check Columns'", "'3. Lines'", "'4. Schedule'"
+TITLE = "Production Line Schedule"            # 4. Schedule's title, the dialogs', the file's
 SETTINGS, RATES, WASH, PRODS = "'5. Settings'", "'6. Line Rates'", "'7. Washroom'", "'8. Products'"
 PROD_ROWS = 1000        # 8. Products rows 5:1004
 PRODUCTS_CSV = Path(__file__).resolve().parent / "products.csv"
@@ -1181,8 +1182,9 @@ def build_calc(wb):
         "co_minor": co_count(s, ("S1", "S1 Count Change")),
         "co_major": co_count(s, ("S3", "S4")),
         "summary": summary_expr(s),
-        "subtitle": (f'"This is the "&IF({s["shift"]}="","",{s["shift"]}&" ")&"schedule for "&{month_name(s["asof"])}'
-                     f'&" "&DAY({s["asof"]})&", "&YEAR({s["asof"]})&" as of "&{clock12(s["asof"])}'),
+        "subtitle": (f'CHOOSE(WEEKDAY({s["asof"]}),"Sunday","Monday","Tuesday","Wednesday","Thursday","Friday",'
+                     f'"Saturday")&", "&{month_name(s["asof"])}&" "&DAY({s["asof"]})&", "&YEAR({s["asof"]})'
+                     f'&"   ·   as of "&{clock12(s["asof"])}'),
         "warn_line": f'SUBSTITUTE({s["short_warn"]},CHAR(10),"   |   ")',
     }
     for n in SCALARS:
@@ -2392,7 +2394,7 @@ def build_wash(wb):
     asof = SC["asof"]
     # title, subtitle, totals
     ws.merge_cells(f"A1:{lc}1")
-    put(ws, "A1", f'="WASHROOM PREP LIST"&IF({SC["shift"]}="",""," · "&UPPER({SC["shift"]}))',
+    put(ws, "A1", f'="Washroom Prep List"&IF({SC["shift"]}="","","  ·  "&{SC["shift"]})',
         font=font(TITLE_PT - 2, True, "FFFFFF"), fill=fill(C_TITLE),
         alignment=Alignment(horizontal="left", vertical="center", indent=1))
     ws.row_dimensions[1].height = 30
@@ -2590,11 +2592,11 @@ def build_schedule(wb):
     navy, title_white = fill(C_TITLE), "FFFFFF"
     # row 1: title band - the title and this copy's shift | the status legend
     ws.merge_cells("A1:I1")
-    put(ws, "A1", f'="JDE PACKAGING SCHEDULE"&IF({SC["shift"]}="",""," · "&UPPER({SC["shift"]}))',
+    put(ws, "A1", f'="{TITLE}"&IF({SC["shift"]}="","","  ·  "&{SC["shift"]})',
         font=font(TITLE_PT - 2, True, title_white), fill=navy,
         alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
     ws.merge_cells(f"{split}1:{lc}1")
-    parts = [("BORDER  ", "FFD966", True)]
+    parts = [("STATUS  ", "9DC3E6", True)]
     for st, strong, _, _ in STATUSES:
         parts += [("■ ", strong if st != "PM / CLEANING" else "5B9BD5", False),
                   (st.capitalize().replace("Pm / cleaning", "PM / Cleaning") + "   ", title_white, False)]
@@ -2604,7 +2606,7 @@ def build_schedule(wb):
     # row 2: which copy this is (shift, date, as of) | changeover legend
     light = fill(C_SUBTITLE)
     ws.merge_cells("A2:I2")
-    put(ws, "A2", f"={SC['subtitle']}", font=font(10, True, C_TITLE, italic=True), fill=light,
+    put(ws, "A2", f"={SC['subtitle']}", font=font(10.5, True, C_TITLE), fill=light,
         alignment=Alignment(horizontal="left", vertical="center", indent=1, shrink_to_fit=True))
     ws.merge_cells(f"{split}2:{lc}2")
     parts = [("CHANGEOVER  ", C_TITLE, True)]
@@ -2927,7 +2929,7 @@ Public TestAnswers As String    ' "6|7|3|~" - MsgBox codes or InputBox texts (~ 
 
 Private Const FIRST_ROW As Long = 4
 Private Const LAST_ROW As Long = {lines_last}
-Private Const TITLE As String = "JDE Production Schedule"
+Private Const TITLE As String = "{title}"
 Private savedCalc As Long
 Private savedEvents As Boolean
 
@@ -3424,7 +3426,7 @@ def vba_bin():
                          .replace("{first}", str(SCHED_ROW0)).replace("{last}", str(SCHED_LAST))
                          .replace("{lines}", S_LINES).replace("{lines_last}", str(3 + LINE_SLOTS))
                          .replace("{check}", S_CHECK).replace("{paste}", S_PASTE).replace("{setup}", S_SETUP)
-                         .replace("{t0}", str(SETUP_TABLE_ROW))
+                         .replace("{t0}", str(SETUP_TABLE_ROW)).replace("{title}", TITLE)
                          .replace("{t1}", str(SETUP_TABLE_ROW + SETUP_LINES - 1)))
     for i, st in enumerate(SETUP_CHOICES, start=1):
         _f = fill_in
@@ -3438,7 +3440,7 @@ def vba_bin():
 # How To Use
 
 HOW_ROWS = [
-    ("title", "JDE Production Schedule - How To Use"),
+    ("title", f"{TITLE} - How To Use"),
     ("sub", "Load it, Set the Lines, Print it. Follow the steps in order. Do one step at a time."),
     ("gap",),
     ("head", "", "QUICK CARD - A Load, B Set the lines, C Print (this page prints on its own: post it at the computer)"),
@@ -3604,14 +3606,14 @@ HOW_ROWS = [
     ("step", "4", "Press Ctrl+S to save before you close the file."),
     ("gap",),
     ("head", "", "Reading 4. Schedule"),
-    ("kv", "Top", "The title and the shift (This copy is for, on 3. Lines); which schedule it is and the time it is "
-                  "from (Schedule as of); one line with the lines by status, how many minor (S1, count) and major (S3, S4) "
+    ("kv", "Top", "The title, Production Line Schedule, and the shift (This copy is for, on 3. Lines); the day, "
+                  "date and the time the schedule is from (Schedule as of); one line with the lines by status, how many minor (S1, count) and major (S3, S4) "
                   "changeovers the running lines have from Schedule as of to the end of the shift, and the next "
                   "changeover. "
                   "A red line in its place means something to check (see Something went wrong). On the right, the "
-                  "three legends: BORDER (the line statuses below), CHANGEOVER (the changeover types) and "
+                  "three legends: STATUS (the line statuses below), CHANGEOVER (the changeover types) and "
                   "HIGHLIGHT (the row colors below)."),
-    ("kv", "LINE", "Each line is a box with a border in its status color this shift (the BORDER legend, below): in "
+    ("kv", "LINE", "Each line is a box with a border in its status color this shift (the STATUS legend, below): in "
                    "the middle of the box its name, and right under it its status, in the same color. A line with "
                    "one work order shows its status by the color of its name. A line left empty on 3. Lines "
                    "(and with no Line Status in your file) is NOT SCHEDULED; one set to NONE has a navy border."),
@@ -3918,7 +3920,7 @@ def build_how(wb):
 
 FORBIDDEN = ["AGGREGATE", "MAXIFS", "MINIFS", "IFS", "SWITCH", "XLOOKUP", "XMATCH", "FILTER", "SORT", "SORTBY",
              "UNIQUE", "SEQUENCE", "LET", "LAMBDA", "TEXTJOIN", "CONCAT", "INDIRECT"]
-ALLOWED = {"IF", "IFERROR", "AND", "OR", "NOT", "INDEX", "MATCH", "LOOKUP", "COUNT", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS",
+ALLOWED = {"IF", "IFERROR", "AND", "OR", "NOT", "INDEX", "MATCH", "LOOKUP", "COUNT", "WEEKDAY", "COUNTIF", "COUNTIFS", "SUMIF", "SUMIFS",
            "SUMPRODUCT", "ROW", "ROWS", "COLUMN", "COLUMNS", "MIN", "MAX", "SMALL", "LARGE", "ISNUMBER", "ISERROR",
            "ISBLANK", "ISTEXT", "LEN", "TRIM", "UPPER", "LEFT", "RIGHT", "MID", "SEARCH", "FIND", "SUBSTITUTE",
            "EXACT", "VALUE", "TEXT", "ROUND", "TODAY", "CHAR", "N", "T", "ABS", "INT", "MOD", "OFFSET",
@@ -4062,7 +4064,7 @@ def apply_demo(wb):
             ws[f"B{r}"].value, ws[f"C{r}"].value, ws[f"E{r}"].value = this, nxt, crew
     ws["C1"].value = SHIFTS[0]
     ws["L1"].value = "=TODAY()+TIME(5,15,0)"
-    wb.properties.title = "JDE Production Schedule (demo)"
+    wb.properties.title = f"{TITLE} (demo)"
     sched_idx = wb.sheetnames.index(S_SCHED)
     wb.active = sched_idx
     for w in wb.worksheets:
@@ -4115,7 +4117,7 @@ def main():
     for i, ws in enumerate(wb.worksheets, start=1):
         ws.sheet_properties.codeName = f"Sheet{i}"
     wb.properties.creator = "JDE Sched"
-    wb.properties.title = "JDE Production Schedule"
+    wb.properties.title = TITLE
     wb.properties.created = FIXED_TIME
     if demo:
         apply_demo(wb)

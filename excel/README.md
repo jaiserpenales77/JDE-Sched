@@ -1,4 +1,4 @@
-# JDE Production Schedule (Excel)
+# Production Line Schedule (Excel)
 
 `JDE_Production_Schedule.xlsm` replaces the web app's **Production Schedule** tab with
 a single Excel workbook - no app. It works in Excel 2010 and newer (Windows),
@@ -86,10 +86,11 @@ holds the machinery.
 
 ## 4. Schedule
 
-- A title band with the shift (from 3. Lines), the date and the "as of" time,
+- A title band - Production Line Schedule and the shift (from 3. Lines) - then
+  the day, date and "as of" time,
   a one-line summary (lines by status, the minor and major changeovers from
   "as of" to the end of the shift, the next changeover), and
-  three labelled legends: BORDER (line statuses), CHANGEOVER (changeover
+  three labelled legends: STATUS (line statuses), CHANGEOVER (changeover
   types) and HIGHLIGHT (row colors).
 - Each line is a box with a border in its status color this shift, like the
   printout's border legend (RUNNING green, PARTIAL SHIFT orange, OVERTIME
