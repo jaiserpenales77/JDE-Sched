@@ -1933,56 +1933,78 @@ def build_lines(wb):
 
 
 # The buttons on 3. Lines (each runs a JDELines macro), in row 2 under the
-# instructions: (name, macro, label, fill, left and width in pixels). Excel
-# draws a column of width w trunc(7w + 0.49) pixels: A:G are 735 wide, L
-# starts at 1008 and M at 1155.
+# instructions, and Guided setup's choice panel (hidden until it asks: the
+# question, a button per status, Stop) over the right-hand table. Each shape:
+# (name, macro, text, fill, left, top, width, height in pixels, options).
+# Excel draws a column of width w trunc(7w + 0.49) pixels (A:G are 735 wide, I
+# starts at 749, L at 1008, M at 1155) and a row of h points h x 4/3 pixels
+# (rows 1-3: 72, 96, 56; then 20 each).
 LINES_ROW1_PT, LINES_ROW2_PT = 54, 72
-LINES_BTN_TOP_PT, LINES_BTN_PT = 30, 36
 C_BTN, C_BTN_GO, C_BTN_OFF = "2E75B6", "2E7D32", "7F7F7F"
+_BTN_Y, _BTN_H = 112, 48
 LINES_BUTTONS = [
-    ("btnSetup", "GuidedSetup", "Guided setup", C_BTN_GO, 2, 116),
-    ("btnPaste", "PasteSchedule", "Paste today's schedule", C_BTN, 125, 116),
-    ("btnAdd", "AddMissingLines", "Add missing lines", C_BTN, 248, 116),
-    ("btnRunning", "AllRunning", "This shift: all RUNNING", C_BTN, 371, 116),
-    ("btnNext", "NextSameAsThis", "Next shift = this shift", C_BTN, 494, 116),
-    ("btnClear", "ClearStatuses", "Clear statuses", C_BTN_OFF, 617, 116),
-    ("btnNow", "SetNow", "Set time to now", C_BTN, 1012, 140),
-    ("btnPrint", "PrintSchedule", "Print 4. Schedule", C_TITLE, 1161, 140),
+    ("btnSetup", "GuidedSetup", "Guided setup", C_BTN_GO, 2, _BTN_Y, 116, _BTN_H, {}),
+    ("btnPaste", "PasteSchedule", "Paste today's schedule", C_BTN, 125, _BTN_Y, 116, _BTN_H, {}),
+    ("btnAdd", "AddMissingLines", "Add missing lines", C_BTN, 248, _BTN_Y, 116, _BTN_H, {}),
+    ("btnRunning", "AllRunning", "This shift: all RUNNING", C_BTN, 371, _BTN_Y, 116, _BTN_H, {}),
+    ("btnNext", "NextSameAsThis", "Next shift = this shift", C_BTN, 494, _BTN_Y, 116, _BTN_H, {}),
+    ("btnClear", "ClearStatuses", "Clear statuses", C_BTN_OFF, 617, _BTN_Y, 116, _BTN_H, {}),
+    ("btnNow", "SetNow", "Set time to now", C_BTN, 1012, _BTN_Y, 140, _BTN_H, {}),
+    ("btnPrint", "PrintSchedule", "Print 4. Schedule", C_TITLE, 1161, _BTN_Y, 140, _BTN_H, {}),
 ]
+# the choice panel: its statuses in the order of the buttons (JDELines.WzPick1..6)
+WZ_X, WZ_Y, WZ_W, WZ_H = 752, 230, 560, 250
+WZ_CHOICES = ["RUNNING", "NOT SCHEDULED", "PM / CLEANING", "READY LINE", "PARTIAL SHIFT", "OVERTIME"]
+_ST = {st: (strong, txt) for st, strong, txt, _ in STATUSES}
+LINES_PANEL = ([("wzPanel", None, "Guided setup", "FFFFFF", WZ_X, WZ_Y, WZ_W, WZ_H,
+                 {"hidden": True, "ink": C_TITLE, "line": C_TITLE, "line_w": 28575, "size": 1200, "align": "l",
+                  "anchor": "t", "geom": "rect"})] +
+               [(f"wzOpt{i + 1}", f"WzPick{i + 1}", st, _ST[st][0], WZ_X + 14 + (i % 3) * 180,
+                 WZ_Y + 120 + (i // 3) * 48, 170, 40, {"hidden": True, "ink": _ST[st][1]})
+                for i, st in enumerate(WZ_CHOICES)] +
+               [("wzStop", "WzStop", "Stop", C_BTN_OFF, WZ_X + WZ_W - 140, WZ_Y + WZ_H - 40, 90, 28,
+                 {"hidden": True, "size": 900})])
 
 
-def button_drawing(ws, buttons, row0):
-    """A DrawingML drawing of rounded buttons that run macros (Excel's
-    "Assign Macro" on a shape: macro="[0]!Name"), each anchored to the cell of
-    row row0 (0-based) it starts in, and left out of the printout."""
-    emu_px, emu_pt = 9525, 12700
+def button_drawing(ws, shapes):
+    """A DrawingML drawing of shapes that run macros (Excel's "Assign Macro"
+    on a shape: macro="[0]!Name"), each anchored to the cell it starts in and
+    left out of the printout."""
+    emu_px = 9525
 
-    def at(x):                                  # pixel x -> (0-based column, offset)
-        c = 0
+    def at(x, size):                            # pixels -> (0-based column / row, offset)
+        k = 0
         while True:
-            w = int(7 * (ws.column_dimensions[L(c + 1)].width or 8.43) + 0.49)
+            w = size(k + 1)
             if x < w:
-                return c, x
+                return k, x
             x -= w
-            c += 1
+            k += 1
+    col_px = lambda c: int(7 * (ws.column_dimensions[L(c)].width or 8.43) + 0.49)
+    row_px = lambda r: round((ws.row_dimensions[r].height or 15) * 4 / 3)
     out = ['<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
            '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" '
            'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">']
-    for i, (name, macro, label, color, x, w) in enumerate(buttons, start=2):
-        col, off = at(x)
-        dark = "".join(f"{int(int(color[k:k + 2], 16) * 0.75):02X}" for k in (0, 2, 4))
+    for i, (name, macro, text, color, x, y, w, h, o) in enumerate(shapes, start=2):
+        col, xo = at(x, col_px)
+        row, yo = at(y, row_px)
+        line = o.get("line") or "".join(f"{int(int(color[k:k + 2], 16) * 0.75):02X}" for k in (0, 2, 4))
+        paras = "".join(
+            f'<a:p><a:pPr algn="{o.get("align", "ctr")}"/><a:r><a:rPr lang="en-US" sz="{o.get("size", 1000)}" '
+            f'b="1"><a:solidFill><a:srgbClr val="{o.get("ink", "FFFFFF")}"/></a:solidFill><a:latin '
+            f'typeface="{FONT}"/></a:rPr><a:t>{t}</a:t></a:r></a:p>' for t in text.split("\n"))
         out.append(
-            f'<xdr:oneCellAnchor><xdr:from><xdr:col>{col}</xdr:col><xdr:colOff>{off * emu_px}'
-            f'</xdr:colOff><xdr:row>{row0}</xdr:row><xdr:rowOff>{LINES_BTN_TOP_PT * emu_pt}</xdr:rowOff>'
-            f'</xdr:from><xdr:ext cx="{w * emu_px}" cy="{LINES_BTN_PT * emu_pt}"/>'
-            f'<xdr:sp macro="[0]!{macro}" textlink=""><xdr:nvSpPr><xdr:cNvPr id="{i}" name="{name}" '
-            f'descr="{label}"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:prstGeom prst="roundRect"><a:avLst/>'
-            f'</a:prstGeom><a:solidFill><a:srgbClr val="{color}"/></a:solidFill><a:ln w="9525"><a:solidFill>'
-            f'<a:srgbClr val="{dark}"/></a:solidFill></a:ln></xdr:spPr><xdr:txBody><a:bodyPr vertOverflow="clip" '
-            f'horzOverflow="clip" wrap="square" lIns="45720" tIns="18288" rIns="45720" bIns="18288" anchor="ctr"/>'
-            f'<a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US" sz="1000" b="1"><a:solidFill>'
-            f'<a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="{FONT}"/></a:rPr><a:t>{label}</a:t></a:r>'
-            f'</a:p></xdr:txBody></xdr:sp><xdr:clientData fPrintsWithSheet="0"/></xdr:oneCellAnchor>')
+            f'<xdr:oneCellAnchor><xdr:from><xdr:col>{col}</xdr:col><xdr:colOff>{xo * emu_px}</xdr:colOff>'
+            f'<xdr:row>{row}</xdr:row><xdr:rowOff>{yo * emu_px}</xdr:rowOff></xdr:from>'
+            f'<xdr:ext cx="{w * emu_px}" cy="{h * emu_px}"/>'
+            f'<xdr:sp macro="{"[0]!" + macro if macro else ""}" textlink=""><xdr:nvSpPr><xdr:cNvPr id="{i}" '
+            f'name="{name}" descr="{text}"{' hidden="1"' if o.get("hidden") else ""}/><xdr:cNvSpPr/></xdr:nvSpPr>'
+            f'<xdr:spPr><a:prstGeom prst="{o.get("geom", "roundRect")}"><a:avLst/></a:prstGeom><a:solidFill>'
+            f'<a:srgbClr val="{color}"/></a:solidFill><a:ln w="{o.get("line_w", 9525)}"><a:solidFill>'
+            f'<a:srgbClr val="{line}"/></a:solidFill></a:ln></xdr:spPr><xdr:txBody><a:bodyPr vertOverflow="clip" '
+            f'horzOverflow="clip" wrap="square" lIns="91440" tIns="45720" rIns="91440" bIns="45720" '
+            f'anchor="{o.get("anchor", "ctr")}"/><a:lstStyle/>{paras}</xdr:txBody></xdr:sp>'
+            f'<xdr:clientData fPrintsWithSheet="0"/></xdr:oneCellAnchor>')
     out.append("</xdr:wsDr>")
     return "".join(out)
 
@@ -2690,6 +2712,7 @@ VBA_THISWORKBOOK = """Option Explicit
 
 Private Sub Workbook_Open()
     JDENotes.FitNotes True
+    JDELines.HidePanel
 End Sub
 
 Private Sub Workbook_SheetActivate(ByVal Sh As Object)
@@ -2733,6 +2756,7 @@ Private Const LAST_ROW As Long = {lines_last}
 Private Const TITLE As String = "JDE Production Schedule"
 Private savedCalc As Long
 Private savedEvents As Boolean
+Private wzPhase As Long, wzI As Long, wzN As Long, wzRows() As Long
 
 Private Function LinesWs() As Worksheet
     Set LinesWs = ThisWorkbook.Worksheets("{lines}")
@@ -3067,12 +3091,16 @@ Public Sub PrintSchedule()
     End If
 End Sub
 
-' Guided setup: today's schedule, the shift and time, missing lines, each
-' line this shift (and its crew), the next shift, then print
+' Guided setup: today's schedule, the shift and time, missing lines (dialog
+' boxes), then each line this shift and next shift on the choice panel - a
+' button per status. A macro can't wait for a click on the sheet, so the
+' panel's buttons carry it on (WzPick1-6, WzStop): wzPhase is the step it is
+' at (4 this shift, 5 next shift, 0 none), wzRows the lines it asks about.
 Public Sub GuidedSetup()
-    Dim ws As Worksheet, a As Long, s As String, r As Long, nm As String, t As Date, miss As String
+    Dim ws As Worksheet, a As Long, s As String, r As Long, t As Date, miss As String
     Set ws = LinesWs
     On Error GoTo fail
+    HidePanel
     a = Ask("Step 1 of 5 - Today's schedule" & vbLf & vbLf & "Did you just copy today's schedule (its corner " & _
             "triangle above row 1, Ctrl+C)?" & vbLf & vbLf & "Yes = paste it now." & vbLf & _
             "No = keep the schedule already pasted.", vbYesNoCancel + vbQuestion)
@@ -3100,19 +3128,19 @@ Public Sub GuidedSetup()
     If s = "" Then s = Left$(ShiftAt(Now), 1)
     Do
         s = Trim$(AskText("Step 2 of 5 - Which shift is this copy for?" & vbLf & vbLf & "Type 1, 2 or 3.", s))
-        If s = "" Then GoTo done
+        If s = "" Then GoTo stopped
     Loop Until s = "1" Or s = "2" Or s = "3"
     ws.Range("C1").Value = Choose(Val(s), "1st Shift", "2nd Shift", "3rd Shift")
     t = NowToMinute()
     a = Ask("Step 2 of 5 - Schedule as of" & vbLf & vbLf & "Use now, " & Format(t, "m/d/yyyy h:mm AM/PM") & _
             "? (When the % Complete in today's file was taken.)" & vbLf & vbLf & "Yes = now." & vbLf & _
             "No = type another time.", vbYesNoCancel + vbQuestion)
-    If a = vbCancel Then GoTo done
+    If a = vbCancel Then GoTo stopped
     If a = vbNo Then
         Do
             s = Trim$(AskText("Type the date and time, like " & Format(t, "m/d/yyyy h:mm AM/PM") & ".", _
                               Format(t, "m/d/yyyy h:mm AM/PM")))
-            If s = "" Then GoTo done
+            If s = "" Then GoTo stopped
         Loop Until IsDate(s)
         t = CDate(s)
     End If
@@ -3123,80 +3151,176 @@ Public Sub GuidedSetup()
     If miss <> "" Then
         a = Ask("Step 3 of 5 - Lines" & vbLf & vbLf & "Today's schedule has lines that aren't in your list:" & _
                 vbLf & miss & vbLf & vbLf & "Add them?", vbYesNoCancel + vbQuestion)
-        If a = vbCancel Then GoTo done
+        If a = vbCancel Then GoTo stopped
         If a = vbYes Then
             AddMissing
             Application.Calculate
         End If
     End If
-    ' step 4: this shift, line by line (the lines with work orders today)
+    ' step 4: this shift, line by line on the panel (the lines with work
+    ' orders today; the others are NOT SCHEDULED)
+    wzN = 0
+    ReDim wzRows(1 To LAST_ROW - FIRST_ROW + 1)
     For r = FIRST_ROW To LAST_ROW
-        nm = LineName(r)
-        If nm <> "" Then
-            If WorkOrders(r) = 0 Then
-                If CellText(r, 2) = "" Then ws.Cells(r, 2).Value = "NOT SCHEDULED"
-            Else
-                a = Ask("Step 4 of 5 - This shift" & vbLf & vbLf & nm & ": " & WorkOrders(r) & _
-                        " work order(s) today." & vbLf & vbLf & "Is " & nm & " RUNNING this shift?" & vbLf & vbLf & _
-                        "Yes = running.   No = not running.   Cancel = stop here.", vbYesNoCancel + vbQuestion)
-                If a = vbCancel Then GoTo done
-                If a = vbYes Then
-                    ws.Cells(r, 2).Value = "RUNNING"
-                    s = Trim$(AskText("How many people (EE) on " & nm & "? (Leave it empty to skip.)", _
-                                      Trim$(ws.Cells(r, 5).Value & "")))
-                    If IsNumeric(s) And s <> "" Then
-                        If Val(s) >= 0 And Val(s) <= 99 Then ws.Cells(r, 5).Value = CLng(Val(s))
-                    End If
-                Else
-                    s = Trim$(AskText("What is " & nm & " this shift? Type a number:" & vbLf & vbLf & _
-                                      "1 = NOT SCHEDULED" & vbLf & "2 = PM / CLEANING" & vbLf & "3 = READY LINE" & _
-                                      vbLf & "4 = PARTIAL SHIFT (runs part of the shift)" & vbLf & _
-                                      "5 = OVERTIME", "1"))
-                    Select Case s
-                        Case "2": ws.Cells(r, 2).Value = "PM / CLEANING"
-                        Case "3": ws.Cells(r, 2).Value = "READY LINE"
-                        Case "4": ws.Cells(r, 2).Value = "PARTIAL SHIFT"
-                        Case "5": ws.Cells(r, 2).Value = "OVERTIME"
-                        Case Else: ws.Cells(r, 2).Value = "NOT SCHEDULED"
-                    End Select
-                End If
-            End If
-        End If
-    Next r
-    ' step 5: the next shift
-    a = Ask("Step 5 of 5 - Next shift" & vbLf & vbLf & "Will the next shift run the same lines as this shift?" & _
-            vbLf & vbLf & "Yes = the same as this shift." & vbLf & "No = ask me for each line.", _
-            vbYesNoCancel + vbQuestion)
-    If a = vbCancel Then GoTo done
-    For r = FIRST_ROW To LAST_ROW
-        nm = LineName(r)
-        If nm <> "" Then
-            If a = vbYes Or WorkOrders(r) = 0 Then
-                ws.Cells(r, 3).Value = ws.Cells(r, 2).Value
-            Else
-                Select Case Ask("Step 5 of 5 - Next shift" & vbLf & vbLf & "Is " & nm & " RUNNING next shift?", _
-                                vbYesNoCancel + vbQuestion)
-                    Case vbYes: ws.Cells(r, 3).Value = "RUNNING"
-                    Case vbNo: ws.Cells(r, 3).Value = "NOT SCHEDULED"
-                    Case Else: GoTo done
-                End Select
+        If LineName(r) <> "" Then
+            If WorkOrders(r) > 0 Then
+                wzN = wzN + 1
+                wzRows(wzN) = r
+            ElseIf CellText(r, 2) = "" Then
+                ws.Cells(r, 2).Value = "NOT SCHEDULED"
             End If
         End If
     Next r
     EndWork
-    If Ask("All set. Check 4. Schedule." & vbLf & vbLf & "Print it now?", vbYesNo + vbQuestion) = vbYes Then
-        PrintSchedule
+    If wzN = 0 Then
+        AskNextShift
     Else
-        ThisWorkbook.Worksheets("{sched}").Activate
+        wzPhase = 4
+        wzI = 1
+        ShowQuestion
     End If
     Exit Sub
-done:
+stopped:
     EndWork
     Tell "Stopped. What you answered so far is filled in - the rest is as it was."
     Exit Sub
 fail:
     EndWork
+    wzPhase = 0
+    HidePanel
     Tell "Something went wrong: " & Err.Description
+End Sub
+
+' step 5: the next shift - the same as this shift, or line by line on the panel
+Private Sub AskNextShift()
+    Dim ws As Worksheet, a As Long, r As Long
+    Set ws = LinesWs
+    wzPhase = 0
+    a = Ask("Step 5 of 5 - Next shift" & vbLf & vbLf & "Will the next shift run the same lines as this shift?" & _
+            vbLf & vbLf & "Yes = the same as this shift." & vbLf & "No = ask me for each line.", _
+            vbYesNoCancel + vbQuestion)
+    If a = vbCancel Then
+        Tell "Stopped. What you answered so far is filled in - the rest is as it was."
+        Exit Sub
+    End If
+    BeginWork
+    For r = FIRST_ROW To LAST_ROW
+        If LineName(r) <> "" Then
+            If a = vbYes Or WorkOrders(r) = 0 Then ws.Cells(r, 3).Value = ws.Cells(r, 2).Value
+        End If
+    Next r
+    EndWork
+    If a = vbYes Or wzN = 0 Then
+        Finish
+    Else
+        wzPhase = 5
+        wzI = 1
+        ShowQuestion
+    End If
+End Sub
+
+Private Sub Finish()
+    wzPhase = 0
+    HidePanel
+    If Ask("All set. Check 4. Schedule." & vbLf & vbLf & "Print it now?", vbYesNo + vbQuestion) = vbYes Then
+        PrintSchedule
+    Else
+        ThisWorkbook.Worksheets("{sched}").Activate
+    End If
+End Sub
+
+' the panel: the question about line wzRows(wzI) and the status buttons
+Private Sub ShowQuestion()
+    Dim ws As Worksheet, r As Long, nm As String, msg As String
+    Set ws = LinesWs
+    r = wzRows(wzI)
+    nm = LineName(r)
+    If wzPhase = 4 Then
+        msg = "Step 4 of 5 - This shift  (line " & wzI & " of " & wzN & ")" & vbLf & vbLf & nm & ": " & _
+              WorkOrders(r) & " work order(s) today." & vbLf & "What is " & nm & " THIS shift? Click one:"
+    Else
+        msg = "Step 5 of 5 - Next shift  (line " & wzI & " of " & wzN & ")" & vbLf & vbLf & _
+              "What is " & nm & " NEXT shift? Click one:"
+    End If
+    ws.Activate
+    ws.Cells(r, IIf(wzPhase = 4, 2, 3)).Select
+    SetPanel True, msg
+End Sub
+
+' a click on a status button of the panel
+Private Sub WzAnswer(ByVal k As Long)
+    Dim st As String
+    If wzPhase <> 4 And wzPhase <> 5 Then
+        HidePanel
+        Tell "Click Guided setup to start again."
+        Exit Sub
+    End If
+    st = Choose(k, "RUNNING", "NOT SCHEDULED", "PM / CLEANING", "READY LINE", "PARTIAL SHIFT", "OVERTIME")
+    LinesWs.Cells(wzRows(wzI), IIf(wzPhase = 4, 2, 3)).Value = st
+    wzI = wzI + 1
+    If wzI <= wzN Then
+        ShowQuestion
+    ElseIf wzPhase = 4 Then
+        HidePanel
+        AskNextShift
+    Else
+        Finish
+    End If
+End Sub
+
+Public Sub WzPick1()
+    WzAnswer 1
+End Sub
+
+Public Sub WzPick2()
+    WzAnswer 2
+End Sub
+
+Public Sub WzPick3()
+    WzAnswer 3
+End Sub
+
+Public Sub WzPick4()
+    WzAnswer 4
+End Sub
+
+Public Sub WzPick5()
+    WzAnswer 5
+End Sub
+
+Public Sub WzPick6()
+    WzAnswer 6
+End Sub
+
+Public Sub WzStop()
+    Dim was As Long
+    was = wzPhase
+    wzPhase = 0
+    HidePanel
+    If was <> 0 Then Tell "Stopped. What you answered so far is filled in - the rest is as it was."
+End Sub
+
+' (3. Lines is protected with its drawing objects locked: unprotected for a moment)
+Private Sub SetPanel(ByVal show As Boolean, ByVal msg As String)
+    Dim ws As Worksheet, nm As Variant, wasSaved As Boolean
+    Set ws = LinesWs
+    On Error Resume Next
+    If Not show And Not ws.Shapes("wzPanel").Visible Then Exit Sub      ' (nothing to hide)
+    wasSaved = ThisWorkbook.Saved
+    ws.Unprotect
+    If show Then
+        ws.Shapes("wzPanel").TextFrame.Characters.Text = msg
+    End If
+    For Each nm In Array("wzPanel", "wzOpt1", "wzOpt2", "wzOpt3", "wzOpt4", "wzOpt5", "wzOpt6", "wzStop")
+        ws.Shapes(nm).Visible = show
+    Next nm
+    ws.Protect DrawingObjects:=True, Contents:=True, Scenarios:=False, AllowFormattingColumns:=True, _
+               AllowFormattingRows:=True
+    If Not show Then ThisWorkbook.Saved = wasSaved
+End Sub
+
+Public Sub HidePanel()
+    SetPanel False, ""
 End Sub
 
 ' ---- for the tests (LibreOffice runs these; a person never needs them) ----
@@ -3209,6 +3333,16 @@ End Sub
 
 Public Function TestAnswersLeft() As String
     TestAnswersLeft = TestAnswers
+End Function
+
+Public Function TestPhase() As Long
+    TestPhase = wzPhase
+End Function
+
+Public Function TestPanel() As String
+    Dim ws As Worksheet
+    Set ws = LinesWs
+    TestPanel = IIf(ws.Shapes("wzPanel").Visible, "shown: ", "hidden: ") & ws.Shapes("wzPanel").TextFrame.Characters.Text
 End Function
 
 Public Sub TestDoubleClick(ByVal addr As String)
@@ -3378,8 +3512,9 @@ HOW_ROWS = [
     ("part", "B", "Set the lines - each line's status this shift and next shift, the crew, and the time the "
                   "schedule is from."),
     ("kv", "The buttons", "Guided setup (green) asks you step by step: paste today's schedule, the shift, the "
-                          "time, the missing lines, each line this shift and its crew, the next shift - then it "
-                          "offers to print. Or one step at a time: Paste today's schedule, Add missing lines, This "
+                          "time, the missing lines; then a panel with a button per status asks about each line this "
+                          "shift and next shift (Stop to end it there) - then it offers to print. Type the crew "
+                          "yourself. Or one step at a time: Paste today's schedule, Add missing lines, This "
                           "shift: all RUNNING (each line in today's schedule that has no status yet), Next shift = "
                           "this shift, Clear statuses (this shift, next shift and crew - for a new day), Set time to "
                           "now, Print 4. Schedule. Double-click a status to switch RUNNING / NOT SCHEDULED, a "
@@ -3940,7 +4075,7 @@ def main():
     wb.save(buf)
     lines_part = f"xl/worksheets/sheet{wb.sheetnames.index(S_LINES) + 1}.xml"
     out.write_bytes(deterministic_zip(buf.getvalue(), vba_bin(),
-                                      {lines_part: button_drawing(wb[S_LINES], LINES_BUTTONS, 1)}))
+                                      {lines_part: button_drawing(wb[S_LINES], LINES_BUTTONS + LINES_PANEL)}))
     print(f"Wrote {out} ({out.stat().st_size // 1024} KB, {n} formulas audited)")
 
 

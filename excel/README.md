@@ -18,10 +18,14 @@ A row of buttons under the instructions (they don't print):
 - **Guided setup** (green) asks step by step with Yes / No boxes: paste
   today's schedule (if it was just copied), checks 2. Check Columns is GREEN,
   the shift (1, 2 or 3) and the time (now, or typed), adds the lines missing
-  from the list, then each line in today's schedule - RUNNING? (Yes: its crew;
-  No: NOT SCHEDULED, PM / CLEANING, READY LINE, PARTIAL SHIFT or OVERTIME) -
-  then the next shift (the same lines, or line by line), and offers to print.
-  Cancel stops it; what was answered stays.
+  from the list. Then a panel over the right-hand table asks about each line
+  in today's schedule, with a button per status (RUNNING, NOT SCHEDULED,
+  PM / CLEANING, READY LINE, PARTIAL SHIFT, OVERTIME, in their colors); then
+  the next shift - the same as this shift, or line by line on the panel - and
+  it offers to print. Cancel or Stop ends it; what was answered stays. The
+  crew is typed by hand. (A macro can't wait for a click on the sheet: the
+  panel's buttons carry the setup on - `WzPick1`-`6`, `WzStop` - and the panel
+  is hidden again when the file opens.)
 - **Paste today's schedule**: what was copied goes into 1. Paste Schedule as
   values (Paste Values), the rows and columns past it cleared; then it says
   whether 2. Check Columns is GREEN.
