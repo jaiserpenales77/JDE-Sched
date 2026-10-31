@@ -53,7 +53,7 @@ macro (`macro="[0]!PasteSchedule"` in the drawing) - in Excel, right-click one >
 Assign Macro to see it.
 
 It combines the app's report with the plant's **JDE Packaging Schedule** printout:
-each line's status this shift and next shift, the crew (EE), progress dots,
+each line's status this shift and next shift, the crew (EE), progress bars,
 the changeover type and minutes before each work order, and an estimated
 finish time for every work order on a running line. The bottles per hour come
 from the **Line Lead MDI Router** (Power BI), in `line_rates.csv`.
@@ -98,7 +98,8 @@ holds the machinery.
   status right under it in the same color, and on that row its status next
   shift at the right edge.
   A line that isn't scheduled prints in grey.
-- PROGRESS / CHANGEOVER: ten dots and the % on the running work order; on the
+- PROGRESS / CHANGEOVER: a ten-segment bar (▰▰▰▱▱▱▱▱▱▱, dark green) and the
+  % on the running work order; on the
   next ones the changeover type (Minor · S1, Minor · Count, MAJOR · S3,
   MAJOR · S4) in its color, with · INTL after it for an international work
   order (its item is International on 8. Products - filled in from the

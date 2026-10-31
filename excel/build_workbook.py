@@ -2,7 +2,7 @@
 """Build excel/JDE_Production_Schedule.xlsm - the Excel replacement for the
 JDE Sched web app's Production Schedule tab (only that tab), combined with
 the plant's JDE Packaging Schedule printout: line statuses this shift and
-next shift, crew, progress dots, changeover types and minutes, and an
+next shift, crew, progress bars, changeover types and minutes, and an
 estimated finish time for every work order (bottles per hour from the Line
 Lead MDI Router, excel/line_rates.csv).
 
@@ -343,7 +343,7 @@ C_COUNT_CHANGED = "FF0000"
 
 # 4. Schedule columns: (title, Calc output key). The layout combines the app's
 # report with the JDE Packaging Schedule printout: short titles, quantities
-# with commas, progress dots and changeover types in one column, bottles left
+# with commas, progress bars and changeover types in one column, bottles left
 # or changeover minutes in the next, the crew (EE), an estimated finish time
 # for every work order and the line's next-shift status at the right edge.
 # Remarks (and the app's "Cap Change") print on their own row under the work
@@ -366,7 +366,7 @@ ROW_HEIGHT = 11.25     # points: one line of 8 pt text
 # pixels, 5 of them padding, and draws Calibri with every letter rounded to
 # whole pixels - tighter than LibreOffice. Each column fits the longest word
 # of its title in 9 pt bold and a typical value in 8 pt (WO 2682056, ITEM
-# HL000430, BULK BU001565, a 6-digit quantity, ten progress dots and "100%",
+# HL000430, BULK BU001565, a 6-digit quantity, a ten-segment progress bar and "100%",
 # "10/29 12:51 PM"). Longer values shrink to fit.
 SCHED_WIDTHS = {
     "LINE": 11.0, "WO": 7.3, "SQ": 3.6, "ITEM": 8.1, "ITEM DESCRIPTION": 25.0, "CT": 4.4, "BULK": 8.3,
@@ -893,7 +893,7 @@ def window_v2(ws, c, A, s, r_):
     pa = A["pa"]
     n = f"MAX(0,MIN(10,ROUND({pa}*10,0)))"
     label = "".join(f'IF({cc}="{code}","{lab}",' for code, lab, _ in CO_LABELS) + '"—"' + ")" * len(CO_LABELS)
-    ws[c["prog"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({pa}="","Not Started Yet",REPT("●",{n})&REPT("○",10-{n})'
+    ws[c["prog"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({pa}="","Not Started Yet",REPT("▰",{n})&REPT("▱",10-{n})'
                      f'&"  "&ROUND({pa}*100,0)&"%"),{label}&IF(AND({cc}<>"",{A["intl"]}=1)," · INTL","")))')
     b = A["bott"]
     ws[c["left"]] = (f'=IF({keep}=0,"",IF({fw}=1,IF({b}="","",IF({b}>=1000,ROUND({b}/1000,1)&"k",{b}&"")),'
@@ -2757,7 +2757,7 @@ def add_conditional_formats(ws, last_row):
         for v in list(range(1, 6)) + list(range(11, 15)):
             rules(rng((col, col)), code, v, hl_fill[v % 10 if v > 10 else v],
                   font(BODY_PT, True, color) if v > 10 else grey if v == 5 else None)
-    # PROGRESS / CHANGEOVER and LEFT / C.O.: green progress dots on the
+    # PROGRESS / CHANGEOVER and LEFT / C.O.: the green progress bar on the
     # running work order, the changeover type in its color on the next ones
     prog_fonts = {1: font(BODY_PT, True, "2E7D32"), 2: font(BODY_PT, False, "7F7F7F", italic=True),
                   7: font(BODY_PT, False, "A6A6A6"), 8: grey}
@@ -3615,8 +3615,8 @@ HOW_ROWS = [
     "READY LINE - set up and ready to run (Ready in your file). No estimated times.",
     "PM / CLEANING - down for maintenance or cleaning (PM in your file). No estimated times.",
     "NOT SCHEDULED - not running this shift. Its work orders print in grey."])] + [
-    ("kv", "PROGRESS / CHANGEOVER", "The first work order of a line (the one running now): ten dots, one for each "
-                                    "10 % done, and the % Complete - or Not Started Yet when % Complete is 0 or "
+    ("kv", "PROGRESS / CHANGEOVER", "The first work order of a line (the one running now): a bar of ten "
+                                    "segments, one filled for each 10 % done (▰▰▰▱▱▱▱▱▱▱), and the % Complete - or Not Started Yet when % Complete is 0 or "
                                     "blank. The work orders after it: the changeover before each one (see "
                                     "Changeover codes)."),
     ("kv", "LEFT / C.O.", "The first work order: the bottles left (32.9k = 32,900) = WO Qty x (1 - % Complete). The "
