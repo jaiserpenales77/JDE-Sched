@@ -64,9 +64,14 @@ The daily job is three steps (load, set the lines, print); the first tab,
 | 3. Lines | This copy's shift and the time the schedule is from; per line: status this shift and next shift, breaks & lunch (Yes / No), crew. Buttons: Guided setup and one-step helpers |
 | 4. Schedule | The printable JDE Packaging Schedule - fills itself in, protected |
 | 5. Settings | Shift clock (1st shift start, break and lunch hours, their output), line efficiency, changeover minutes |
-| 6. Line Rates | Bottles per hour by line and item (2,263 rows from the router; add or paste more) |
+| 6. Line Rates | (hidden) Bottles per hour by line and item (2,263 rows from the router; add or paste more) |
 | 7. Washroom | The washroom attendants' prep list: every changeover expected this shift, first to last - fills itself in |
-| 8. Products | The items of the router's work orders (292, in `products.csv`), to tick Oily or Powdery for 7. Washroom, and International or Domestic (filled in from the router) |
+| 8. Products | (hidden) The items of the router's work orders (292, in `products.csv`), to tick Oily or Powdery for 7. Washroom, and International or Domestic (filled in from the router) |
+
+6. Line Rates and 8. Products are set once by the supervisor, so they are
+hidden. To open one: Review > Protect Workbook (turns the structure
+protection off - no password), right-click a tab > Unhide; hide it again
+and turn Protect Workbook back on after.
 
 Everything on 2-4 is worksheet formulas: the import, grouping, Seq order,
 changeover codes and highlights are ported from `src/importColumns.ts`,

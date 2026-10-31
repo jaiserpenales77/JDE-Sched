@@ -36,11 +36,11 @@ Sheets (tab order)
   4. Schedule         the printable report (formulas only, protected)
   5. Settings         shift clock (1st shift start, break / lunch hours and
                       their output share), line efficiency, changeover minutes
-  6. Line Rates       bottles per hour by line and item (unprotected), with a
+  6. Line Rates       (hidden) bottles per hour by line and item (unprotected), with a
                       hidden key column F (line number | ITEM)
   7. Washroom         the washroom attendants' prep list: this shift's
                       changeovers, first to last (formulas only, protected)
-  8. Products         the work orders' items (from the router) to tick Oily or
+  8. Products         (hidden) the work orders' items (from the router) to tick Oily or
                       Powdery for 7. Washroom and International or Domestic
                       (unprotected), hidden KEY column J
   Calc                hidden helper sheet (protected), layout below
@@ -3454,7 +3454,8 @@ HOW_ROWS = [
                   "check Breaks & lunch: Yes for a line that stops for breaks and lunch (lines 1, 3, 5 and 7), No for "
                   "a line that runs through them (lines 8 to 12)."),
     ("step", "4", "Check the tab 5. Settings (when the 1st shift starts, the break and lunch hours, the changeover "
-                  "minutes) and the tab 6. Line Rates (bottles per hour of each line and item). Press Ctrl+S."),
+                  "minutes) and the tab 6. Line Rates (bottles per hour of each line and item - a hidden tab: "
+                  "see Tips, Hidden tabs). Press Ctrl+S."),
     ("gap",),
     ("head", "", "3 golden rules"),
     ("kv", "1", "ONE FILE PER SHIFT. Every day open YOUR shift's file - never the MASTER. Your lines, statuses and "
@@ -3730,6 +3731,10 @@ HOW_ROWS = [
                            "2. Check Columns shows which column it "
                            "is read from (row Cotton); if your file titles it differently, pick its title in that "
                            "row's Override box."),
+    ("kv", "Hidden tabs", "6. Line Rates and 8. Products are hidden (set once by the supervisor). To open one: "
+                          "Review > Protect Workbook (click it to turn the protection off - no password), then "
+                          "right-click any tab > Unhide and pick it. When done: right-click its tab > Hide, then "
+                          "Review > Protect Workbook again (no password: just click OK)."),
     ("kv", "Line rates", "6. Line Rates lists the bottles per hour of each line and item, from the Line Lead MDI "
                          "Router (Power BI). A new item: type a row under the last one (Line like LINE05, Item, "
                          "Description, Bottles per hour). A newer router list: paste it over A5:E with Paste "
@@ -4053,6 +4058,9 @@ def main():
     for name, col in [("SCHED_KIND", "S"), ("SCHED_HL", "T"), ("SCHED_STATUS", "AC"), ("SCHED_SCHEDULED", "AD")]:
         add_name(wb, name, f"{SCHED}!${col}${SCHED_ROW0}:${col}${SCHED_LAST}")
 
+    # set once by the supervisor: hidden (How To Use, Tips: Hidden tabs)
+    for t in (S_RATES, S_PROD):
+        wb[t].sheet_state = "hidden"
     wb.active = 0
     for ws in wb.worksheets:
         ws.sheet_view.tabSelected = ws.title == S_HOW
