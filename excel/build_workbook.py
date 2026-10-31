@@ -2498,6 +2498,7 @@ SCHED_HELPERS = [("S", "KIND", "kind"), ("T", "HL", "hl"), ("U", "NOT SCHED", "n
 NOTES_HELPERS = ("V", "W", "X", "AQ")          # also read on a notes row (status, first, last, role)
 TYPED_COL = "AS"
 NOTES_COL = "C"            # a notes row's text: one cell merged from SQ to EST. TIME
+NOTE_ARROW = "↳"           # in the WO column of a notes row with text: from the WO down to its note
 HIDE_COL = "AU"            # 1 on a notes row the macro hides
 C_FRAME, C_INNER, C_NO_STATUS, C_CAP_CHANGED = "1F3864", "D9D9D9", "F2F2F2", "C55A11"
 LEGEND_HL = [("Allergen", "F4B183"), ("Oil", "FFD966"), ("Dumping", "9DC3E6")]
@@ -2664,6 +2665,10 @@ def build_schedule(wb):
             c = ws.cell(n, 3, f"=Calc!${O[key]}${cr}")
             c.font = font(STRIP_PT, color=C_NOTE_TEXT, italic=True)
             c.alignment = Alignment(horizontal="left", vertical="center", shrink_to_fit=True)
+            # under the WO, an arrow down and right to the note
+            a = ws.cell(n, 2, f'=IF($AT{n}=1,"{NOTE_ARROW}","")')
+            a.font = font(7.5, False, C_NOTE_TEXT)
+            a.alignment = Alignment(horizontal="center", vertical="center")
             ws[f"S{n}"] = f'=IF(Calc!${O["kind"]}${cr}="row","notes","")'
             for col, _, k_ in SCHED_HELPERS:
                 if col in NOTES_HELPERS:
@@ -3633,7 +3638,8 @@ HOW_ROWS = [
                          "the box on the same row as this shift's status."),
     ("kv", "CAP", "Size and type, like the JDE printout: CAP 45MM CRC WHITE shows as 45-CRC. In bold orange: a "
                   "different cap from the work order before it (the web app's Cap Change)."),
-    ("kv", "NOTES", "Thin rows under a work order, from SQ to EST. TIME, in small italics on cream. Changeover Notes: what the changeover into the work order changes from the one "
+    ("kv", "NOTES", "Thin rows under a work order, from SQ to EST. TIME, in small italics on cream, with an "
+                    "arrow (↳) under the WO pointing to them. Changeover Notes: what the changeover into the work order changes from the one "
                     "before it - Cap / Count / Bottle Change (Count Change only on an S1 Count Change), Add / Remove / Change Cotton (the COT column of your "
                     "file: Yes for Y / Yes / X, nothing for N or blank), Add / Remove / Change Desiccant, "
                     "Dumping (bulk A662 / A624), and Prepare For INTERNATIONAL WO (an international work order: "

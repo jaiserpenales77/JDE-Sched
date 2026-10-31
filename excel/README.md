@@ -109,7 +109,8 @@ holds the machinery.
 - CAP as size-type (45-CRC), in bold orange when it differs from the work
   order before it (the app's Cap Change). CT in red bold on a count change.
 - Under each work order, two thin notes rows, each one cell merged from SQ to
-  EST. TIME, in 6.5 pt italics on cream. **Changeover Notes:** what the
+  EST. TIME, in 6.5 pt italics on cream, with an arrow (↳) under the WO
+  pointing to each. **Changeover Notes:** what the
   changeover into it changes from the work order before it: Cap / Count /
   Bottle Change (in one phrase, e.g. Cap & Bottle Change; Count Change only
   on an S1 Count Change), Add / Remove
