@@ -7,44 +7,49 @@ the macros only help. `JDENotes.FitNotes` (run by the workbook's events - no
 button) hides the empty notes rows on 4. Schedule, so the work orders sit
 right under each other. Before saving it shows them again (`JDENotes.Clean`)
 and hides them after, so the saved file is the plain layout. `JDELines` runs
-the buttons on 3. Lines (below). Without macros (Excel on the web, or Enable
+the buttons on Guided Setup and 3. Lines (below). Without macros (Excel on the web, or Enable
 Content not clicked) everything still works by hand: the buttons do nothing
 and those thin rows stay.
 
-## The buttons on 3. Lines
+## Guided Setup and the buttons
 
-A row of buttons under the instructions (they don't print):
+The tab **Guided Setup** (between How To Use and 1. Paste Schedule) walks
+through the setup in five steps. Each step card has its number, what to do,
+its buttons, and a status on the right that turns green with a check mark
+when the step is done (amber until then); the top right counts the steps done.
 
-- **Guided setup** (green) asks step by step with Yes / No boxes: paste
-  today's schedule (if it was just copied), checks 2. Check Columns is GREEN,
-  the shift (1, 2 or 3) and the time (now, or typed), adds the lines missing
-  from the list. Then a panel over the right-hand table asks about each line
-  in today's schedule, with a button per status (RUNNING, NOT SCHEDULED,
-  PM / CLEANING, READY LINE, PARTIAL SHIFT, OVERTIME, in their colors); then
-  the next shift - the same as this shift, or line by line on the panel - and
-  it offers to print. Cancel or Stop ends it; what was answered stays. The
-  crew is typed by hand. (A macro can't wait for a click on the sheet: the
-  panel's buttons carry the setup on - `WzPick1`-`6`, `WzStop` - and the panel
-  is hidden again when the file opens.)
-- **Paste today's schedule**: what was copied goes into 1. Paste Schedule as
-  values (Paste Values), the rows and columns past it cleared; then it says
-  whether 2. Check Columns is GREEN.
-- **Add missing lines**: the lines of today's schedule that aren't in the list
-  go in its empty rows (VPKL09 as LINE 9).
-- **This shift: all RUNNING**: each line with work orders today that has no
-  status yet gets RUNNING, the others NOT SCHEDULED; statuses already picked
-  stay.
-- **Next shift = this shift**, **Clear statuses** (this shift, next shift and
-  crew - asks first), **Set time to now** (Schedule as of; the shift too when
-  it's empty, by the clock on 5. Settings), **Print 4. Schedule** (warns first
-  when 3. Lines shows a CHECK, then the Print dialog).
-- Double-click a status: RUNNING / NOT SCHEDULED; Breaks & lunch: Yes / No;
-  the yellow Schedule as of box: now.
+1. **Today's schedule** - Paste today's schedule: what was copied goes into
+   1. Paste Schedule as values (Paste Values), the rows and columns past it
+   cleared. Done when 2. Check Columns is GREEN ("20 work orders on 8 lines").
+2. **Shift and time** - 1st / 2nd / 3rd Shift; Set time to now (the shift
+   too when it's empty, by the clock on 5. Settings); Other time (type it).
+   Done when the shift is picked and the time is today's.
+3. **Your lines** - Add missing lines: the lines of today's schedule that
+   aren't in the list go in its empty rows (VPKL09 as LINE 9). Done when
+   none is missing.
+4. **Line statuses** - a table of the lines on 3. Lines (rows 4-23) with
+   their work orders today, This shift and Next shift in their colors. Click
+   line cells (drag for several), then a status button above the table
+   (RUNNING, NOT SCHEDULED, PM / CLEANING, READY LINE, PARTIAL SHIFT,
+   OVERTIME): the THIS SHIFT column or a line's name sets this shift, NEXT
+   SHIFT the next. Double-click a cell: RUNNING / NOT SCHEDULED. Also This
+   shift: all RUNNING (each line with work orders today that has no status
+   yet; the others NOT SCHEDULED), Next shift = this shift, Clear (this
+   shift, next shift and crew - asks first). Done when every line with work
+   orders has a status this shift. The crew is typed on 3. Lines.
+5. **Print** - Print 4. Schedule (warns first when 3. Lines shows a CHECK,
+   then the Print dialog). Ready when steps 1-4 are done.
+
+Everything there is formulas reading 3. Lines and 2. Check Columns; the
+buttons write to 3. Lines. 3. Lines has the same buttons in a row under its
+instructions (its green Guided setup opens the tab); there, double-click a
+status: RUNNING / NOT SCHEDULED, Breaks & lunch: Yes / No, the yellow Schedule
+as of box: now. The buttons don't print.
 
 Ctrl+Z can't undo a macro, so the buttons that would overwrite something ask
 first. While a button works, Excel doesn't recalculate after every cell
 (manual calculation, restored after). The buttons are shapes with an assigned
-macro (`macro="[0]!GuidedSetup"` in the drawing) - in Excel, right-click one >
+macro (`macro="[0]!PasteSchedule"` in the drawing) - in Excel, right-click one >
 Assign Macro to see it.
 
 It combines the app's report with the plant's **JDE Packaging Schedule** printout:
@@ -59,6 +64,7 @@ The daily job is three steps (load, set the lines, print); the first tab,
 | Tab | What it is |
 | --- | --- |
 | How To Use | Step-by-step instructions, how to read the schedule, changeover codes, tips |
+| Guided Setup | The setup in five steps with buttons, each turning green when done (macros) |
 | 1. Paste Schedule | Paste today's schedule file here at A1 (any layout; up to 1000 rows, columns A-BH). Ships with the work orders of the JDE Packaging Schedule printout of Oct 29, 2026 |
 | 2. Check Columns | Which row holds the column titles and which column feeds each field, with Override cells, and the "Found N work orders on M lines" check |
 | 3. Lines | This copy's shift and the time the schedule is from; per line: status this shift and next shift, breaks & lunch (Yes / No), crew. Buttons: Guided setup and one-step helpers |
