@@ -97,7 +97,8 @@ holds the machinery.
   no status): in the middle of the box, its name in the LINE column with its
   status right under it in the same color, and on that row its status next
   shift at the right edge.
-  A line that isn't scheduled prints in grey.
+  A line that isn't scheduled prints in grey; a PM / CLEANING line's work
+  orders do too, its name, status and next shift keep their colors.
 - PROGRESS / CHANGEOVER: a ten-segment bar (▰▰▰▱▱▱▱▱▱▱, dark green) and the
   % on the running work order; on the
   next ones the changeover type (Minor · S1, Minor · Count, MAJOR · S3,

@@ -1565,7 +1565,9 @@ def build_calc(wb):
         ws[f"{O['o_status']}{r_}"] = f'=IF({is_row},{tag},"")'
         ws[f"{O['fw']}{r_}"] = f'=IF({is_row},{ix("fw", k)},0)'
         ws[f"{O['code']}{r_}"] = f'=IF({is_row},{ix("co", k)},"")'
-        ws[f"{O['ns']}{r_}"] = f'=IF({A["o_status"]}="NOT SCHEDULED",1,0)'
+        # grey work orders: NOT SCHEDULED and PM / CLEANING lines (the line
+        # column and NEXT SHIFT keep their colors)
+        ws[f"{O['ns']}{r_}"] = f'=IF({A["stidx"]}>={STATUS_NAMES.index("PM / CLEANING") + 1},1,0)'
         ws[f"{O['stidx']}{r_}"] = f"=IFERROR(MATCH({A['o_status']},{st_list},0),0)"
         ws[f"{O['nidx']}{r_}"] = f"=IFERROR(MATCH({A['o_next']},{st_list},0),0)"
         for oc, wc in (("r_pa", "pa"), ("r_br", "br"), ("r_note", "remarks"), ("r_pct", "pct"), ("r_cap", "cap"),
@@ -3618,7 +3620,8 @@ HOW_ROWS = [
     "PARTIAL SHIFT - the line runs part of the shift. Estimated times (as if it ran the whole shift).",
     "OVERTIME - an overtime or trial run (OT, Overtime or Trial in your file). Estimated times.",
     "READY LINE - set up and ready to run (Ready in your file). No estimated times.",
-    "PM / CLEANING - down for maintenance or cleaning (PM in your file). No estimated times.",
+    "PM / CLEANING - down for maintenance or cleaning (PM in your file). No estimated times. Its work orders "
+    "print in grey; its name and status stay blue.",
     "NOT SCHEDULED - not running this shift. Its work orders print in grey."])] + [
     ("kv", "PROGRESS / CHANGEOVER", "The first work order of a line (the one running now): a bar of ten "
                                     "segments, one filled for each 10 % done (▰▰▰▱▱▱▱▱▱▱), and the % Complete - or Not Started Yet when % Complete is 0 or "
