@@ -2461,7 +2461,8 @@ def build_wash(wb):
         cf(ws, f"{col}5:{col}{last}", f'${col}5="Oily"', C_OIL, font(BODY_PT, True, "7F6000"))
         cf(ws, f"{col}5:{col}{last}", f'${col}5="Powdery"', "EDEDED", font(BODY_PT, True, "595959"))
     for _, lab, color in CO_LABELS:
-        cf(ws, f"E5:E{last}", f'$E5="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color))
+        # (by its start: an international one ends in " · INTL")
+        cf(ws, f"E5:E{last}", f'LEFT($E5,{len(lab)})="{lab}"', None, font(BODY_PT, lab.startswith("MAJOR"), color))
     cf(ws, f"D5:D{last}", '$D5="Cremer"', None, font(BODY_PT, True, "1F6F8B"))
     cf(ws, f"D5:D{last}", '$D5="Merrill"', None, font(BODY_PT, True, "7B3F00"))
     ws.freeze_panes = "A5"
