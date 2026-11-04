@@ -56,8 +56,8 @@ Nothing changed in Firebase. The Job Instruction covers the Production
 Schedule tab, so it stays at Rev. 2026-10-15.
 
 **Once it's live, on 2nd shift:** Skills & Roles → 📋 Add from a list →
-paste `docs/2nd-shift-roster-2026-10-26.txt` (42 people from the 10/26
-sheet; check Ed Lura, Cornelis Tap and Johnathan Hernaez) → Add.
+paste the 42 names from the 10/26 sheet (given in chat, not kept in this
+public repository) → Add.
 
 **Announcement:** "Line Assignments: a line's side panel has a new, tidier
 look, and the lead you pick is listed first, above the MLL. Skills &
