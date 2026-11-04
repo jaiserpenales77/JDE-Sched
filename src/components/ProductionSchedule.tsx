@@ -26,6 +26,7 @@ import {
 } from "../scheduleLogic";
 import { asOfNow, defaultLineSetup, lineKey, lineNumber, thisShiftStatus, whenText } from "../scheduleRun";
 import type { ScheduleLine } from "../scheduleRun";
+import type { CottonList } from "../hubData";
 import ProgressBar from "./ProgressBar";
 import { PrintSchedule } from "./PrintViews";
 import SchedulePrintDesign from "./SchedulePrintDesign";
@@ -44,6 +45,9 @@ interface Props {
   setRunSettings: (updater: (s: ScheduleRunSettings) => ScheduleRunSettings) => void;
   // The schedule with each line's status and estimated times.
   scheduleLines: ScheduleLine[];
+  // The Hub's cotton list (FG item -> "Yes" or the cotton it takes), shown
+  // in a blank Cotton box.
+  hubCotton: CottonList;
   // What the printout shows (see App.tsx), for the preview.
   printData: {
     workOrders: WorkOrder[];
@@ -624,6 +628,7 @@ export default function ProductionSchedule({
   setRunSettings,
   scheduleLines,
   printData,
+  hubCotton,
   columnWidths,
   setColumnWidths,
   hiddenColumns,
@@ -893,11 +898,19 @@ export default function ProductionSchedule({
                               <input
                                 className={`${c.numeric ? "num" : ""} ${c.key === "count" && countChanged ? "count-changed" : ""}`}
                                 type={c.numeric ? "number" : "text"}
-                                placeholder={c.key === "remarks" && capChange ? CAP_CHANGE_REMARK : undefined}
+                                placeholder={
+                                  c.key === "remarks" && capChange
+                                    ? CAP_CHANGE_REMARK
+                                    : c.key === "cotton"
+                                      ? hubCotton[row.item.trim().toUpperCase()]
+                                      : undefined
+                                }
                                 title={
                                   c.key === "remarks" && capChange && !row.remarks.trim()
                                     ? "The cap changes here. Prints as \"Cap Change\" unless you type a remark."
-                                    : undefined
+                                    : c.key === "cotton" && hubCotton[row.item.trim().toUpperCase()] && !String(row.cotton ?? "").trim()
+                                      ? `From the Hub's cotton list: ${hubCotton[row.item.trim().toUpperCase()]}. Type here to change it for this work order (N for none).`
+                                      : undefined
                                 }
                                 value={(row[c.key] ?? "") as string | number}
                                 onChange={(e) =>

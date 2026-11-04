@@ -4,7 +4,7 @@ import { useShiftData, useCurrentShift, seedDataForShift, emptyAppData } from ".
 import { lockApp, useShiftAuth } from "./auth";
 import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
-import { useLineRates } from "./lineRates";
+import { useHubData } from "./hubData";
 import { useShiftNames } from "./shiftNames";
 import { DEFAULT_SHIFT_START, findLineRate } from "./scheduleLogic";
 import { buildSchedule, fileLineStatus, scheduleAsOfDate, scheduleCheck, scheduleSummary, washroomList, whenText } from "./scheduleRun";
@@ -157,8 +157,9 @@ function App() {
     importColumnMap,
   } = data;
   // The estimated times, from the Hub's Line Rates (bottles per hour) and
-  // when this shift starts - the JDE Schedule workbook's rules.
-  const lineRates = useLineRates(!!shift);
+  // when this shift starts - the JDE Schedule workbook's rules - and the
+  // cotton notes, from the Hub's cotton list.
+  const hub = useHubData(!!shift);
   const changeoverClock = {
     ...data.changeoverClock,
     start: data.changeoverClock.start || DEFAULT_SHIFT_START[shift ?? "1st"],
@@ -171,7 +172,8 @@ function App() {
     asOf,
     clock: changeoverClock,
     settings: data.scheduleRunSettings,
-    rateOf: (line, item) => findLineRate(lineRates, line, item)?.fullHour ?? null,
+    rateOf: (line, item) => findLineRate(hub.lineRates, line, item)?.fullHour ?? null,
+    cottonListed: (item) => hub.cotton[item.trim().toUpperCase()] ?? null,
   });
   const shiftIndex = SHIFT_KEYS.indexOf(shift ?? "1st");
   const boxes: BoxesView = {
@@ -563,6 +565,7 @@ function App() {
             setRunSettings={setScheduleRunSettings}
             scheduleLines={schedule.lines}
             printData={printData}
+            hubCotton={hub.cotton}
             columnWidths={printScheduleColumnWidths}
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}

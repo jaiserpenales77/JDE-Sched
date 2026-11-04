@@ -45,17 +45,27 @@ together.
    the shift, first to last: time, line, filler (Cremer / Merrill), type
    and minutes, what comes off the line to wash (oily or powdery,
    allergen) and what goes on, with a Done box.
-5. **Cotton (COT)** is read from the Excel file and shown in the table
-   (for the cotton notes).
+5. **Cotton, for the cotton notes (Add / Change / Remove Cotton):** from
+   the Packaging Lead Hub's cotton list in Stored Data (each FG item and
+   "Yes" or the cotton it takes), saved as `cottonItems` in
+   `pk030/storedData`. A blank Cotton box in the table shows the Hub's
+   cotton in gray; a work order's own Cotton (a COT column in the Excel
+   file, or typed in the box) wins over the list, and N in the box means
+   none.
 
-**Not in it yet:** the workbook's product list (oily / powdery and
-international for each item) and its line rates, to be added to the
-Packaging Lead Hub's Stored Data tab. Until then, an item is oily when its
+**Not in it yet:** the **Cotton section in the Hub's Stored Data tab**
+(where the cotton list is kept), and the workbook's product list (oily /
+powdery and international for each item) and its line rates, to be added
+to the Hub's Stored Data tab. They need the Hub's code
+(`PackagingProjects`), which this session can't open yet. Until the Cotton
+section exists, the cotton notes come from the Cotton box only. Until then, an item is oily when its
 description has SG, LSG or S/G, international when its description says
 INTL or INTERNATIONAL, and the rates are the Hub's Line Rates.
 
 **Firebase:** nothing changes; the new settings are saved with each
-shift's schedule. **Job Instruction:** the Production Schedule part
+shift's schedule, and LineUp's shift accounts can already read the Hub's
+Stored Data (where `cottonItems` goes; Hub admins can change it without a
+rules change). **Job Instruction:** the Production Schedule part
 changes (Lines panel, Set to now, the new printout and the washroom list),
 so it gets a new revision at step 2.
 

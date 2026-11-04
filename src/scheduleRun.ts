@@ -321,8 +321,13 @@ export function capShort(cap: string): string {
 const NONE_WORDS = ["N", "NO", "0", "-", "FALSE", "NONE"];
 
 // The cotton a work order uses: "Yes" for Y / Yes / X, nothing for N or blank.
-export function cottonOf(wo: WorkOrder): string {
-  const v = String(wo.cotton ?? "").trim();
+// A work order's cotton: its own Cotton box (from the file, or typed), else
+// the Hub's cotton list for its FG item (`listed`). "Yes", the cotton it
+// takes, or "" for none (a box with N / No / - means none, whatever the list
+// says).
+export function cottonOf(wo: WorkOrder, listed: string | null = null): string {
+  const own = String(wo.cotton ?? "").trim();
+  const v = own || (listed ?? "").trim();
   if (!v || NONE_WORDS.includes(v.toUpperCase())) return "";
   return ["Y", "YES", "X", "TRUE", "1"].includes(v.toUpperCase()) ? "Yes" : v;
 }
@@ -347,7 +352,13 @@ export function isDumping(wo: WorkOrder): boolean {
 
 // What the changeover into rows[i] changes from the work order before it:
 // "Cap & Bottle Change, Add Cotton, Dumping, Prepare For INTERNATIONAL WO".
-export function changeoverNotes(rows: WorkOrder[], i: number, intl: boolean): string {
+// cottonListed: the Hub's cotton for an FG item, if it lists it.
+export function changeoverNotes(
+  rows: WorkOrder[],
+  i: number,
+  intl: boolean,
+  cottonListed?: (item: string) => string | null,
+): string {
   if (i <= 0) return "";
   const before = rows[i - 1];
   const wo = rows[i];
@@ -357,8 +368,8 @@ export function changeoverNotes(rows: WorkOrder[], i: number, intl: boolean): st
   const bottle = !!before.bottleSize && !!wo.bottleSize && before.bottleSize !== wo.bottleSize;
   const changes = [cap && "Cap", count && "Count", bottle && "Bottle"].filter(Boolean) as string[];
   if (changes.length) parts.push(`${changes.length === 3 ? `${changes[0]}, ${changes[1]} & ${changes[2]}` : changes.join(" & ")} Change`);
-  const cot = cottonOf(wo);
-  const cotBefore = cottonOf(before);
+  const cot = cottonOf(wo, cottonListed?.(wo.item) ?? null);
+  const cotBefore = cottonOf(before, cottonListed?.(before.item) ?? null);
   if (cot && !cotBefore) parts.push(`Add Cotton${cot === "Yes" ? "" : ` (${cot})`}`);
   else if (cot && cot.toUpperCase() !== cotBefore.toUpperCase()) parts.push(`Change Cotton (${cot})`);
   else if (!cot && cotBefore) parts.push("Remove Cotton");
@@ -407,6 +418,8 @@ export interface ScheduleRunInput {
   rateOf: (line: string, item: string) => number | null;
   // From the item list, once there is one: International (true) / Domestic (false).
   internationalOf?: (item: string) => boolean | null;
+  // The Hub's cotton list: the cotton an FG item takes ("Yes" or its type), or null.
+  cottonListed?: (item: string) => string | null;
 }
 
 export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[]; end: Date } {
@@ -431,7 +444,7 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
         countChanged: code === "S1 Count Change",
         estimate: estimates[i],
         changeoverAt,
-        notes: changeoverAt && changeoverAt < end ? changeoverNotes(rows, i, intl) : "",
+        notes: changeoverAt && changeoverAt < end ? changeoverNotes(rows, i, intl, input.cottonListed) : "",
       };
     });
     return { line, setup, name: setup.name || line, status, next: nextShiftStatus(setup), runs, rows: out };
