@@ -24,10 +24,12 @@ together.
    Line bands and Striped are still in Customize Print Design, and they
    now take their green boxes and READY / PM / OT tags from the statuses.
 2. **Lines panel** (in place of Scheduled Lines): each line's status this
-   shift and next, whether it stops for breaks and lunch (lines below 8
-   do), and its crew; **Schedule as of** with 🕒 Set to now; and the
-   buttons This shift: all Running, Next shift = this shift and Clear
-   statuses. Statuses stay from day to day, so until Schedule as of is
+   shift and next as colored buttons in the printout's colors (Running,
+   Partial, OT, Ready, PM, Off: one click; a status that's automatic, not
+   picked, has a dashed outline), a Yes / No switch for whether it stops
+   for breaks and lunch (lines below 8 do), and its crew with − / +;
+   **Schedule as of** with 🕒 Set to now; and the buttons This shift: all
+   Running, Next shift = this shift and Clear statuses. Statuses stay from day to day, so until Schedule as of is
    today the printout shows a red **CHECK** in place of its summary (also
    for a WO on two rows). Lines ticked under the old Scheduled Lines start
    as Running. Each line's header on the tab has the same status picker.

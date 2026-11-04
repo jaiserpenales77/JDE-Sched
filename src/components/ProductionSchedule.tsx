@@ -172,6 +172,60 @@ function StatusSelect({
   );
 }
 
+// Short names on the status buttons (full, and next shift's smaller ones).
+const CHIP_WORDS: Record<RunStatus, [string, string]> = {
+  RUNNING: ["Running", "Run"],
+  "PARTIAL SHIFT": ["Partial", "Part"],
+  OVERTIME: ["OT", "OT"],
+  "READY LINE": ["Ready", "Rdy"],
+  "PM / CLEANING": ["PM", "PM"],
+  "NOT SCHEDULED": ["Off", "Off"],
+};
+
+// A line's status as a row of colored buttons, in the printout's colors:
+// one click picks it. A status that isn't picked (Auto) shows with a
+// dashed outline; "No status" shows none.
+function StatusChips({
+  label,
+  value,
+  auto,
+  autoNote,
+  small = false,
+  onChange,
+}: {
+  label: string;
+  value: LineStatusPick;
+  auto: RunStatus | "";
+  autoNote: string;
+  small?: boolean;
+  onChange: (value: RunStatus) => void;
+}) {
+  const shown = value === "NONE" ? "" : value || auto;
+  return (
+    <span className={`run-chips${small ? " run-chips-small" : ""}`} role="radiogroup" aria-label={label}>
+      {RUN_STATUSES.map((st) => {
+        const on = shown === st;
+        const isAuto = on && !value;
+        return (
+          <button
+            key={st}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            data-status={st}
+            data-auto={isAuto ? "1" : undefined}
+            className={`run-chip run-chip-${STATUS_CLASS[st]}${on ? (isAuto ? " auto" : " on") : ""}`}
+            title={isAuto ? `${STATUS_WORDS[st]}, automatically (${autoNote}). Click to pick it.` : STATUS_WORDS[st]}
+            onClick={() => onChange(st)}
+          >
+            {CHIP_WORDS[st][small ? 1 : 0]}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
 // A number box that saves when you leave it (or press Enter), so clearing
 // it to type a new number doesn't save a 0 on the way.
 function DraftNumber({
@@ -251,14 +305,19 @@ function LinesPanel({
   setScheduleAsOf: (asOf: string) => void;
   boxes: BoxesView;
 }) {
-  // Saves a change to some lines' setups (made from their current setup).
-  function update(targets: ScheduleLine[], patch: (line: ScheduleLine) => Partial<ScheduleLineSetup>) {
+  // Saves a change to some lines' setups, worked out from each one's
+  // current setup (so quick clicks on + add up).
+  function update(
+    targets: ScheduleLine[],
+    patch: (setup: ScheduleLineSetup, line: ScheduleLine) => Partial<ScheduleLineSetup>,
+  ) {
     setLineSetups((all) => {
       const next = [...all];
       for (const line of targets) {
         const key = lineKey(line.line);
         const i = next.findIndex((s) => lineKey(s.name) === key);
-        const changed = { ...(i >= 0 ? next[i] : line.setup), ...patch(line) };
+        const current = i >= 0 ? next[i] : line.setup;
+        const changed = { ...current, ...patch(current, line) };
         if (i >= 0) next[i] = changed;
         else next.push(changed);
       }
@@ -306,7 +365,7 @@ function LinesPanel({
         </button>
         <button
           className="btn small"
-          onClick={() => update(lines, (l) => ({ nextShift: l.status || "NONE" }))}
+          onClick={() => update(lines, (_s, l) => ({ nextShift: l.status || "NONE" }))}
           title="Next shift's status for each line = its status this shift"
         >
           Next shift = this shift
@@ -322,9 +381,8 @@ function LinesPanel({
               <th>Line</th>
               <th>This shift</th>
               <th>Next shift</th>
-              <th>Stops for breaks &amp; lunch</th>
+              <th>Breaks &amp; lunch</th>
               <th>Crew (EE)</th>
-              <th>Work orders</th>
               <th>Running WO done</th>
             </tr>
           </thead>
@@ -341,42 +399,72 @@ function LinesPanel({
                     )}
                   </th>
                   <td>
-                    <StatusSelect
+                    <StatusChips
                       label={`${line.name} this shift`}
                       value={line.setup.thisShift}
                       auto={auto}
+                      autoNote="from the file's Line Status, else Off"
                       onChange={(v) => update([line], () => ({ thisShift: v }))}
                     />
                   </td>
                   <td>
-                    <StatusSelect
+                    <StatusChips
                       label={`${line.name} next shift`}
                       value={line.setup.nextShift}
                       auto="NOT SCHEDULED"
+                      autoNote="not picked yet"
+                      small
                       onChange={(v) => update([line], () => ({ nextShift: v }))}
                     />
                   </td>
                   <td>
-                    <label className="run-breaks">
-                      <input
-                        type="checkbox"
-                        checked={line.setup.breaks}
-                        onChange={(e) => update([line], () => ({ breaks: e.target.checked }))}
-                      />
-                      {line.setup.breaks ? "Yes" : "No - runs through"}
-                    </label>
+                    <span
+                      className="run-switch"
+                      role="radiogroup"
+                      aria-label={`${line.name} stops for breaks and lunch`}
+                      title="Yes: the line stops for breaks and lunch. No: it runs through them."
+                    >
+                      {[true, false].map((stops) => (
+                        <button
+                          key={String(stops)}
+                          type="button"
+                          role="radio"
+                          aria-checked={line.setup.breaks === stops}
+                          className={line.setup.breaks === stops ? "on" : ""}
+                          onClick={() => update([line], () => ({ breaks: stops }))}
+                        >
+                          {stops ? "Yes" : "No"}
+                        </button>
+                      ))}
+                    </span>
                   </td>
                   <td>
-                    <DraftNumber
-                      label={`${line.name} crew`}
-                      value={line.setup.crew}
-                      min={0}
-                      max={99}
-                      allowBlank
-                      onCommit={(n) => update([line], () => ({ crew: n === null ? null : Math.round(n) }))}
-                    />
+                    <span className="run-stepper">
+                      <button
+                        type="button"
+                        aria-label={`One less on ${line.name}`}
+                        disabled={line.setup.crew === null}
+                        onClick={() => update([line], (st) => ({ crew: st.crew === null || st.crew <= 1 ? null : st.crew - 1 }))}
+                      >
+                        −
+                      </button>
+                      <DraftNumber
+                        label={`${line.name} crew`}
+                        value={line.setup.crew}
+                        min={0}
+                        max={99}
+                        allowBlank
+                        onCommit={(n) => update([line], () => ({ crew: n === null ? null : Math.round(n) }))}
+                      />
+                      <button
+                        type="button"
+                        aria-label={`One more on ${line.name}`}
+                        onClick={() => update([line], (st) => ({ crew: Math.min(99, (st.crew ?? 0) + 1) }))}
+                      >
+                        +
+                      </button>
+                    </span>
                   </td>
-                  <td className="run-count">{line.rows.length}</td>
                   <td className="run-est">
                     {!line.runs ? (
                       <span className="run-muted">Not running</span>
