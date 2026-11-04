@@ -53,12 +53,18 @@ together.
    file, or typed in the box) wins over the list, and N in the box means
    none.
 
-**Not in it yet:** the **Cotton section in the Hub's Stored Data tab**
-(where the cotton list is kept), and the workbook's product list (oily /
-powdery and international for each item) and its line rates, to be added
-to the Hub's Stored Data tab. They need the Hub's code
-(`PackagingProjects`), which this session can't open yet. Until the Cotton
-section exists, the cotton notes come from the Cotton box only. Until then, an item is oily when its
+6. **Packaging Lead Hub → Stored Data → Cotton** (a new section, in the Hub's
+   own repository `AutoCoordinator`, branch `claude/next-update`): Admins and
+   Owners add, change and remove the FG items that take cotton ("Yes", or
+   the cotton it takes; several FG items at once, with commas); Leads see
+   the list. It's in Export / Import Stored Data (import: admins only) and
+   the Activity Log. Tested end to end on the test database: an Owner's
+   changes reach `cottonItems`, a Lead's are refused by the rules, and
+   LineUp shows them.
+
+**Not in it yet:** the workbook's product list (oily / powdery and
+international for each item) and its line rates, to be added to the Hub's
+Stored Data tab. Until then, an item is oily when its
 description has SG, LSG or S/G, international when its description says
 INTL or INTERNATIONAL, and the rates are the Hub's Line Rates.
 
@@ -72,7 +78,9 @@ so it gets a new revision at step 2.
 **How to check it, once it's live:** on the Production Schedule tab, set
 each line's This shift status in Lines, click 🕒 Set to now, and look at
 the preview: no red CHECK, each line boxed in its color, estimated times
-on the running lines. Print → Washroom Prep List.
+on the running lines. Print → Washroom Prep List. In the Hub (as an
+Admin): Stored Data → Cotton → add an FG item from today's schedule; in
+LineUp its blank Cotton box shows it in gray.
 
 **Announcement:** "Production Schedule: the printout now looks like the
 JDE Schedule workbook, with each line boxed in its status color, progress,
@@ -89,7 +97,7 @@ Prep List."
 |---|------|-----|------|
 | 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
 | 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
-| 3 | Release it | Claude | 2–15 min |
+| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
 | 4 | Check the new version (each item lists what to look at) | You | 5 min |
 | 5 | Send the announcement (written with each item) | You | – |
 
