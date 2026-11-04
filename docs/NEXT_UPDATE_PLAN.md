@@ -82,6 +82,13 @@ on the running lines. Print → Washroom Prep List. In the Hub (as an
 Admin): Stored Data → Cotton → add an FG item from today's schedule; in
 LineUp its blank Cotton box shows it in gray.
 
+**Once it's live, in the Hub (as an Admin):** Stored Data → **Import Stored
+Data** → `cotton-from-mdi-router.json` (26 FG items whose limiting machine
+is the cottoner in the Line Lead MDI Router, as "Yes"; given in chat, not
+kept in this public repository). Then add any other FG items that take
+cotton by hand: the router only shows the ones where the cottoner limits
+the speed.
+
 **Announcement:** "Production Schedule: the printout now looks like the
 JDE Schedule workbook, with each line boxed in its status color, progress,
 bottles left and estimated times on every work order. Set each line's
