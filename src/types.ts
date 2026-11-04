@@ -20,6 +20,45 @@ export interface WorkOrder {
   percentComplete: number | "";
   lineStatus: string;
   desiccant: string;
+  // The COT column: Y / Yes / X = cotton, N or blank = none, else what it
+  // says. Shown only in the changeover notes (Add / Remove / Change Cotton).
+  cotton?: string;
+}
+
+// A line's status on the printed Production Schedule, this shift and next
+// shift (the JDE Schedule workbook's 3. Lines). RUNNING, PARTIAL SHIFT and
+// OVERTIME lines get estimated times.
+export const RUN_STATUSES = ["RUNNING", "PARTIAL SHIFT", "OVERTIME", "READY LINE", "PM / CLEANING", "NOT SCHEDULED"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+// "" = not picked: this shift takes the file's Line Status (Ready / PM / OT),
+// else NOT SCHEDULED; next shift is NOT SCHEDULED. "NONE" = no status at all.
+export type LineStatusPick = RunStatus | "NONE" | "";
+
+export interface ScheduleLineSetup {
+  // The line's name on the printout ("LINE 5"). It's matched to the
+  // schedule by its number, so VPKL05 is LINE 5.
+  name: string;
+  thisShift: LineStatusPick;
+  nextShift: LineStatusPick;
+  // Stops for breaks and lunch: those hours make fewer bottles.
+  breaks: boolean;
+  // People on the line (EE); null = not given.
+  crew: number | null;
+}
+
+// The estimated times and the washroom prep list (the workbook's 5. Settings).
+export interface ScheduleRunSettings {
+  // Share of the line rate the lines really make (1 = 100%).
+  efficiency: number;
+  changeoverMinutes: { s1: number; count: number; s3: number; s4: number };
+  // Share of a full hour's bottles made in a break hour / the lunch hour.
+  breakShare: number;
+  lunchShare: number;
+  // Line numbers, with commas: "1, 5, 9, 10, 12".
+  cremerLines: string;
+  merrillLines: string;
+  // An item whose description has one of these words is oily (a softgel).
+  oilyWords: string[];
 }
 
 // "OT" replaced the original workbook's "Trial" status.
@@ -267,8 +306,14 @@ export interface AppData {
   // into, or "" for a column that should be left out.
   importColumnMap: Record<string, string>;
   // When the shift starts and which of its hours have a break or lunch -
-  // for the estimated changeover time on each line's running work order.
+  // for the estimated times.
   changeoverClock: ChangeoverClock;
+  // Each line's status this shift and next, breaks and crew (matched to the
+  // schedule by line number), and the time the schedule is from
+  // ("2026-11-04T16:00"; "" = now).
+  scheduleLines: ScheduleLineSetup[];
+  scheduleAsOf: string;
+  scheduleRunSettings: ScheduleRunSettings;
 }
 
 export interface ChangeoverClock {

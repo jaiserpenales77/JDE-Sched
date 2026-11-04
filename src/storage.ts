@@ -21,6 +21,7 @@ import {
   defaultChangeoverClock,
   normalizeLineStatus,
 } from "./scheduleLogic";
+import { defaultRunSettings, normalizeRunSettings, normalizeScheduleLines } from "./scheduleRun";
 
 const CURRENT_SHIFT_KEY = "jde-sched-current-shift";
 const HISTORY_LIMIT = 50;
@@ -146,6 +147,9 @@ export function normalizeAppData(raw: Partial<AppData>): AppData {
     schedulePrintSettings: normalizeSchedulePrintSettings(raw.schedulePrintSettings),
     importColumnMap: raw.importColumnMap && typeof raw.importColumnMap === "object" ? raw.importColumnMap : {},
     changeoverClock: normalizeChangeoverClock(raw.changeoverClock),
+    scheduleLines: normalizeScheduleLines(raw.scheduleLines, raw.scheduledLines),
+    scheduleAsOf: typeof raw.scheduleAsOf === "string" ? raw.scheduleAsOf : "",
+    scheduleRunSettings: normalizeRunSettings(raw.scheduleRunSettings),
   };
 }
 
@@ -374,5 +378,8 @@ export function emptyAppData(): AppData {
     schedulePrintSettings: { ...defaultSchedulePrintSettings },
     importColumnMap: {},
     changeoverClock: defaultChangeoverClock(),
+    scheduleLines: [],
+    scheduleAsOf: "",
+    scheduleRunSettings: defaultRunSettings(),
   };
 }
