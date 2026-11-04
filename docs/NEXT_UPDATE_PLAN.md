@@ -128,12 +128,13 @@ LineUp's next update shows the cotton.
 Nothing changed in Firebase (admins could already write Stored Data, and
 LineUp's shift accounts could already read it).
 
-**Once it's live, in the Hub (as an Admin):** Stored Data → **Import Stored
-Data** → `cotton-from-mdi-router.json` (26 FG items whose limiting machine
-is the cottoner in the Line Lead MDI Router, as "Yes"; given in chat, not
-kept in this public repository). Then add any other FG items that take
-cotton by hand: the router only shows the ones where the cottoner limits
-the speed. The live LineUp starts using the list with its next update.
+**Done after the release:** the 26 FG items whose limiting machine is the
+cottoner in the Line Lead MDI Router were added to the live Stored Data as
+"Yes" (2026-11-04, with the Hub's `tools/pk030_db.py` as an Admin; one
+Activity Log entry each; the list is given in chat, not kept in this
+public repository). Other FG items that take cotton are added by hand: the
+router only shows the ones where the cottoner limits the speed. The live
+LineUp starts using the list with its next update.
 
 **Announcement (Hub):** "Stored Data has a new Cotton section: the FG
 items that take cotton, and which. Admins keep it up to date; LineUp will
