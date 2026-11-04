@@ -43,6 +43,8 @@ import {
   statusKey,
 } from "../printLayout";
 import ProgressBar from "./ProgressBar";
+import { ScheduleBoxes } from "./ScheduleBoxes";
+import type { BoxesView } from "../scheduleBoxes";
 import { HolidayScene, HolidayStrip, HolidayTitle } from "./HolidayDecor";
 import { activeHolidayTheme, sceneSizeFor } from "../holidayThemes";
 import {
@@ -156,6 +158,8 @@ interface PrintScheduleProps {
   // Estimated changeover time by line, shown on each line's running work
   // order (its first), whose Changeover cell is otherwise empty.
   changeoverTimes?: Record<string, string>;
+  // The line statuses, estimated times and summary, for the Line boxes design.
+  boxes?: BoxesView;
 }
 
 const COLUMN_DRAG_MIME = "application/x-jde-sched-column";
@@ -170,6 +174,7 @@ export function PrintSchedule({
   setColumnOrder,
   design = defaultSchedulePrintSettings,
   changeoverTimes = {},
+  boxes,
 }: PrintScheduleProps) {
   const groups = groupByLine(workOrders);
   const now = new Date();
@@ -405,6 +410,14 @@ export function PrintSchedule({
     setColumnOrder(next);
   }
 
+  // The JDE Schedule workbook's look: its own columns, no resizing.
+  if (design.tableStyle === "boxes" && boxes) {
+    return (
+      <div ref={rootRef} className="print-schedule sched-style-boxes" style={scheduleCssVars(design, null)}>
+        <ScheduleBoxes view={boxes} title={design.title} hidden={hiddenColumns} />
+      </div>
+    );
+  }
 
   return (
     <div

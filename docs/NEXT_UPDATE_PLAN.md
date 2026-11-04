@@ -8,7 +8,66 @@ together.
 
 ## What's in the next update
 
-Nothing yet. New changes are added here once they're built and tested.
+### The Production Schedule in the JDE Schedule workbook's look
+
+1. **New printout design, Line boxes (now the default):** each line is a
+   box in the color of its status (Running, Partial shift, Overtime, Ready
+   line, PM / Cleaning, Not scheduled), with the line's name and status on
+   the left and next shift's status on the right. Every work order shows a
+   progress bar (or Not Started Yet), bottles left, the changeover into it
+   (Minor · S1 / Count, MAJOR · S3 / S4, with minutes and INTL), a new cap
+   in orange, the crew (EE) and an estimated time. Changeover notes (cap,
+   count, bottle, cotton, desiccant, dumping, international) and remarks
+   go on a line under the work order. At the top: the shift, the date and
+   "as of" time, the lines by status, the minor and major changeovers left
+   before the end of the shift, and the next one. Classic, Clean grid,
+   Line bands and Striped are still in Customize Print Design, and they
+   now take their green boxes and READY / PM / OT tags from the statuses.
+2. **Lines panel** (in place of Scheduled Lines): each line's status this
+   shift and next, whether it stops for breaks and lunch (lines below 8
+   do), and its crew; **Schedule as of** with 🕒 Set to now; and the
+   buttons This shift: all Running, Next shift = this shift and Clear
+   statuses. Statuses stay from day to day, so until Schedule as of is
+   today the printout shows a red **CHECK** in place of its summary (also
+   for a WO on two rows). Lines ticked under the old Scheduled Lines start
+   as Running. Each line's header on the tab has the same status picker.
+3. **Estimated times on every work order** of a running line, the
+   workbook's way: from Schedule as of, each changeover's minutes, then
+   the bottles left at the Hub's Full Hour rate times the line efficiency,
+   with break and lunch hours making 86% and 57% of a full hour on lines
+   that stop for them. Checked against the workbook's own results for the
+   same schedule: every time, note and count matches. **Estimated times**
+   (was Estimated changeover) also sets the line efficiency, the break and
+   lunch shares, the changeover minutes and the washroom settings.
+4. **🖨 Print → Washroom Prep List:** every changeover until the end of
+   the shift, first to last: time, line, filler (Cremer / Merrill), type
+   and minutes, what comes off the line to wash (oily or powdery,
+   allergen) and what goes on, with a Done box.
+5. **Cotton (COT)** is read from the Excel file and shown in the table
+   (for the cotton notes).
+
+**Not in it yet:** the workbook's product list (oily / powdery and
+international for each item) and its line rates, to be added to the
+Packaging Lead Hub's Stored Data tab. Until then, an item is oily when its
+description has SG, LSG or S/G, international when its description says
+INTL or INTERNATIONAL, and the rates are the Hub's Line Rates.
+
+**Firebase:** nothing changes; the new settings are saved with each
+shift's schedule. **Job Instruction:** the Production Schedule part
+changes (Lines panel, Set to now, the new printout and the washroom list),
+so it gets a new revision at step 2.
+
+**How to check it, once it's live:** on the Production Schedule tab, set
+each line's This shift status in Lines, click 🕒 Set to now, and look at
+the preview: no red CHECK, each line boxed in its color, estimated times
+on the running lines. Print → Washroom Prep List.
+
+**Announcement:** "Production Schedule: the printout now looks like the
+JDE Schedule workbook, with each line boxed in its status color, progress,
+bottles left and estimated times on every work order. Set each line's
+status in the new Lines panel at the start of the shift and click Set to
+now (until then the printout shows a red CHECK). New: Print → Washroom
+Prep List."
 
 ---
 

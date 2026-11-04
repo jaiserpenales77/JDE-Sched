@@ -25,6 +25,7 @@ export const IMPORT_FIELDS = [
   { key: "pct", label: "% Complete" },
   { key: "status", label: "Line Status" },
   { key: "desiccant", label: "Desiccant" },
+  { key: "cotton", label: "Cotton (COT)" },
 ] as const;
 
 export type ImportField = (typeof IMPORT_FIELDS)[number]["key"];
@@ -61,6 +62,7 @@ const EXACT: Record<ImportField, string[]> = {
   pct: ["COMPLETE", "PERCENTCOMPLETE", "PCTCOMPLETE", "WOCOMPLETED", "COMPLETED"],
   status: ["LINESTATUS", "STATUS"],
   desiccant: ["DESICCANT", "DESICCANTS", "DESICCANTNUMBER", "DESICCANTSNUMBER"],
+  cotton: ["COT", "COTTON"],
 };
 
 // Looser rules for titles that aren't in the lists above.
@@ -79,6 +81,7 @@ const CONTAINS: Partial<Record<ImportField, (h: string) => boolean>> = {
   qty: (h) => h.includes("QTY") || h.includes("QUANTITY"),
   pct: (h) => (h.includes("COMPLETE") || h.includes("PCT") || h.includes("PERCENT")) && !h.includes("ACTUAL") && h.length <= 16,
   desiccant: (h) => h.includes("DESIC") || h.includes("DESSIC"),
+  cotton: (h) => h.includes("COTTON"),
 };
 
 const FIELD_KEYS = IMPORT_FIELDS.map((f) => f.key) as ImportField[];
@@ -239,6 +242,7 @@ export function buildWorkOrders(grid: unknown[][], headerRow: number, mapping: C
       percentComplete: num(row, "pct"),
       lineStatus: normalizeLineStatus(get(row, "status")),
       desiccant: get(row, "desiccant"),
+      cotton: get(row, "cotton"),
     });
   }
   return result;

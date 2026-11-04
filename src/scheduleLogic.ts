@@ -224,12 +224,6 @@ export function lineStatusLabel(rows: WorkOrder[]): "Ready" | "PM" | "OT" | "" {
   return "";
 }
 
-// A line's label is colored when ANY of its rows carries that Line Status.
-export function lineStatusClass(rows: WorkOrder[]): string {
-  const status = lineStatusLabel(rows);
-  return status ? `line-${status.toLowerCase()}` : "";
-}
-
 export function newBlankWorkOrder(line: string): WorkOrder {
   return {
     id: crypto.randomUUID(),
@@ -251,25 +245,22 @@ export function newBlankWorkOrder(line: string): WorkOrder {
   };
 }
 
-// ---- Estimated changeover time ----
-// A line's running work order (its first, in Seq order) finishes when its
-// bottles remaining have been made, hour by hour from the shift's start at
-// the line's rate for that FG item: the Full Hour rate, or the Lunch or
-// Break rate in the hours that have them (from the Packaging Lead Hub's
-// Line Rates). That's when the line changes over to its next work order.
+// ---- The shift clock and line rates, for the estimated times ----
+// (worked out in scheduleRun.ts, the JDE Schedule workbook's way).
 
 export const SHIFT_HOURS = 8;
 // Used until a shift sets its own start time.
 export const DEFAULT_SHIFT_START: Record<ShiftKey, string> = { "1st": "07:15", "2nd": "15:15", "3rd": "23:15" };
 // The standard breaks (hours 2 and 6) and lunch (hour 4) of every shift,
-// until a shift changes them. Lines that run through them have no Lunch or
-// Break rate in the Hub, so they aren't affected.
+// until a shift changes them. Lines that run through them (Lines panel) aren't
+// affected.
 export function defaultChangeoverClock(): ChangeoverClock {
   return { start: "", breakHours: [2, 6], lunchHour: 4 };
 }
 
-// Bottles made in a full hour, an hour with lunch and an hour with a break.
-// Lunch / break are null for a line that runs through them.
+// Bottles made in a full hour, an hour with lunch and an hour with a break
+// (lunch / break are null for a line that runs through them). The estimated
+// times use the Full Hour rate.
 export interface LineRate {
   fullHour: number;
   lunch: number | null;
@@ -317,50 +308,4 @@ export function formatClock(minutes: number): string {
   const h24 = Math.floor(m / 60);
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return `${h12}:${String(m % 60).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
-}
-
-// Minutes after midnight when `remaining` bottles are done. Past the end of
-// the shift it carries on into the next shifts, with their breaks and lunch
-// in the same hours of each shift.
-export function estimateFinish(remaining: number, rate: LineRate, clock: ChangeoverClock): number | null {
-  if (!(rate.fullHour > 0) || !(remaining >= 0)) return null;
-  let left = remaining;
-  let t = parseClock(clock.start);
-  for (let hour = 1; hour <= 24 * 7; hour++) {
-    const hourOfShift = ((hour - 1) % SHIFT_HOURS) + 1;
-    const perHour =
-      hourOfShift === clock.lunchHour
-        ? (rate.lunch ?? rate.fullHour)
-        : clock.breakHours.includes(hourOfShift)
-          ? (rate.break ?? rate.fullHour)
-          : rate.fullHour;
-    if (left <= perHour) return perHour > 0 ? t + (left / perHour) * 60 : t;
-    left -= perHour;
-    t += 60;
-  }
-  return null;
-}
-
-// "8:29 AM" for each of `lines` (the ticked Scheduled Lines) whose running
-// work order has a stored rate; other lines are left out. A work order with
-// no Bottles Remaining yet (no % Complete) counts its whole WO Quantity.
-export function changeoverEstimates(
-  workOrders: WorkOrder[],
-  rates: LineRates,
-  clock: ChangeoverClock,
-  lines: readonly string[],
-): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const { line, rows } of groupByLine(workOrders)) {
-    if (!lines.includes(line)) continue;
-    const first = rows[0];
-    if (!first) continue;
-    const left = bottlesRemaining(first);
-    const remaining = left !== "" ? left : first.woQuantity !== "" ? Number(first.woQuantity) : null;
-    if (remaining === null || !Number.isFinite(remaining)) continue;
-    const rate = findLineRate(rates, line, first.item);
-    const at = rate ? estimateFinish(remaining, rate, clock) : null;
-    if (at !== null) out[line] = formatClock(at);
-  }
-  return out;
 }

@@ -324,9 +324,10 @@ export interface ChangeoverClock {
   lunchHour: number; // 0 = none
 }
 
-// Designs for the printed Production Schedule: "classic" is the original
-// workbook's look; the others are lighter and more compact.
-export const SCHEDULE_TABLE_STYLES = ["classic", "clean", "bands", "striped"] as const;
+// Designs for the printed Production Schedule: "boxes" is the JDE Schedule
+// workbook's look (each line a box in its status color, with estimated
+// times); "classic" is the original spreadsheet's; the others are lighter.
+export const SCHEDULE_TABLE_STYLES = ["boxes", "classic", "clean", "bands", "striped"] as const;
 export type ScheduleTableStyle = (typeof SCHEDULE_TABLE_STYLES)[number];
 
 // Look of the printed Production Schedule report. Page options mirror the
@@ -341,6 +342,8 @@ export interface SchedulePrintSettings {
   // Which starting theme the saved settings have had (see
   // normalizeSchedulePrintSettings): 2 = Automatic.
   holidayDefaultVersion: number;
+  // Which starting design the saved settings have had: 1 = Line boxes.
+  tableStyleDefaultVersion: number;
   orientation: "landscape" | "portrait";
   printScaleMode: "fit" | "fixed";
   printScalePercent: number;

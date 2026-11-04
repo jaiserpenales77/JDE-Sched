@@ -542,99 +542,6 @@ select option {
 
 /* ---------- Production Schedule ---------- */
 
-.scheduled-lines-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 10px;
-}
-
-.scheduled-line-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 6px 5px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-}
-.scheduled-line-item.has-ready {
-  border-color: color-mix(in srgb, #15803d 55%, var(--border));
-  background: color-mix(in srgb, #15803d 8%, var(--panel));
-}
-.scheduled-line-item.has-pm {
-  border-color: color-mix(in srgb, #1d4ed8 55%, var(--border));
-  background: color-mix(in srgb, #1d4ed8 8%, var(--panel));
-}
-.scheduled-line-item.has-ot {
-  border-color: color-mix(in srgb, #eab308 70%, var(--border));
-  background: color-mix(in srgb, #facc15 14%, var(--panel));
-}
-
-/* READY / PM / OT buttons for a whole production line. */
-.status-toggle {
-  display: inline-flex;
-  gap: 3px;
-}
-.status-toggle-btn {
-  padding: 4px 7px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 10.5px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-}
-.status-toggle-btn:hover {
-  border-color: var(--muted);
-  color: var(--text);
-}
-.status-toggle-btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-.status-toggle-btn.status-ready.active {
-  border-color: #15803d;
-  background: #15803d;
-  color: #fff;
-}
-.status-toggle-btn.status-pm.active {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
-  color: #fff;
-}
-/* Yellow is light, so OT gets dark text. */
-.status-toggle-btn.status-ot.active {
-  border-color: #ca8a04;
-  background: #facc15;
-  color: #111827;
-}
-.status-toggle-dark .status-toggle-btn {
-  border-color: rgba(255, 255, 255, 0.35);
-  color: rgba(255, 255, 255, 0.75);
-}
-.status-toggle-dark .status-toggle-btn:hover {
-  border-color: rgba(255, 255, 255, 0.8);
-  color: #fff;
-}
-.status-toggle-dark .status-toggle-btn.active {
-  border-color: #fff;
-  color: #fff;
-}
-
-.scheduled-line-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  white-space: nowrap;
-}
-
 .hide-columns-grid {
   display: flex;
   flex-wrap: wrap;
@@ -693,19 +600,14 @@ select option {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.line-group-header.line-ready { background: #14532d; }
-.line-group-header.line-pm { background: #1e3a8a; }
-.line-group-header.line-ot { background: #facc15; color: #111827; }
-.line-group-header.line-ot input.line-name-input { color: #111827; }
-.line-group-header.line-ot .status-toggle-dark .status-toggle-btn {
-  border-color: rgba(17, 24, 39, 0.35);
-  color: rgba(17, 24, 39, 0.75);
-}
-.line-group-header.line-ot .status-toggle-dark .status-toggle-btn:hover,
-.line-group-header.line-ot .status-toggle-dark .status-toggle-btn.active {
-  border-color: #111827;
-  color: #111827;
-}
+/* The header takes the color of the line's status this shift. */
+.line-group-header.run-head-running { background: #2e7d32; }
+.line-group-header.run-head-partial { background: #c55a11; }
+.line-group-header.run-head-overtime { background: #ffc000; color: #111827; }
+.line-group-header.run-head-overtime input.line-name-input { color: #111827; }
+.line-group-header.run-head-ready { background: #7030a0; }
+.line-group-header.run-head-pm { background: #0070c0; }
+.line-group-header.run-head-not { background: #4b5563; }
 
 .schedule-table-wrap {
   overflow-x: auto;
@@ -1145,7 +1047,8 @@ table.roster select {
   }
 
   body.printing-schedule .print-root > .print-slot-schedule,
-  body.printing-assignments .print-root > .print-slot-assignments {
+  body.printing-assignments .print-root > .print-slot-assignments,
+  body.printing-washroom .print-root > .print-slot-washroom {
     display: block;
   }
 
@@ -1157,6 +1060,9 @@ table.roster select {
   }
   .print-root > .print-slot-schedule {
     page: schedule;
+  }
+  .print-root > .print-slot-washroom {
+    page: washroom;
   }
   .print-root > .print-slot + .print-slot {
     break-before: page;
@@ -4248,4 +4154,455 @@ td.time-off-is-today {
   .intro-splash {
     display: none;
   }
+}
+
+/* ---------- Line boxes: the JDE Schedule workbook's printout ---------- */
+
+.sb-report,
+.wr-report {
+  font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif;
+  color: #000;
+  background: #fff;
+}
+.sb-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 6px 12px;
+  background: #1f3864;
+  color: #fff;
+}
+.sb-title h1 {
+  margin: 0;
+  font-size: var(--sched-title-size, 16pt);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.sb-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 16px;
+  padding: 3px 12px;
+  background: #ddebf7;
+  color: #1f3864;
+  font-size: 7.5pt;
+}
+.sb-date {
+  font-size: 10pt;
+  font-weight: 700;
+}
+.wr-sub {
+  font-size: 9pt;
+  font-weight: 700;
+}
+.sb-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 16px;
+  padding: 3px 4px 4px;
+  font-size: 9pt;
+  font-weight: 700;
+  white-space: pre-wrap;
+}
+.sb-check {
+  color: #c00000;
+}
+.sb-legend {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 9px;
+  font-size: 7.5pt;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.sb-legend b {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+.sb-chip i {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  margin-right: 3px;
+  vertical-align: -0.1em;
+  background: var(--chip, #fff);
+  outline: 1px solid rgba(0, 0, 0, 0.3);
+}
+.sb-title .sb-chip i {
+  outline-color: rgba(255, 255, 255, 0.7);
+}
+.sb-chip-running { --chip: #2e7d32; }
+.sb-chip-partial { --chip: #ed7d31; }
+.sb-chip-overtime { --chip: #ffc000; }
+.sb-chip-ready { --chip: #7030a0; }
+.sb-chip-pm { --chip: #0070c0; }
+.sb-chip-not { --chip: #8c8c8c; }
+.sb-chip.sb-hl-allergen { --chip: var(--sched-allergen, #f8cbad); }
+.sb-chip.sb-hl-oil { --chip: var(--sched-oil, #fff2cc); }
+.sb-chip.sb-hl-bulk { --chip: var(--sched-bulk, #bdd7ee); }
+
+.sb-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--sched-text-size, 7pt);
+  line-height: 1.25;
+}
+.sb-table th {
+  padding: 3px 2px;
+  border: 1px solid #1f4e79;
+  background: #2e75b6;
+  color: #fff;
+  font-size: var(--sched-header-size, 6.5pt);
+  font-weight: 700;
+  text-align: center;
+  vertical-align: middle;
+  line-height: 1.15;
+}
+.sb-table td {
+  padding: 2px 3px;
+  border-bottom: 1px solid #dcdcdc;
+  border-left: 1px solid #e6e6e6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.sb-table td.sb-c-description,
+.wr-table td.wr-wo {
+  white-space: normal;
+}
+.sb-c-seq,
+.sb-c-count,
+.sb-c-bottleSize,
+.sb-c-capDescription,
+.sb-c-allergen,
+.sb-c-desiccant,
+.sb-c-crew {
+  text-align: center;
+}
+.sb-c-woQuantity,
+.sb-c-left,
+.sb-c-est {
+  text-align: right;
+}
+.sb-empty {
+  padding: 10px !important;
+  color: #666;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Each line a box in its status color. */
+.sb-line {
+  --st: #1f3864;
+  --st-tint: #fff;
+  --st-text: #1f3864;
+  border: 1.5px solid var(--st);
+  break-inside: avoid;
+}
+.sb-st-running { --st: #2e7d32; --st-tint: #e2f0d9; --st-text: #2e7d32; }
+.sb-st-partial { --st: #ed7d31; --st-tint: #fbe5d6; --st-text: #c55a11; }
+.sb-st-overtime { --st: #ffc000; --st-tint: #fff2cc; --st-text: #9c6500; }
+.sb-st-ready { --st: #7030a0; --st-tint: #e4dfec; --st-text: #7030a0; }
+.sb-st-pm { --st: #0070c0; --st-tint: #ddebf7; --st-text: #0070c0; }
+.sb-st-not { --st: #8c8c8c; --st-tint: #ededed; --st-text: #6f6f6f; }
+.sb-gap td {
+  height: 7px;
+  padding: 0;
+  border: none;
+}
+.sb-linecell {
+  border-left: none !important;
+  background: var(--st-tint);
+  color: var(--st-text);
+  text-align: center;
+  white-space: normal !important;
+}
+.sb-line-name,
+.sb-line-status {
+  display: block;
+  font-weight: 700;
+}
+.sb-line-name {
+  font-size: 1.1em;
+}
+.sb-line-status {
+  margin-top: 3px;
+}
+.sb-nextcell {
+  font-weight: 700;
+  text-align: center;
+  white-space: normal !important;
+}
+.sb-next-running { background: #e2f0d9; color: #2e7d32; }
+.sb-next-partial { background: #fbe5d6; color: #c55a11; }
+.sb-next-overtime { background: #fff2cc; color: #9c6500; }
+.sb-next-ready { background: #e4dfec; color: #7030a0; }
+.sb-next-pm { background: #ddebf7; color: #0070c0; }
+.sb-next-not { background: #ededed; color: #6f6f6f; }
+.sb-grey .sb-row td:not(.sb-linecell, .sb-nextcell) {
+  color: #6f6f6f;
+}
+.sb-row.sb-hl-allergen td:not(.sb-linecell, .sb-nextcell) { background: var(--sched-allergen, #f8cbad); }
+.sb-row.sb-hl-oil td:not(.sb-linecell, .sb-nextcell) { background: var(--sched-oil, #fff2cc); }
+.sb-row.sb-hl-bulk td:not(.sb-linecell, .sb-nextcell) { background: var(--sched-bulk, #bdd7ee); }
+
+.sb-progress,
+.sb-left {
+  color: #2e7d32;
+  font-weight: 700;
+}
+.sb-progress {
+  letter-spacing: -0.04em;
+}
+.sb-not-started {
+  color: #7f7f7f;
+  font-weight: 400;
+  font-style: italic;
+}
+.sb-co-s1 { color: #2e7d32; }
+.sb-co-count { color: #b45f06; }
+.sb-co-s3 { color: #7030a0; font-weight: 700; }
+.sb-co-s4 { color: #c00000; font-weight: 700; }
+.sb-cap-changed {
+  color: #e26b0a;
+  font-weight: 700;
+}
+.sb-count-changed {
+  color: var(--sched-count-changed, #ff0000);
+  font-weight: 700;
+}
+.sb-est-first {
+  color: #1f3864;
+  font-weight: 700;
+}
+.sb-est-missing {
+  color: #8c8c8c;
+  font-style: italic;
+}
+.sb-note td {
+  padding-top: 1px;
+  padding-bottom: 1px;
+  background: #fff8e1;
+  color: #7f6000;
+  font-size: 0.88em;
+  font-style: italic;
+  white-space: normal;
+}
+.sb-note td.sb-arrow {
+  background: transparent;
+  font-style: normal;
+  text-align: center;
+}
+
+/* The washroom prep list. */
+.wr-table td {
+  padding: 3px 4px;
+  white-space: normal;
+}
+.wr-table tbody tr:nth-child(even) td {
+  background: #f5f8fc;
+}
+.wr-num,
+.wr-min,
+.wr-done,
+.wr-type,
+.wr-allergen,
+.wr-filler {
+  text-align: center;
+}
+.wr-line,
+.wr-item {
+  font-weight: 700;
+}
+.wr-cremer { color: #1f4e79; font-weight: 700; }
+.wr-merrill { color: #7030a0; font-weight: 700; }
+.wr-table td.wr-oily { background: #fff2cc; }
+.wr-table td.wr-powdery { background: #ededed; }
+.wr-allergen {
+  color: #c00000;
+  font-weight: 700;
+}
+.wr-done {
+  font-size: 1.4em;
+}
+
+/* Line boxes, as a design button. */
+.design-thumb-boxes .dt-head {
+  background: #1f3864;
+}
+.design-thumb-boxes .dt-group {
+  margin-top: 2px;
+  border: 1px solid #8c8c8c;
+}
+.design-thumb-boxes .dt-line {
+  background: #ededed;
+}
+.design-thumb-boxes .dt-scheduled {
+  border-color: #2e7d32;
+}
+.design-thumb-boxes .dt-scheduled .dt-line {
+  background: #e2f0d9;
+  box-shadow: inset 3px 0 #2e7d32;
+}
+.design-thumb-boxes .dt-rows span {
+  border-color: #e0e0e0;
+}
+
+/* ---------- Lines panel (each line's status, breaks and crew) ---------- */
+
+.run-asof {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+}
+.run-asof-end {
+  padding-bottom: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.run-check,
+.run-ok {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.run-check {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.run-ok {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+  font-weight: 600;
+}
+.run-bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+table.run-lines {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.run-lines th,
+.run-lines td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--hairline);
+  text-align: left;
+  vertical-align: middle;
+}
+.run-lines thead th {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+  border-bottom-color: var(--border);
+}
+.run-lines tbody th {
+  border-left: 4px solid var(--run-st, var(--border));
+  white-space: nowrap;
+}
+.run-line-running { --run-st: #2e7d32; }
+.run-line-partial { --run-st: #ed7d31; }
+.run-line-overtime { --run-st: #ffc000; }
+.run-line-ready { --run-st: #7030a0; }
+.run-line-pm { --run-st: #0070c0; }
+.run-line-not { --run-st: #8c8c8c; }
+.run-line-name {
+  font-weight: 700;
+}
+.run-line-file {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--muted);
+}
+.run-lines input[type="number"] {
+  width: 64px;
+  padding: 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+.run-breaks {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.run-count {
+  text-align: center !important;
+}
+.run-est {
+  white-space: nowrap;
+}
+.run-muted {
+  color: var(--muted);
+}
+.run-missing {
+  color: var(--warn);
+  font-style: italic;
+}
+.run-pick {
+  --run-st: var(--border);
+  padding: 5px 6px;
+  border: 1px solid var(--run-st);
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--run-st) 12%, var(--panel));
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+.run-pick-running { --run-st: #2e7d32; }
+.run-pick-partial { --run-st: #ed7d31; }
+.run-pick-overtime { --run-st: #ffc000; }
+.run-pick-ready { --run-st: #7030a0; }
+.run-pick-pm { --run-st: #0070c0; }
+.run-pick-not { --run-st: #8c8c8c; }
+.line-group-header .run-pick-head {
+  border-color: rgba(255, 255, 255, 0.55);
+  background: var(--panel);
+}
+.legend-status {
+  margin-right: 10px;
+  white-space: nowrap;
+}
+.run-swatch-running { background: #2e7d32; }
+.run-swatch-partial { background: #ed7d31; }
+.run-swatch-overtime { background: #ffc000; }
+.run-swatch-ready { background: #7030a0; }
+.run-swatch-pm { background: #0070c0; }
+.run-swatch-not { background: #8c8c8c; }
+.estimate-subhead {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.estimate-narrow input {
+  width: 90px;
+}
+.estimate-wide {
+  flex: 1 1 260px;
 }

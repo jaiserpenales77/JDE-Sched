@@ -6,7 +6,8 @@ import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import { useLineRates } from "./lineRates";
 import { useShiftNames } from "./shiftNames";
-import { DEFAULT_SHIFT_START, changeoverEstimates } from "./scheduleLogic";
+import { DEFAULT_SHIFT_START, findLineRate } from "./scheduleLogic";
+import { buildSchedule, fileLineStatus, scheduleAsOfDate, scheduleCheck, scheduleSummary, washroomList, whenText } from "./scheduleRun";
 import { sceneSizeFor } from "./holidayThemes";
 import { tightenCrewBadges } from "./printLayout";
 import UnlockScreen from "./components/UnlockScreen";
@@ -21,18 +22,30 @@ import TypeToConfirmDialog from "./components/TypeToConfirmDialog";
 import type { PrintChoice } from "./components/PrintMenu";
 import { todayIso } from "./timeOffLogic";
 import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
+import { WashroomList } from "./components/ScheduleBoxes";
+import type { BoxesView } from "./scheduleBoxes";
 import {
   exportAppDataToJson,
   exportWorkOrdersToExcel,
   readAppDataFromJsonFile,
   readWorkbookSheets,
 } from "./excel";
-import type { WorkOrder, Employee, PrintAssignSettings, DailyBoard, SchedulePrintSettings, ShiftKey, TimeOffEntry } from "./types";
+import type {
+  WorkOrder,
+  Employee,
+  PrintAssignSettings,
+  DailyBoard,
+  SchedulePrintSettings,
+  ShiftKey,
+  TimeOffEntry,
+  ScheduleLineSetup,
+  ScheduleRunSettings,
+} from "./types";
 import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
-type PrintReport = "assignments" | "schedule";
+type PrintReport = "assignments" | "schedule" | "washroom";
 // "both" prints Line Assignments first, then the Production Schedule.
 type PrintTarget = PrintChoice | null;
 // What the Print button prints - remembered on this device separately for
@@ -44,11 +57,21 @@ function printChoiceKey(shift: ShiftKey | null): string {
 function loadPrintChoice(shift: ShiftKey | null): PrintChoice {
   try {
     const saved = localStorage.getItem(printChoiceKey(shift));
-    if (saved === "both" || saved === "assignments" || saved === "schedule") return saved;
+    if (saved === "both" || saved === "assignments" || saved === "schedule" || saved === "washroom") return saved;
   } catch {
     // Storage unavailable - fall back to the default.
   }
   return "both";
+}
+
+// The time now, updated every minute - for a schedule that's "as of now".
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return now;
 }
 
 // How long Lock waits for the last change to reach the cloud.
@@ -125,7 +148,6 @@ function App() {
     workOrders,
     employees,
     printSettings,
-    scheduledLines,
     printScheduleColumnWidths,
     printScheduleHiddenColumns,
     printScheduleColumnOrder,
@@ -134,15 +156,50 @@ function App() {
     schedulePrintSettings,
     importColumnMap,
   } = data;
-  // Estimated changeover time on each line's running work order, from the
-  // Hub's Line Rates and when this shift starts.
+  // The estimated times, from the Hub's Line Rates (bottles per hour) and
+  // when this shift starts - the JDE Schedule workbook's rules.
   const lineRates = useLineRates(!!shift);
   const changeoverClock = {
     ...data.changeoverClock,
     start: data.changeoverClock.start || DEFAULT_SHIFT_START[shift ?? "1st"],
   };
-  // Only for the lines ticked in Scheduled Lines.
-  const changeoverTimes = changeoverEstimates(workOrders, lineRates, changeoverClock, scheduledLines);
+  const now = useMinuteClock();
+  const asOf = scheduleAsOfDate(data.scheduleAsOf, now);
+  const schedule = buildSchedule({
+    workOrders,
+    lines: data.scheduleLines,
+    asOf,
+    clock: changeoverClock,
+    settings: data.scheduleRunSettings,
+    rateOf: (line, item) => findLineRate(lineRates, line, item)?.fullHour ?? null,
+  });
+  const shiftIndex = SHIFT_KEYS.indexOf(shift ?? "1st");
+  const boxes: BoxesView = {
+    lines: schedule.lines,
+    asOf,
+    end: schedule.end,
+    shiftLabel: shift ? SHIFT_LABELS[shift] : "",
+    nextShiftLabel: shift ? SHIFT_LABELS[SHIFT_KEYS[(shiftIndex + 1) % SHIFT_KEYS.length]] : "",
+    summary: scheduleSummary(schedule.lines, asOf, schedule.end),
+    check: scheduleCheck(data.scheduleAsOf, asOf, now, workOrders),
+    settings: data.scheduleRunSettings,
+  };
+  const washroom = washroomList(schedule.lines, asOf, schedule.end, data.scheduleRunSettings);
+  // The other designs box the lines that run this shift in green, tag
+  // READY / PM / OT from the line's status, and show the running work
+  // order's estimated time.
+  const runningLines = schedule.lines.filter((l) => l.runs).map((l) => l.line);
+  const tagOf = new Map(schedule.lines.map((l) => [l.line, fileLineStatus(l.status)]));
+  const printWorkOrders = workOrders.map((w) => {
+    const tag = tagOf.get(w.line.trim()) ?? w.lineStatus;
+    return tag === w.lineStatus ? w : { ...w, lineStatus: tag };
+  });
+  const changeoverTimes: Record<string, string> = {};
+  for (const l of schedule.lines) {
+    const done = l.runs ? l.rows[0]?.estimate.done : null;
+    if (done) changeoverTimes[l.line] = whenText(done, asOf).replace(/^Today /, "");
+  }
+  const printData = { workOrders: printWorkOrders, scheduledLines: runningLines, changeoverTimes, boxes };
   const [tab, setTab] = useState<Tab>("schedule");
   const [selectedBoardId, setSelectedBoardId] = useState<string>("");
   const [printTarget, setPrintTarget] = useState<PrintTarget>(null);
@@ -194,9 +251,7 @@ function App() {
       pageRules.push(`@page ${report} { ${pageRule} }`);
 
       const slot = printRoot?.querySelector(`:scope > .print-slot-${report}`) as HTMLElement | null;
-      const reportEl = slot?.querySelector(
-        report === "assignments" ? ":scope > .print-assignments" : ":scope > .print-schedule",
-      ) as HTMLElement | null;
+      const reportEl = slot?.querySelector(`:scope > .print-${report}`) as HTMLElement | null;
       if (!printRoot || !slot || !reportEl) return;
 
       const PX_PER_IN = 96;
@@ -325,8 +380,11 @@ function App() {
   function setPrintSettings(updater: (s: PrintAssignSettings) => PrintAssignSettings) {
     setData((d) => ({ ...d, printSettings: updater(d.printSettings) }));
   }
-  function setScheduledLines(updater: (lines: string[]) => string[]) {
-    setData((d) => ({ ...d, scheduledLines: updater(d.scheduledLines) }));
+  function setScheduleLines(updater: (lines: ScheduleLineSetup[]) => ScheduleLineSetup[]) {
+    setData((d) => ({ ...d, scheduleLines: updater(d.scheduleLines) }));
+  }
+  function setScheduleRunSettings(updater: (s: ScheduleRunSettings) => ScheduleRunSettings) {
+    setData((d) => ({ ...d, scheduleRunSettings: updater(d.scheduleRunSettings) }));
   }
   function setScheduleColumnWidths(updater: (widths: Record<string, number>) => Record<string, number>) {
     setData((d) => ({ ...d, printScheduleColumnWidths: updater(d.printScheduleColumnWidths) }));
@@ -498,8 +556,13 @@ function App() {
           <ProductionSchedule
             workOrders={workOrders}
             setWorkOrders={setWorkOrders}
-            scheduledLines={scheduledLines}
-            setScheduledLines={setScheduledLines}
+            setLineSetups={setScheduleLines}
+            scheduleAsOf={data.scheduleAsOf}
+            setScheduleAsOf={(asOfText) => setData((d) => ({ ...d, scheduleAsOf: asOfText }))}
+            runSettings={data.scheduleRunSettings}
+            setRunSettings={setScheduleRunSettings}
+            scheduleLines={schedule.lines}
+            printData={printData}
             columnWidths={printScheduleColumnWidths}
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}
@@ -508,7 +571,6 @@ function App() {
             setColumnOrder={setScheduleColumnOrder}
             design={schedulePrintSettings}
             setDesign={setSchedulePrintSettings}
-            changeoverTimes={changeoverTimes}
             changeoverClock={changeoverClock}
             setChangeoverClock={(clock) => setData((d) => ({ ...d, changeoverClock: clock }))}
           />
@@ -614,14 +676,17 @@ function App() {
         </div>
         <div className="print-slot print-slot-schedule">
           <PrintSchedule
-            workOrders={workOrders}
-            scheduledLines={scheduledLines}
+            {...printData}
             columnWidths={printScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}
             columnOrder={printScheduleColumnOrder}
             design={schedulePrintSettings}
-            changeoverTimes={changeoverTimes}
           />
+        </div>
+        <div className="print-slot print-slot-washroom">
+          <div className="print-washroom">
+            <WashroomList rows={washroom} asOf={asOf} end={schedule.end} shiftLabel={boxes.shiftLabel} />
+          </div>
         </div>
       </div>
     </div>

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-export type PrintChoice = "assignments" | "schedule" | "both";
+export type PrintChoice = "assignments" | "schedule" | "both" | "washroom";
 
 const BUTTON_LABEL: Record<PrintChoice, string> = {
   both: "Print Both",
   assignments: "Print Line Assignments",
   schedule: "Print Schedule",
+  washroom: "Print Washroom List",
 };
 
 interface Props {
@@ -24,8 +25,8 @@ export default function PrintMenu({ choice, onPrint, boardDate, today }: Props) 
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const hasBoard = !!boardDate;
-  // Without a board only the schedule can print.
-  const effective: PrintChoice = hasBoard ? choice : "schedule";
+  // Without a board only the schedule (or the washroom list) can print.
+  const effective: PrintChoice = hasBoard || choice === "washroom" ? choice : "schedule";
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +61,12 @@ export default function PrintMenu({ choice, onPrint, boardDate, today }: Props) 
     { key: "both", title: "Both", note: <>Line Assignments first, then the Production Schedule</>, disabled: !hasBoard },
     { key: "assignments", title: "Line Assignments", note: boardNote, disabled: !hasBoard },
     { key: "schedule", title: "Production Schedule", note: "All production lines", disabled: false },
+    {
+      key: "washroom",
+      title: "Washroom Prep List",
+      note: "Changeovers until the end of the shift: what comes off each line to wash",
+      disabled: false,
+    },
   ];
 
   return (

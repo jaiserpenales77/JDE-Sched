@@ -13,6 +13,7 @@ interface Props {
 }
 
 const DESIGNS: { style: ScheduleTableStyle; name: string; note: string }[] = [
+  { style: "boxes", name: "Line boxes", note: "Each line a box in its status color, with progress, estimated times and next shift" },
   { style: "classic", name: "Classic", note: "Black grid, a gap between lines, thick green boxes" },
   { style: "clean", name: "Clean grid", note: "Light gray lines, no gaps, a thinner green box" },
   { style: "bands", name: "Line bands", note: "Line names in navy bands, green when scheduled" },
@@ -54,6 +55,8 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
   }
 
   const autoTheme = activeHolidayTheme("auto", new Date());
+  // Line boxes has the workbook's own colors and column titles.
+  const boxes = settings.tableStyle === "boxes";
 
   function setColumnTitle(key: ScheduleColumnKey, title: string) {
     setSettings((s) => ({ ...s, columnTitles: { ...s.columnTitles, [key]: title } }));
@@ -88,6 +91,15 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
             </div>
           </div>
 
+          {boxes && (
+            <p className="panel-hint print-design-note">
+              Line boxes uses the JDE Schedule workbook's colors and column titles: each line is boxed in the color of
+              its status (pick it in Lines). The holiday theme, the column titles and most colors below are for the
+              other designs.
+            </p>
+          )}
+
+          {!boxes && (
           <div>
             <div className="print-design-row">
               <label className="print-design-field">
@@ -129,6 +141,7 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
               </p>
             )}
           </div>
+          )}
 
           <div className="print-design-row">
             <label className="print-design-field">
@@ -157,12 +170,15 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
               Title
               <input type="text" value={settings.title} onChange={(e) => set("title", e.target.value)} />
             </label>
-            <label className="print-design-checkbox">
-              <input type="checkbox" checked={settings.showDate} onChange={(e) => set("showDate", e.target.checked)} />
-              Show today's date under the title
-            </label>
+            {!boxes && (
+              <label className="print-design-checkbox">
+                <input type="checkbox" checked={settings.showDate} onChange={(e) => set("showDate", e.target.checked)} />
+                Show today's date under the title
+              </label>
+            )}
           </div>
 
+          {!boxes && (
           <div>
             <div className="print-design-subhead">
               Column titles on the printout
@@ -186,6 +202,7 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
               ))}
             </div>
           </div>
+          )}
 
           <div className="print-design-row">
             {SIZE_FIELDS.map(({ key, label }) => (
@@ -205,20 +222,28 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
           </div>
 
           <div className="print-design-colors">
-            <ColorField label="Column headers" value={settings.headerFillColor} onChange={(v) => set("headerFillColor", v)} />
-            <ColorField label="Calculated columns" value={settings.formulaColColor} onChange={(v) => set("formulaColColor", v)} />
+            {!boxes && (
+              <>
+                <ColorField label="Column headers" value={settings.headerFillColor} onChange={(v) => set("headerFillColor", v)} />
+                <ColorField label="Calculated columns" value={settings.formulaColColor} onChange={(v) => set("formulaColColor", v)} />
+              </>
+            )}
             <ColorField label="Allergen rows" value={settings.allergenColor} onChange={(v) => set("allergenColor", v)} />
             <ColorField label="Oily product rows" value={settings.oilColor} onChange={(v) => set("oilColor", v)} />
-            <ColorField label="Bulk item rows" value={settings.bulkColor} onChange={(v) => set("bulkColor", v)} />
-            <ColorField label="READY tag" value={settings.readyColor} onChange={(v) => set("readyColor", v)} />
-            <ColorField label="PM tag" value={settings.pmColor} onChange={(v) => set("pmColor", v)} />
-            <ColorField label="OT tag" value={settings.otColor} onChange={(v) => set("otColor", v)} />
-            <ColorField label="Line divider" value={settings.dividerColor} onChange={(v) => set("dividerColor", v)} />
-            <ColorField
-              label="Scheduled line border"
-              value={settings.scheduledBorderColor}
-              onChange={(v) => set("scheduledBorderColor", v)}
-            />
+            <ColorField label={boxes ? "Dumping rows (bulk item)" : "Bulk item rows"} value={settings.bulkColor} onChange={(v) => set("bulkColor", v)} />
+            {!boxes && (
+              <>
+                <ColorField label="READY tag" value={settings.readyColor} onChange={(v) => set("readyColor", v)} />
+                <ColorField label="PM tag" value={settings.pmColor} onChange={(v) => set("pmColor", v)} />
+                <ColorField label="OT tag" value={settings.otColor} onChange={(v) => set("otColor", v)} />
+                <ColorField label="Line divider" value={settings.dividerColor} onChange={(v) => set("dividerColor", v)} />
+                <ColorField
+                  label="Scheduled line border"
+                  value={settings.scheduledBorderColor}
+                  onChange={(v) => set("scheduledBorderColor", v)}
+                />
+              </>
+            )}
             <ColorField
               label="Changed count text"
               value={settings.countChangedColor}

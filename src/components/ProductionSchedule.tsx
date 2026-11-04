@@ -1,5 +1,14 @@
 import { useRef, useState } from "react";
-import type { ChangeoverClock, SchedulePrintSettings, WorkOrder } from "../types";
+import type {
+  ChangeoverClock,
+  LineStatusPick,
+  RunStatus,
+  ScheduleLineSetup,
+  SchedulePrintSettings,
+  ScheduleRunSettings,
+  WorkOrder,
+} from "../types";
+import { RUN_STATUSES } from "../types";
 import {
   groupByLine,
   percentActual,
@@ -8,8 +17,6 @@ import {
   capChangeInto,
   CAP_CHANGE_REMARK,
   rowHighlightClass,
-  lineStatusClass,
-  lineStatusLabel,
   newBlankWorkOrder,
   orderedScheduleColumns,
   SCHEDULE_COLUMN_LABELS,
@@ -17,15 +24,33 @@ import {
   formatClock,
   parseClock,
 } from "../scheduleLogic";
+import { asOfNow, defaultLineSetup, lineKey, lineNumber, thisShiftStatus, whenText } from "../scheduleRun";
+import type { ScheduleLine } from "../scheduleRun";
 import ProgressBar from "./ProgressBar";
 import { PrintSchedule } from "./PrintViews";
 import SchedulePrintDesign from "./SchedulePrintDesign";
+import { BOX_COLUMNS, STATUS_CLASS } from "../scheduleBoxes";
+import type { BoxesView } from "../scheduleBoxes";
 
 interface Props {
   workOrders: WorkOrder[];
   setWorkOrders: (updater: (wos: WorkOrder[]) => WorkOrder[]) => void;
-  scheduledLines: string[];
-  setScheduledLines: (updater: (lines: string[]) => string[]) => void;
+  // Each line's status this shift and next, breaks and crew; the time the
+  // schedule is from; and the estimate and washroom settings.
+  setLineSetups: (updater: (lines: ScheduleLineSetup[]) => ScheduleLineSetup[]) => void;
+  scheduleAsOf: string;
+  setScheduleAsOf: (asOf: string) => void;
+  runSettings: ScheduleRunSettings;
+  setRunSettings: (updater: (s: ScheduleRunSettings) => ScheduleRunSettings) => void;
+  // The schedule with each line's status and estimated times.
+  scheduleLines: ScheduleLine[];
+  // What the printout shows (see App.tsx), for the preview.
+  printData: {
+    workOrders: WorkOrder[];
+    scheduledLines: string[];
+    changeoverTimes: Record<string, string>;
+    boxes: BoxesView;
+  };
   columnWidths: Record<string, number>;
   setColumnWidths: (updater: (widths: Record<string, number>) => Record<string, number>) => void;
   hiddenColumns: string[];
@@ -34,8 +59,7 @@ interface Props {
   setColumnOrder: (order: string[]) => void;
   design: SchedulePrintSettings;
   setDesign: (updater: (s: SchedulePrintSettings) => SchedulePrintSettings) => void;
-  // Estimated changeover time by line, and the shift clock it counts from.
-  changeoverTimes: Record<string, string>;
+  // When the shift starts, and its break and lunch hours.
   changeoverClock: ChangeoverClock;
   setChangeoverClock: (clock: ChangeoverClock) => void;
 }
@@ -54,6 +78,7 @@ const COLUMNS: { key: keyof WorkOrder; label: string; width?: string; numeric?: 
   { key: "woQuantity", label: "WO Qty", numeric: true },
   { key: "percentComplete", label: "% Complete", numeric: true },
   { key: "desiccant", label: "Desiccant" },
+  { key: "cotton", label: "Cotton" },
 ];
 
 function fmtChg(code: string) {
@@ -100,48 +125,290 @@ function loadShowPreview(): boolean {
   }
 }
 
-type LineStatus = "Ready" | "PM" | "OT";
-const LINE_STATUSES: LineStatus[] = ["Ready", "PM", "OT"];
+const STATUS_WORDS: Record<RunStatus, string> = {
+  RUNNING: "Running",
+  "PARTIAL SHIFT": "Partial shift",
+  OVERTIME: "Overtime",
+  "READY LINE": "Ready line",
+  "PM / CLEANING": "PM / Cleaning",
+  "NOT SCHEDULED": "Not scheduled",
+};
 
-// READY / PM / OT buttons for a whole production line - click one to
-// mark the line, click it again to clear it.
-function LineStatusToggle({
-  line,
-  status,
+// A line's status this shift or next. Auto = this shift: the file's Line
+// Status (Ready, PM, OT), else Not scheduled; next shift: Not scheduled.
+function StatusSelect({
+  id,
+  label,
+  value,
+  auto,
   onChange,
-  onDark = false,
+  className = "",
 }: {
-  line: string;
-  status: LineStatus | "";
-  onChange: (status: LineStatus | "") => void;
-  onDark?: boolean;
+  id?: string;
+  label: string;
+  value: LineStatusPick;
+  auto: RunStatus | "";
+  onChange: (value: LineStatusPick) => void;
+  className?: string;
 }) {
+  const shown = value === "NONE" ? "" : value || auto;
   return (
-    <span className={`status-toggle ${onDark ? "status-toggle-dark" : ""}`} role="group" aria-label={`${line} status`}>
-      {LINE_STATUSES.map((s) => (
-        <button
-          key={s}
-          type="button"
-          className={`status-toggle-btn status-${s.toLowerCase()} ${status === s ? "active" : ""}`}
-          aria-pressed={status === s}
-          title={status === s ? `Clear ${s.toUpperCase()} from ${line}` : `Mark ${line} as ${s.toUpperCase()}`}
-          onClick={() => onChange(status === s ? "" : s)}
-        >
-          {s.toUpperCase()}
-        </button>
+    <select
+      id={id}
+      aria-label={label}
+      title={label}
+      className={`run-pick run-pick-${shown ? STATUS_CLASS[shown] : "none"} ${className}`}
+      value={value}
+      onChange={(e) => onChange(e.target.value as LineStatusPick)}
+    >
+      <option value="">{auto ? `Auto: ${STATUS_WORDS[auto]}` : "Auto: no status"}</option>
+      {RUN_STATUSES.map((s) => (
+        <option key={s} value={s}>
+          {STATUS_WORDS[s]}
+        </option>
       ))}
-    </span>
+      <option value="NONE">No status</option>
+    </select>
   );
 }
 
-// When the shift starts and which of its hours have breaks and lunch - what
-// the estimated changeover times count from.
-function ChangeoverClockSettings({
+// A number box that saves when you leave it (or press Enter), so clearing
+// it to type a new number doesn't save a 0 on the way.
+function DraftNumber({
+  id,
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  allowBlank = false,
+  onCommit,
+}: {
+  id?: string;
+  label?: string;
+  value: number | null;
+  min: number;
+  max: number;
+  step?: number;
+  allowBlank?: boolean;
+  onCommit: (value: number | null) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  function commit() {
+    if (draft === null) return;
+    const text = draft.trim();
+    const n = Number(text);
+    if (text === "" ? allowBlank : Number.isFinite(n) && n >= min && n <= max) onCommit(text === "" ? null : n);
+    setDraft(null);
+  }
+  return (
+    <input
+      id={id}
+      aria-label={label}
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={draft ?? (value ?? "")}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+    />
+  );
+}
+
+// A text box that saves when you leave it.
+function DraftText({ id, value, onCommit }: { id: string; value: string; onCommit: (value: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      id={id}
+      type="text"
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== null && draft !== value) onCommit(draft);
+        setDraft(null);
+      }}
+      onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+    />
+  );
+}
+
+// Each line's status this shift and next, whether it stops for breaks and
+// lunch, and its crew - the workbook's 3. Lines - and the time the schedule
+// is from.
+function LinesPanel({
+  lines,
+  setLineSetups,
+  scheduleAsOf,
+  setScheduleAsOf,
+  boxes,
+}: {
+  lines: ScheduleLine[];
+  setLineSetups: (updater: (lines: ScheduleLineSetup[]) => ScheduleLineSetup[]) => void;
+  scheduleAsOf: string;
+  setScheduleAsOf: (asOf: string) => void;
+  boxes: BoxesView;
+}) {
+  // Saves a change to some lines' setups (made from their current setup).
+  function update(targets: ScheduleLine[], patch: (line: ScheduleLine) => Partial<ScheduleLineSetup>) {
+    setLineSetups((all) => {
+      const next = [...all];
+      for (const line of targets) {
+        const key = lineKey(line.line);
+        const i = next.findIndex((s) => lineKey(s.name) === key);
+        const changed = { ...(i >= 0 ? next[i] : line.setup), ...patch(line) };
+        if (i >= 0) next[i] = changed;
+        else next.push(changed);
+      }
+      return next;
+    });
+  }
+  return (
+    <div className="panel run-lines-panel">
+      <h2>Lines</h2>
+      <p className="panel-hint">
+        Each line's status this shift and next shift, as on the printout. Running, Partial shift and Overtime lines get
+        estimated times. Statuses stay from day to day, so check them at the start of each shift, then click{" "}
+        <strong>Set to now</strong>: until Schedule as of is today, the printout shows a red CHECK in place of its
+        summary.
+      </p>
+      <div className="run-asof">
+        <label className="estimate-field" htmlFor="sched-asof">
+          Schedule as of
+          <input
+            id="sched-asof"
+            type="datetime-local"
+            value={scheduleAsOf}
+            onChange={(e) => setScheduleAsOf(e.target.value)}
+          />
+        </label>
+        <button className="btn primary" onClick={() => setScheduleAsOf(asOfNow())}>
+          🕒 Set to now
+        </button>
+        <span className="run-asof-end">
+          {scheduleAsOf ? "" : "Not set, so the times count from now. "}This shift ends {whenText(boxes.end, boxes.asOf)}.
+        </span>
+      </div>
+      {boxes.check ? (
+        <p className="run-check" role="status">
+          ⚠ {boxes.check}
+        </p>
+      ) : (
+        <p className="run-ok" role="status">
+          ✓ Dated today. {boxes.summary.text}
+        </p>
+      )}
+      <div className="run-bulk">
+        <button className="btn small" onClick={() => update(lines, () => ({ thisShift: "RUNNING" }))}>
+          This shift: all Running
+        </button>
+        <button
+          className="btn small"
+          onClick={() => update(lines, (l) => ({ nextShift: l.status || "NONE" }))}
+          title="Next shift's status for each line = its status this shift"
+        >
+          Next shift = this shift
+        </button>
+        <button className="btn small" onClick={() => update(lines, () => ({ thisShift: "", nextShift: "" }))}>
+          Clear statuses
+        </button>
+      </div>
+      <div className="schedule-table-wrap">
+        <table className="run-lines">
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th>This shift</th>
+              <th>Next shift</th>
+              <th>Stops for breaks &amp; lunch</th>
+              <th>Crew (EE)</th>
+              <th>Work orders</th>
+              <th>Running WO done</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lines.map((line) => {
+              const auto = thisShiftStatus({ ...line.setup, thisShift: "" }, line.rows.map((r) => r.wo));
+              const first = line.rows[0]?.estimate;
+              return (
+                <tr key={line.line} className={`run-line run-line-${line.status ? STATUS_CLASS[line.status] : "none"}`}>
+                  <th scope="row">
+                    <span className="run-line-name">{line.name}</span>
+                    {line.name.toUpperCase() !== line.line.toUpperCase() && (
+                      <span className="run-line-file">{line.line}</span>
+                    )}
+                  </th>
+                  <td>
+                    <StatusSelect
+                      label={`${line.name} this shift`}
+                      value={line.setup.thisShift}
+                      auto={auto}
+                      onChange={(v) => update([line], () => ({ thisShift: v }))}
+                    />
+                  </td>
+                  <td>
+                    <StatusSelect
+                      label={`${line.name} next shift`}
+                      value={line.setup.nextShift}
+                      auto="NOT SCHEDULED"
+                      onChange={(v) => update([line], () => ({ nextShift: v }))}
+                    />
+                  </td>
+                  <td>
+                    <label className="run-breaks">
+                      <input
+                        type="checkbox"
+                        checked={line.setup.breaks}
+                        onChange={(e) => update([line], () => ({ breaks: e.target.checked }))}
+                      />
+                      {line.setup.breaks ? "Yes" : "No - runs through"}
+                    </label>
+                  </td>
+                  <td>
+                    <DraftNumber
+                      label={`${line.name} crew`}
+                      value={line.setup.crew}
+                      min={0}
+                      max={99}
+                      allowBlank
+                      onCommit={(n) => update([line], () => ({ crew: n === null ? null : Math.round(n) }))}
+                    />
+                  </td>
+                  <td className="run-count">{line.rows.length}</td>
+                  <td className="run-est">
+                    {!line.runs ? (
+                      <span className="run-muted">Not running</span>
+                    ) : first?.done ? (
+                      whenText(first.done, boxes.asOf)
+                    ) : (
+                      <span className="run-missing">{first?.missing === "no qty" ? "No WO Qty" : "No line rate"}</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// When the shift starts and which of its hours have breaks and lunch, and
+// the rest of what the estimated times and the washroom prep list use (the
+// workbook's 5. Settings).
+function EstimateSettings({
   clock,
   setClock,
+  settings,
+  setSettings,
 }: {
   clock: ChangeoverClock;
   setClock: (clock: ChangeoverClock) => void;
+  settings: ScheduleRunSettings;
+  setSettings: (updater: (s: ScheduleRunSettings) => ScheduleRunSettings) => void;
 }) {
   const start = parseClock(clock.start);
   const hours = Array.from({ length: SHIFT_HOURS }, (_, i) => i + 1);
@@ -163,16 +430,29 @@ function ChangeoverClockSettings({
       </select>
     </label>
   );
+  const percent = (share: number) => Math.round(share * 1000) / 10;
+  const percentField = (id: string, label: string, value: number, min: number, max: number, onCommit: (share: number) => void) => (
+    <label className="estimate-field" htmlFor={id}>
+      {label}
+      <DraftNumber id={id} value={percent(value)} min={min} max={max} step={0.1} onCommit={(n) => n !== null && onCommit(n / 100)} />
+    </label>
+  );
+  const CO_FIELDS: { key: keyof ScheduleRunSettings["changeoverMinutes"]; label: string }[] = [
+    { key: "s1", label: "S1 (minutes)" },
+    { key: "count", label: "Count change" },
+    { key: "s3", label: "S3" },
+    { key: "s4", label: "S4" },
+  ];
   return (
     <div className="panel estimate-settings">
-      <h2>Estimated changeover</h2>
+      <h2>Estimated times</h2>
       <p className="panel-hint">
-        Shown for each ticked Scheduled Line, in the Changeover column of its running work order: when its bottles
-        remaining (or its whole WO Quantity, if Bottles Remaining is blank) will be done, at the line's rate for that FG
-        item from the Packaging Lead Hub's Line Rates. It counts
-        from the shift's start and uses the Break and Lunch rates in those hours. If it runs past the end of the shift,
-        it carries on into the next shift with the same break and lunch hours. Lines that run through breaks and
-        lunch (no Break or Lunch rate in the Hub) use the Full Hour rate all the way.
+        Every work order on a line that runs this shift (Running, Partial shift or Overtime) gets an estimated time:
+        from Schedule as of, the changeover minutes before each work order, then its bottles left (WO Qty less %
+        Complete) at the line's Full Hour rate for that FG item from the Packaging Lead Hub's Line Rates, times the
+        line efficiency. On a line that stops for breaks and lunch, the break hours and the lunch hour make only their
+        share of a full hour's bottles; past the end of the shift the times carry on with the same hours. A work order
+        with no rate or WO Qty stops the times below it.
       </p>
       <div className="estimate-fields">
         <label className="estimate-field" htmlFor="co-start">
@@ -187,6 +467,60 @@ function ChangeoverClockSettings({
         {hourSelect("co-break-1", "Break", clock.breakHours[0] ?? 0, (h) => setBreak(0, h))}
         {hourSelect("co-break-2", "Second break", clock.breakHours[1] ?? 0, (h) => setBreak(1, h))}
         {hourSelect("co-lunch", "Lunch", clock.lunchHour, (h) => setClock({ ...clock, lunchHour: h }))}
+        {percentField("run-break-share", "A break hour makes (%)", settings.breakShare, 0, 100, (v) =>
+          setSettings((s) => ({ ...s, breakShare: v })),
+        )}
+        {percentField("run-lunch-share", "The lunch hour makes (%)", settings.lunchShare, 0, 100, (v) =>
+          setSettings((s) => ({ ...s, lunchShare: v })),
+        )}
+        {percentField("run-efficiency", "Line efficiency (%)", settings.efficiency, 5, 200, (v) =>
+          setSettings((s) => ({ ...s, efficiency: v })),
+        )}
+      </div>
+      <div className="estimate-subhead">Changeover minutes</div>
+      <div className="estimate-fields">
+        {CO_FIELDS.map(({ key, label }) => (
+          <label className="estimate-field estimate-narrow" htmlFor={`run-co-${key}`} key={key}>
+            {label}
+            <DraftNumber
+              id={`run-co-${key}`}
+              value={settings.changeoverMinutes[key]}
+              min={0}
+              max={600}
+              onCommit={(n) =>
+                n !== null && setSettings((s) => ({ ...s, changeoverMinutes: { ...s.changeoverMinutes, [key]: n } }))
+              }
+            />
+          </label>
+        ))}
+      </div>
+      <div className="estimate-subhead">Washroom prep list</div>
+      <div className="estimate-fields">
+        <label className="estimate-field" htmlFor="run-cremer">
+          Cremer filler lines
+          <DraftText id="run-cremer" value={settings.cremerLines} onCommit={(v) => setSettings((s) => ({ ...s, cremerLines: v }))} />
+        </label>
+        <label className="estimate-field" htmlFor="run-merrill">
+          Merrill filler lines
+          <DraftText id="run-merrill" value={settings.merrillLines} onCommit={(v) => setSettings((s) => ({ ...s, merrillLines: v }))} />
+        </label>
+        <label className="estimate-field estimate-wide" htmlFor="run-oily">
+          Oily when the description has the word
+          <DraftText
+            id="run-oily"
+            value={settings.oilyWords.join(", ")}
+            onCommit={(v) =>
+              setSettings((s) => ({
+                ...s,
+                oilyWords: v
+                  .split(",")
+                  .map((w) => w.trim())
+                  .filter(Boolean)
+                  .slice(0, 12),
+              }))
+            }
+          />
+        </label>
       </div>
     </div>
   );
@@ -195,8 +529,13 @@ function ChangeoverClockSettings({
 export default function ProductionSchedule({
   workOrders,
   setWorkOrders,
-  scheduledLines,
-  setScheduledLines,
+  setLineSetups,
+  scheduleAsOf,
+  setScheduleAsOf,
+  runSettings,
+  setRunSettings,
+  scheduleLines,
+  printData,
   columnWidths,
   setColumnWidths,
   hiddenColumns,
@@ -205,10 +544,12 @@ export default function ProductionSchedule({
   setColumnOrder,
   design,
   setDesign,
-  changeoverTimes,
   changeoverClock,
   setChangeoverClock,
 }: Props) {
+  const changeoverTimes = printData.changeoverTimes;
+  const boxesDesign = design.tableStyle === "boxes";
+  const lineOf = new Map(scheduleLines.map((l) => [l.line, l]));
   const [newLineName, setNewLineName] = useState("");
   const groups = groupByLine(workOrders);
   const [showPreview, setShowPreview] = useState(loadShowPreview);
@@ -226,13 +567,14 @@ export default function ProductionSchedule({
     setHiddenColumns((cols) => (hidden ? [...cols, key] : cols.filter((c) => c !== key)));
   }
 
-  function toggleScheduledLine(line: string, checked: boolean) {
-    setScheduledLines((lines) => (checked ? [...lines, line] : lines.filter((l) => l !== line)));
-  }
-
-  // Marks every work order on the line - the printout tags the whole line.
-  function setLineStatus(line: string, status: LineStatus | "") {
-    setWorkOrders((wos) => wos.map((w) => (w.line.trim() === line ? { ...w, lineStatus: status } : w)));
+  // This shift's status for a line, from its header.
+  function setThisShift(line: ScheduleLine, status: LineStatusPick) {
+    const key = lineKey(line.line);
+    setLineSetups((all) =>
+      all.some((s) => lineKey(s.name) === key)
+        ? all.map((s) => (lineKey(s.name) === key ? { ...s, thisShift: status } : s))
+        : [...all, { ...line.setup, thisShift: status }],
+    );
   }
 
   function updateRow(id: string, field: keyof WorkOrder, value: string | number) {
@@ -269,12 +611,21 @@ export default function ProductionSchedule({
   function deleteLine(line: string) {
     if (!confirm(`Remove line "${line}" and all its work orders?`)) return;
     setWorkOrders((wos) => wos.filter((w) => w.line.trim() !== line));
-    setScheduledLines((lines) => lines.filter((l) => l !== line));
   }
 
   function renameLine(oldLine: string, newLine: string) {
     setWorkOrders((wos) => wos.map((w) => (w.line.trim() === oldLine ? { ...w, line: newLine } : w)));
-    setScheduledLines((lines) => lines.map((l) => (l === oldLine ? newLine : l)));
+    // The line's statuses go with it to its new number (unless that number
+    // already has its own).
+    const from = lineKey(oldLine);
+    const to = lineKey(newLine);
+    if (from !== to && lineNumber(oldLine) !== null && lineNumber(newLine) !== null) {
+      setLineSetups((all) =>
+        all.some((s) => lineKey(s.name) === to)
+          ? all
+          : all.map((s) => (lineKey(s.name) === from ? { ...s, name: defaultLineSetup(newLine).name } : s)),
+      );
+    }
   }
 
   function addNewLine() {
@@ -294,10 +645,15 @@ export default function ProductionSchedule({
       <div className="legend">
         <span className="swatch" style={{ background: "#f8cbad" }} /> Allergen (not "N") &nbsp;
         <span className="swatch" style={{ background: "#fff2cc" }} /> Oily product &nbsp;
-        <span className="swatch" style={{ background: "#bdd7ee" }} /> Bulk item A662 / A624 &nbsp;
-        <span className="swatch" style={{ background: "#14532d" }} /> Line has a "Ready" WO &nbsp;
-        <span className="swatch" style={{ background: "#1e3a8a" }} /> Line has a "PM" WO &nbsp;
-        <span className="swatch" style={{ background: "#facc15" }} /> Line marked "OT"
+        <span className="swatch" style={{ background: "#bdd7ee" }} /> Bulk item A662 / A624
+        <br />
+        Line status (pick it in Lines):{" "}
+        {RUN_STATUSES.map((st) => (
+          <span key={st} className="legend-status">
+            <span className={`swatch run-swatch-${STATUS_CLASS[st]}`} />
+            {STATUS_WORDS[st]}
+          </span>
+        ))}
         <br />
         Changeover: <span className="chg-S1">S1</span> = same setup ·{" "}
         <span className="chg-S1-Count-Change">S1 Count Change</span> = count differs ·{" "}
@@ -307,35 +663,13 @@ export default function ProductionSchedule({
       </div>
 
       {groups.length > 0 && (
-        <div className="panel">
-          <h2>Scheduled Lines</h2>
-          <p className="panel-hint">
-            Tick a line to box it in green on the print report and show its estimated changeover time. Click READY,
-            PM or OT to tag the line on the printout — click it again to clear it.
-          </p>
-          <div className="scheduled-lines-grid">
-            {groups.map((group) => {
-              const status = lineStatusLabel(group.rows);
-              return (
-                <div className={`scheduled-line-item ${status ? `has-${status.toLowerCase()}` : ""}`} key={group.line}>
-                  <label className="scheduled-line-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={scheduledLines.includes(group.line)}
-                      onChange={(e) => toggleScheduledLine(group.line, e.target.checked)}
-                    />
-                    {group.line}
-                  </label>
-                  <LineStatusToggle
-                    line={group.line}
-                    status={status}
-                    onChange={(s) => setLineStatus(group.line, s)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <LinesPanel
+          lines={scheduleLines}
+          setLineSetups={setLineSetups}
+          scheduleAsOf={scheduleAsOf}
+          setScheduleAsOf={setScheduleAsOf}
+          boxes={printData.boxes}
+        />
       )}
 
       <div className="panel">
@@ -349,24 +683,34 @@ export default function ProductionSchedule({
         </button>
         {showPreview && (
           <div className="print-preview-body">
-            <p className="panel-hint">
-              Live preview of the printed Production Schedule. Drag a column's name to move it. To resize, drag
-              the faint line on a column's edge (anywhere down the table) — double-click it to fit the column, or use
-              Fit all columns. Tick a column below to hide it. All of these apply to the printout too. The printed
-              column titles can be changed in Customize Print Design.
-            </p>
+            {boxesDesign ? (
+              <p className="panel-hint">
+                Live preview of the printed Production Schedule, in the Line boxes design (pick another in Customize
+                Print Design). Tick a column below to hide it; it's hidden in the other designs too.
+              </p>
+            ) : (
+              <p className="panel-hint">
+                Live preview of the printed Production Schedule. Drag a column's name to move it. To resize, drag
+                the faint line on a column's edge (anywhere down the table) — double-click it to fit the column, or use
+                Fit all columns. Tick a column below to hide it. All of these apply to the printout too. The printed
+                column titles can be changed in Customize Print Design.
+              </p>
+            )}
             <div className="hide-columns-grid">
-              {orderedScheduleColumns(columnOrder).map((key) => (
+              {(boxesDesign
+                ? BOX_COLUMNS.filter((c) => c.key !== "line").map((c) => ({ key: c.key as string, label: c.label }))
+                : orderedScheduleColumns(columnOrder).map((key) => ({ key: key as string, label: SCHEDULE_COLUMN_LABELS[key] }))
+              ).map(({ key, label }) => (
                 <label className="hide-column-checkbox" key={key}>
                   <input
                     type="checkbox"
                     checked={hiddenColumns.includes(key)}
                     onChange={(e) => toggleHiddenColumn(key, e.target.checked)}
                   />
-                  {SCHEDULE_COLUMN_LABELS[key]}
+                  {label}
                 </label>
               ))}
-              {columnOrder.length > 0 && (
+              {!boxesDesign && columnOrder.length > 0 && (
                 <button className="btn small" onClick={() => setColumnOrder([])}>
                   Reset column order
                 </button>
@@ -374,22 +718,27 @@ export default function ProductionSchedule({
             </div>
             <div className="print-preview-wrap">
               <PrintSchedule
-                workOrders={workOrders}
-                scheduledLines={scheduledLines}
+                {...printData}
                 columnWidths={columnWidths}
                 setColumnWidths={setColumnWidths}
                 hiddenColumns={hiddenColumns}
                 columnOrder={columnOrder}
                 setColumnOrder={setColumnOrder}
                 design={design}
-                changeoverTimes={changeoverTimes}
               />
             </div>
           </div>
         )}
       </div>
 
-      {groups.length > 0 && <ChangeoverClockSettings clock={changeoverClock} setClock={setChangeoverClock} />}
+      {groups.length > 0 && (
+        <EstimateSettings
+          clock={changeoverClock}
+          setClock={setChangeoverClock}
+          settings={runSettings}
+          setSettings={setRunSettings}
+        />
+      )}
 
       <SchedulePrintDesign settings={design} setSettings={setDesign} />
 
@@ -398,21 +747,25 @@ export default function ProductionSchedule({
       )}
 
       {groups.map((group) => {
-        const statusCls = lineStatusClass(group.rows);
+        const line = lineOf.get(group.line);
+        const statusCls = line?.status ? STATUS_CLASS[line.status] : "none";
         return (
           <div className="line-group" key={group.line}>
-            <div className={`line-group-header ${statusCls}`}>
+            <div className={`line-group-header run-head-${statusCls}`}>
               <input
                 className="line-name-input"
                 value={group.line}
                 onChange={(e) => renameLine(group.line, e.target.value)}
               />
-              <LineStatusToggle
-                line={group.line}
-                status={lineStatusLabel(group.rows)}
-                onChange={(s) => setLineStatus(group.line, s)}
-                onDark
-              />
+              {line && (
+                <StatusSelect
+                  label={`${group.line} this shift`}
+                  value={line.setup.thisShift}
+                  auto={thisShiftStatus({ ...line.setup, thisShift: "" }, group.rows)}
+                  onChange={(v) => setThisShift(line, v)}
+                  className="run-pick-head"
+                />
+              )}
               <span style={{ flex: 1 }} />
               <button className="btn small danger" onClick={() => deleteLine(group.line)}>
                 Remove line
@@ -458,7 +811,7 @@ export default function ProductionSchedule({
                                     ? "The cap changes here. Prints as \"Cap Change\" unless you type a remark."
                                     : undefined
                                 }
-                                value={row[c.key] as string | number}
+                                value={(row[c.key] ?? "") as string | number}
                                 onChange={(e) =>
                                   updateRow(
                                     row.id,

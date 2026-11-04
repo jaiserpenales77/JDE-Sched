@@ -537,3 +537,34 @@ export function washroomList(
   }
   return out.sort((a, b) => a.at.getTime() - b.at.getTime());
 }
+
+// ---- The printout's CHECK and the other designs ----
+
+// The red CHECK the printout shows in place of its summary, as on the
+// workbook: until Schedule as of is today, the statuses may be yesterday's,
+// so they never print by mistake; and a WO on two rows is usually
+// yesterday's schedule left in. A 3rd shift that crosses midnight stays
+// fine for 12 hours.
+export function scheduleCheck(asOfRaw: string, asOf: Date, now: Date, workOrders: WorkOrder[]): string {
+  if (!asOfRaw.trim()) return "CHECK: Schedule as of isn't set - check each line's status, then click Set to now";
+  const age = now.getTime() - asOf.getTime();
+  if (!sameDay(asOf, now) && !(age >= 0 && age < 12 * 3600e3)) {
+    return "CHECK: Line statuses not dated today - check each line's status, then click Set to now";
+  }
+  const seen = new Set<string>();
+  for (const wo of workOrders) {
+    const key = wo.wo.trim().toUpperCase();
+    if (!key) continue;
+    if (seen.has(key)) return `CHECK: WO ${wo.wo.trim()} is on two rows`;
+    seen.add(key);
+  }
+  return "";
+}
+
+// The other designs' READY / PM / OT tag for a line's status.
+export function fileLineStatus(status: RunStatus | ""): "Ready" | "PM" | "OT" | "" {
+  if (status === "READY LINE") return "Ready";
+  if (status === "PM / CLEANING") return "PM";
+  if (status === "OVERTIME") return "OT";
+  return "";
+}

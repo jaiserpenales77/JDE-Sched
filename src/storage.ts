@@ -111,6 +111,12 @@ function normalizeSchedulePrintSettings(settings: LegacySchedulePrintSettings | 
     if (merged.holidayTheme === "off") merged.holidayTheme = "auto";
     merged.holidayDefaultVersion = 2;
   }
+  // Every shift moves to the Line boxes design once; a shift that picks
+  // another design after that keeps it.
+  if (rest.tableStyleDefaultVersion !== 1) {
+    merged.tableStyle = "boxes";
+    merged.tableStyleDefaultVersion = 1;
+  }
   merged.columnTitles = normalizeColumnTitles(rest.columnTitles);
   return merged;
 }
