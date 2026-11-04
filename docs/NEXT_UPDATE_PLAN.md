@@ -53,14 +53,8 @@ together.
    file, or typed in the box) wins over the list, and N in the box means
    none.
 
-6. **Packaging Lead Hub → Stored Data → Cotton** (a new section, in the Hub's
-   own repository `AutoCoordinator`, branch `claude/next-update`): Admins and
-   Owners add, change and remove the FG items that take cotton ("Yes", or
-   the cotton it takes; several FG items at once, with commas); Leads see
-   the list. It's in Export / Import Stored Data (import: admins only) and
-   the Activity Log. Tested end to end on the test database: an Owner's
-   changes reach `cottonItems`, a Lead's are refused by the rules, and
-   LineUp shows them.
+6. The Hub's **Stored Data → Cotton** section, which this reads, is already
+   live (released on its own, 2026-11-04, see Released below).
 
 **Not in it yet:** the workbook's product list (oily / powdery and
 international for each item) and its line rates, to be added to the Hub's
@@ -82,12 +76,6 @@ on the running lines. Print → Washroom Prep List. In the Hub (as an
 Admin): Stored Data → Cotton → add an FG item from today's schedule; in
 LineUp its blank Cotton box shows it in gray.
 
-**Once it's live, in the Hub (as an Admin):** Stored Data → **Import Stored
-Data** → `cotton-from-mdi-router.json` (26 FG items whose limiting machine
-is the cottoner in the Line Lead MDI Router, as "Yes"; given in chat, not
-kept in this public repository). Then add any other FG items that take
-cotton by hand: the router only shows the ones where the cottoner limits
-the speed.
 
 **Announcement:** "Production Schedule: the printout now looks like the
 JDE Schedule workbook, with each line boxed in its status color, progress,
@@ -123,6 +111,33 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-11-04 (evening): Packaging Lead Hub only, Stored Data → Cotton
+
+In the Packaging Lead Hub (repository `AutoCoordinator`, released from its
+`claude/next-update` branch into `claude/modest-gauss-y18sdh`; LineUp not
+changed): a new **Cotton** section on the Stored Data tab. Admins and
+Owners add, change and remove the FG items that take cotton ("Yes", or the
+cotton it takes; several FG items at once, with commas); Leads see the
+list. Saved as `cottonItems` in `pk030/storedData`; in Export / Import
+Stored Data (import: admins only) and the Activity Log. Tested end to end
+on the test database: an Owner's changes reach the database, a Lead's are
+refused by the rules, every tab opens for an Owner and a Lead, and
+LineUp's next update shows the cotton.
+
+Nothing changed in Firebase (admins could already write Stored Data, and
+LineUp's shift accounts could already read it).
+
+**Once it's live, in the Hub (as an Admin):** Stored Data → **Import Stored
+Data** → `cotton-from-mdi-router.json` (26 FG items whose limiting machine
+is the cottoner in the Line Lead MDI Router, as "Yes"; given in chat, not
+kept in this public repository). Then add any other FG items that take
+cotton by hand: the router only shows the ones where the cottoner limits
+the speed. The live LineUp starts using the list with its next update.
+
+**Announcement (Hub):** "Stored Data has a new Cotton section: the FG
+items that take cotton, and which. Admins keep it up to date; LineUp will
+use it for its Add / Change / Remove Cotton changeover notes."
 
 ### 2026-10-27 (night): lead first, new line side panel, add people from a list
 
