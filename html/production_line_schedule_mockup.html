@@ -225,7 +225,8 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp-kpi b { font-size: 12.5pt; color: #1f3864; }
 .mp-kpi .st { display: inline-flex; align-items: center; gap: 4px; margin-right: 9px; font-weight: 700; font-size: 8pt; }
 .mp-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.mp table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.mp table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
+.mp td { box-shadow: none !important; }
 .mp thead th { font-size: 6.4pt; letter-spacing: .9px; text-transform: uppercase; color: #6b7385; font-weight: 700; text-align: left; padding: 3px 4px 4px;
   border-bottom: 1px solid #c8cfdb; }
 .mp td { padding: 1.5px 4px; border-bottom: 1px solid #eef1f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
@@ -255,6 +256,25 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp tr.n b { font-style: normal; font-weight: 800; letter-spacing: .3px; color: #8a6d1a; }
 .mp tbody.grey td, .mp tbody.grey td b { color: #a7adb8 !important; } .mp tbody.grey .bar i { background: #b9bfca; } .mp tbody.grey .pct, .mp tbody.grey .co { color: #a7adb8 !important; }
 .mp tbody.grey tr.lh .nm { color: #8c93a0; }
+/* one box per line */
+.mp .mbox { border: 1px solid #d7dde7; border-left: 4px solid var(--c); border-radius: 6px; margin-bottom: 7px; overflow: hidden; break-inside: avoid; }
+.mp .mhead { display: flex; justify-content: space-between; align-items: center; background: var(--t); padding: 4px 8px; }
+.mp .mhead .nm { font-size: 11pt; font-weight: 800; color: #1d2433; margin-right: 8px; }
+.mp .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 6.8pt; font-weight: 800; letter-spacing: .4px; margin-left: 4px; vertical-align: 1px; }
+.mp .mmeta { font-size: 7.6pt; color: #4a5263; } .mp .mmeta .sep { margin-left: 12px; } .mp .mmeta b { color: #1d2433; }
+.mp .mbox table td { font-size: 7.8pt; padding: 2.4px 5px; border-bottom: 1px solid #edf0f4; }
+.mp .mbox tr.th td { white-space: normal; line-height: 1.15; font-size: 6.4pt; font-weight: 700; color: #6b7385; text-transform: uppercase; letter-spacing: .5px; background: #fafbfd; padding: 2px 5px; }
+.mp .mbox tr.alt td { background: #f7f9fc; }
+.mp .mbox tr.hl-allergen td { background: #fbe3d6; } .mp .mbox tr.hl-oil td { background: #fff1c2; } .mp .mbox tr.hl-dump td { background: #ddebf7; }
+.mp .mbox tr.n td { background: #fff8e1; color: #6e5a14; font-size: 7pt; font-style: normal; padding: 1.5px 5px; border-bottom: 1px solid #f3e7bf; }
+.mp .mbox tr.n td.arr { color: #b39540; text-align: right; }
+.mp .mbox tr.n b { color: #6e5a14; letter-spacing: 0; font-weight: 800; }
+.mp .alg { color: #9c3d10; }
+.mp .muted { color: #8a91a0; font-style: italic; }
+.mp .mbox.grey { border-left-color: #b9bfca; } .mp .mbox.grey td, .mp .mbox.grey td b { color: #a7adb8 !important; }
+.mp .mbox.grey .bar i { background: #b9bfca; } .mp .mbox.grey .pct { color: #a7adb8; }
+.mp .mkey { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 7pt; color: #4a5263; margin: 0 0 7px; padding: 4px 8px; background: #f7f9fc; border-radius: 6px; }
+.mp .mkey b { margin-right: 4px; } .mp .mkey .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin: 0 3px 0 6px; vertical-align: -1px; }
 .mp-key { margin-top: 9px; padding-top: 6px; border-top: 1px solid #dfe4ec; display: flex; gap: 14px; flex-wrap: wrap; font-size: 6.8pt; color: #6b7385; }
 .mp-key b { color: #1d2433; }
 .mp-foot { display: flex; justify-content: space-between; font-size: 6.6pt; color: #9aa1ae; margin-top: 5px; }
@@ -597,33 +617,37 @@ function renderModern(S) {
     <div class="mp-kpi"><small>Running</small><b>${withWo.filter(l => l.running).length}</b> <span style="color:#6b7385">of ${withWo.length}</span></div>
     <div class="mp-kpi"><small>Changeovers before ${end}</small><b>${minor}</b> <span style="color:#2e7d32;font-weight:700">minor</span> &nbsp;<b>${cos.length - minor}</b> <span style="color:#c00000;font-weight:700">major</span></div>
     <div class="mp-kpi"><small>Next changeover</small><b>${next ? next.ln : "—"}</b> ${next ? `<span style="color:#6b7385">· ${tm(next.coStart)}</span>` : ""}</div></div>`;
-  const cols = [["WO", 6.4], ["SQ", 2.6], ["Item", 6.2], ["Description", 23.6], ["CT", 3.2], ["Bulk", 6.6], ["BTL", 3.4], ["Cap", 5.4], ["A", 3.4], ["Des", 3.6],
-    ["Qty", 5.6], ["Progress / changeover", 13.4], ["Left / C.O.", 5.6], ["Est. time", 11]];
-  const head = `<colgroup>${cols.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup><thead><tr>${cols.map(([h], i) => `<th class="${[1, 4, 6, 7, 8, 9].includes(i) ? "c" : [10, 12, 13].includes(i) ? "r" : ""}">${h}</th>`).join("")}</tr></thead>`;
-  const tagOf = r => r.hl === "allergen" ? `<span class="tag t-allergen">ALLERGEN · ${r.allergen}</span>` : r.hl === "oil" ? `<span class="tag t-oil">OIL</span>` : r.hl === "dump" ? `<span class="tag t-dump">DUMPING</span>` : "";
-  const mk = { allergen: "#e8956a", oil: "#e6c045", dump: "#79a8d8" };
-  const bodies = withWo.map(l => {
-    const rows = l.rows.map(r => {
-      const prog = r.first ? (r.pct > 0 ? `<span class="bar"><i style="width:${r.pct}%"></i></span><span class="pct">${Math.round(r.pct)}%</span>` : `<i style="color:#8a91a0">Not started yet</i>`)
-        : `<span class="co ${r.code === "S1" || r.code === "CNT" ? "minor" : ""}" style="color:var(${CO[r.code][1]})">${CO[r.code][0]}</span>${r.intl ? '<span class="intl">INTL</span>' : ""}`;
-      const est = !l.running ? "" : r.est ? `<span class="${r.first ? "first-est" : ""}">${fmtTime(r.est, S.asof)}</span>` : r.noRate ? `<i style="color:#8a91a0">no rate</i>` : "—";
+  // one box per line: its header bar, its own column titles, its work orders
+  const cols = [["WO", 7], ["SQ", 3], ["Item", 6.4], ["Description", 20.4], ["CT", 3.4], ["Bulk", 7], ["BTL", 3.6], ["Cap", 5.6], ["A", 3.8], ["Des", 3.8],
+    ["WO qty", 5.8], ["Progress / changeover", 12.4], ["Left / C.O.", 5.6], ["Est. time", 11.8]];
+  const al = i => [1, 4, 6, 7, 8, 9].includes(i) ? "c" : [10, 12, 13].includes(i) ? "r" : "";
+  const colg = `<colgroup>${cols.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup>`;
+  const thr = `<tr class="th">${cols.map(([h], i) => `<td class="${al(i)}">${h}</td>`).join("")}</tr>`;
+  const pill = st => `<span class="pill" style="background:${ink(st)};color:${st === "OVERTIME" ? "#1d2433" : "#fff"}">${st}</span>`;
+  const boxes = withWo.map(l => {
+    const rows = l.rows.map((r, i) => {
+      const prog = r.first ? (r.pct > 0 ? `<span class="bar"><i style="width:${r.pct}%"></i></span><span class="pct">${Math.round(r.pct)}%</span>` : `<span class="muted">Not started yet</span>`)
+        : `<b style="color:var(${CO[r.code][1]})">${CO[r.code][0]}</b>${r.intl ? '<span class="intl">INTL</span>' : ""}`;
+      const est = !l.running ? "" : r.est ? `<b class="${r.first ? "first-est" : ""}">${fmtTime(r.est, S.asof)}</b>` : r.noRate ? `<span class="muted">no rate</span>` : "—";
       const left = r.first ? `<b style="color:#2e7d32">${k(r.left)}</b>` : `<b style="color:var(${CO[r.code][1]})">${CO[r.code][2]} min</b>`;
-      let tr = `<tr><td class="wo ${r.hl && !l.grey ? "mk" : ""}" style="--mk:${mk[r.hl] || "transparent"}">${r.wo}</td><td class="c">${r.seq}</td><td>${r.item}</td>
-        <td>${r.desc}${l.grey ? "" : tagOf(r)}</td><td class="c ${r.code === "CNT" ? "newct" : ""}">${r.ct}</td><td>${r.bulk}</td><td class="c">${r.btl}</td>
-        <td class="c ${r.capNew ? "new" : ""}">${capCode(r.cap)}</td><td class="c">${r.allergen === "N" ? "–" : r.allergen}</td><td class="c">${r.des || "–"}</td>
+      let tr = `<tr class="wo ${i % 2 ? "alt" : ""} ${!l.grey && r.hl ? "hl-" + r.hl : ""}"><td><b>${r.wo}</b></td><td class="c">${r.seq}</td><td>${r.item}</td>
+        <td>${r.desc}</td><td class="c ${r.code === "CNT" ? "newct" : ""}">${r.ct}</td><td>${r.bulk}</td><td class="c">${r.btl}</td>
+        <td class="c ${r.capNew ? "new" : ""}">${capCode(r.cap)}</td><td class="c">${r.allergen === "N" ? "N" : `<b class="alg">${r.allergen}</b>`}</td><td class="c">${r.des}</td>
         <td class="r">${r.qty.toLocaleString()}</td><td>${prog}</td><td class="r">${left}</td><td class="r">${est}</td></tr>`;
-      if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>CHANGEOVER</b> &nbsp;${r.coParts.join(" · ")}</td></tr>`;
-      if (r.remarks) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>REMARK</b> &nbsp;${r.remarks}</td></tr>`;
+      if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>Changeover notes:</b> ${r.coParts.join(", ")}</td></tr>`;
+      if (r.remarks) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>Remarks:</b> ${r.remarks}</td></tr>`;
       return tr;
     }).join("");
-    return `<tbody class="${l.grey ? "grey" : ""}" style="--c:${ink(l.st)}"><tr class="lh"><td colspan="14"><div class="lhx"><span><span class="sq"></span><span class="nm">${l.name}</span><span class="stt">${l.st}</span></span>
-      <span class="lmeta">Next shift <span class="lnx" style="color:${ink(l.nx)}">${l.nx}</span>${l.crew ? ` &nbsp;·&nbsp; Crew <b>${l.crew}</b>` : ""} &nbsp;·&nbsp; ${l.rows.length} WO</span></div></td></tr>${rows}</tbody>`;
+    return `<div class="mbox ${l.grey ? "grey" : ""}" style="--c:${ink(l.st)};--t:var(${tint(l.st)})">
+      <div class="mhead"><span><span class="nm">${l.name}</span>${pill(l.st)}${l.grey ? '<span class="muted" style="margin-left:8px">not running this shift</span>' : ""}</span>
+        <span class="mmeta">Next shift ${pill(l.nx)}${l.crew ? `<span class="sep">Crew <b>${l.crew}</b></span>` : ""}<span class="sep">${l.rows.length} work order${l.rows.length > 1 ? "s" : ""}</span></span></div>
+      <table>${colg}<tbody>${thr}${rows}</tbody></table></div>`;
   }).join("");
-  const key = `<div class="mp-key"><span><b>Changeover</b> &nbsp;${Object.values(CO).map(([lab, c]) => `<span class="co ${lab.startsWith("Minor") ? "minor" : ""}" style="color:var(${c});font-size:6pt;padding:0 4px;border:1px ${lab.startsWith("Minor") ? "dashed" : "solid"} var(${c})">${lab}</span>`).join(" ")}</span>
-    <span><span style="color:#c55a11;font-weight:800">Cap</span> new cap · <span style="color:#c00000;font-weight:800">CT</span> new count</span>
-    <span><span class="tag t-allergen" style="margin:0">ALLERGEN</span> <span class="tag t-oil">OIL</span> <span class="tag t-dump">DUMPING</span></span>
-    <span>Grey: not running this shift</span></div>`;
-  $("#mprint-sched").innerHTML = top("Production Line Schedule", SHIFTS[state.shift]) + kpis + `<table>${head}${bodies}</table>` + key
+  const key = `<div class="mkey"><b>Key</b>
+    <span><b style="color:var(--s1)">Minor · S1</b> <b style="color:var(--cnt)">Minor · Count</b> <b style="color:var(--s3)">MAJOR · S3</b> <b style="color:var(--s4)">MAJOR · S4</b> <span class="intl">INTL</span> international</span>
+    <span><span class="sw" style="background:#fbe3d6"></span>Allergen <span class="sw" style="background:#fff1c2"></span>Oil <span class="sw" style="background:#ddebf7"></span>Dumping</span>
+    <span><b class="new">Cap</b> new cap · <b class="newct">CT</b> new count</span></div>`;
+  $("#mprint-sched").innerHTML = top("Production Line Schedule", SHIFTS[state.shift]) + kpis + key + boxes
     + `<div class="mp-foot"><span>Estimated times from the line rates, breaks and changeover minutes</span><span>Production Line Schedule · ${SHIFTS[state.shift]}</span></div>`;
   // the washroom checklist
   const oily = d => SET.oily.some(w => (" " + d.replace(/[-,()]/g, " ") + " ").includes(" " + w + " "));
