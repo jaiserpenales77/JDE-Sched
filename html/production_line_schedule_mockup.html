@@ -99,6 +99,28 @@ tr.hl-dump td:first-child { box-shadow: inset 3px 0 #79a8d8; }
 .grey td { color: #a3a9b5 !important; } .grey .cochip, .grey .bar-fill { filter: grayscale(1); opacity: .55; }
 .cap-new { color: var(--cap); font-weight: 750; } .ct-new { color: #c00000; font-weight: 750; }
 .allergen { display: inline-block; padding: 1px 7px; border-radius: 6px; background: #f8cbad; color: #843c0c; font-weight: 700; font-size: 12px; }
+tr.unote td { background: #dff1fd; color: #0b4f7a; font-size: 12px; padding: 4px 8px; border-bottom: 1px solid #c3e3f9; }
+tr.unote .arrow { color: #3d8fc7; padding-left: 14px; }
+tr.unote b { font-weight: 700; }
+td.nb { width: 34px; padding: 0 6px 0 0; text-align: right; }
+.note-btn { border: 1px solid var(--line); background: #fff; color: #8a93a3; width: 26px; height: 26px; border-radius: 8px; font-size: 13px; opacity: .55;
+  transition: all .15s; }
+tr.wo:hover .note-btn, .note-btn:focus { opacity: 1; }
+.note-btn:hover { color: #0b4f7a; border-color: #8fc7ee; background: #eef8ff; }
+.note-btn.has { opacity: 1; background: #dff1fd; border-color: #8fc7ee; color: #0b4f7a; }
+.note-add { border: 1px dashed #8fc7ee; background: #fff; color: #0b4f7a; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 650;
+  align-self: flex-start; transition: background .15s; }
+.note-add:hover { background: #eef8ff; }
+.modal-bg { position: fixed; inset: 0; background: rgba(16, 24, 40, .35); z-index: 80; display: grid; place-items: center; animation: fade .15s; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.modal { background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(16,24,40,.3); width: min(520px, calc(100vw - 32px)); padding: 18px;
+  animation: pop .18s cubic-bezier(.2,.8,.2,1); }
+.modal h3 { margin: 0 0 4px; font-size: 16px; } .modal p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
+.modal textarea { width: 100%; min-height: 110px; border: 1px solid #c3e3f9; background: #f4faff; border-radius: 10px; padding: 10px 12px; font: inherit; resize: vertical; outline: none; }
+.modal textarea:focus { border-color: #3d8fc7; box-shadow: 0 0 0 3px #dff1fd; }
+.modal .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.modal .row button { border: 0; border-radius: 10px; padding: 8px 16px; font-weight: 650; }
+.modal .save { background: #2e75b6; color: #fff; } .modal .cancel { background: #eef1f6; color: var(--ink); } .modal .del { background: #fde8e8; color: #b42318; margin-right: auto; }
 tr.note td { background: var(--cream); color: var(--cream-ink); font-size: 12px; font-style: italic; padding: 4px 8px; border-bottom: 1px solid #f3e7bf; }
 tr.note .arrow { font-style: normal; color: #b39540; padding-left: 14px; }
 tr.note b { font-style: normal; font-weight: 700; }
@@ -198,6 +220,8 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .xs .seg { color: var(--run); letter-spacing: -.5px; font-size: 7pt; } .xs .pct { color: var(--run); font-weight: 700; margin-left: 4px; }
 .xs tr.n td { height: 11px; font-size: 6.5pt; font-style: italic; color: #7f6000; }
 .xs tr.n td.nt { background: #fff8e1; }
+.xs tr.n td.nt.un { background: #dff1fd; color: #0b4f7a; font-style: normal; }
+.xs tr.n td.ln { font-size: 8.4pt; font-style: normal; color: var(--c); height: auto; }
 .xs tr.n td.arr { text-align: center; font-style: normal; color: #7f6000; font-size: 7pt; }
 .xs .chipx { display: block; margin: 0 -3px; text-align: center; font-weight: 700; line-height: 15px; }
 .xs tr.hl-allergen td.d { background: #f8cbad; } .xs tr.hl-oil td.d { background: #fff2cc; } .xs tr.hl-dump td.d { background: #bdd7ee; }
@@ -291,6 +315,8 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp .mbox tr.hl-allergen td { background: #fbe3d6; } .mp .mbox tr.hl-oil td { background: #fff1c2; } .mp .mbox tr.hl-dump td { background: #ddebf7; }
 .mp .mbox tr.n td { background: #fff8e1; color: #6e5a14; font-size: 6.8pt; font-style: normal; padding: 0 5px; line-height: 1.3; border-bottom: 1px solid #f3e7bf; }
 .mp .mbox tr.n td.arr { color: #b39540; text-align: right; }
+.mp .mbox tr.n.un td { background: #dff1fd; color: #0b4f7a; border-bottom-color: #c3e3f9; }
+.mp .mbox tr.n.un td.arr { color: #3d8fc7; } .mp .mbox tr.n.un b { color: #0b4f7a; }
 .mp .mbox tr.n b { color: #6e5a14; letter-spacing: 0; font-weight: 800; }
 .mp .alg { color: #9c3d10; }
 .mp .mbox td.desc2 { white-space: normal; line-height: 1.2; }
@@ -391,6 +417,9 @@ function fresh() {
   return { shift: 0, asof: d.getTime(), lines: Object.fromEntries(DATA.lines.map(l => [l.name, { st: l.st, nx: l.nx, crew: l.crew, breaks: l.breaks }])), done: {} };
 }
 function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.lines) return s; } catch (e) {} return fresh(); }
+// your own notes, by work order and by line (shown in light sky blue)
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const noteOf = (kind, key) => ((state.notes || {})[kind] || {})[key] || "";
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
 // ---- the schedule logic (as in the workbook) ----
@@ -506,16 +535,20 @@ function renderLines(S) {
         <td class="c ${r.capNew ? "cap-new" : ""}">${capCode(r.cap)}</td>
         <td class="c">${r.allergen !== "N" ? `<span class="allergen">${r.allergen}</span>` : "N"}</td><td class="c">${r.des}</td>
         <td class="num">${r.qty.toLocaleString()}</td><td>${prog}</td><td class="num" style="font-weight:650;color:${r.first ? "var(--run)" : `var(${CO[r.code][1]})`}">${leftCo}</td>
-        <td class="num">${est}</td></tr>`;
-      if (notes && !l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="note"><td class="arrow">↳</td><td colspan="13"><b>Changeover notes:</b> ${r.coParts.join(", ")}</td></tr>`;
-      if (notes && r.remarks) tr += `<tr class="note"><td class="arrow">↳</td><td colspan="13"><b>Remarks:</b> ${r.remarks}</td></tr>`;
+        <td class="num">${est}</td>
+        <td class="nb"><button class="note-btn ${noteOf("wo", r.wo) ? "has" : ""}" data-note="wo" data-key="${r.wo}" title="${noteOf("wo", r.wo) ? "Edit the note" : "Add a note"} for WO ${r.wo}">✎</button></td></tr>`;
+      if (notes && !l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="note"><td class="arrow">↳</td><td colspan="14"><b>Changeover notes:</b> ${r.coParts.join(", ")}</td></tr>`;
+      if (notes && r.remarks) tr += `<tr class="note"><td class="arrow">↳</td><td colspan="14"><b>Remarks:</b> ${r.remarks}</td></tr>`;
+      if (noteOf("wo", r.wo)) tr += `<tr class="unote"><td class="arrow">↳</td><td colspan="14"><b>Note:</b> ${esc(noteOf("wo", r.wo))}</td></tr>`;
       return tr;
     }).join("");
+    const lineNote = noteOf("line", l.name) ? `<tr class="unote"><td colspan="15"><b>Line note:</b> ${esc(noteOf("line", l.name))}</td></tr>` : "";
     return `<article class="card lcard" style="--c:var(${color(l.st)});--t:var(${tint(l.st)});animation-delay:${i * 40}ms">
       <div class="lhead"><div class="lname">${l.name}</div>
         <button class="stchip" data-line="${l.name}" data-f="st">${l.st} <span class="caret">▼</span></button>
-        <div class="meta"><span class="nx">Next shift: ${stChip(l.nx)}</span>${l.crew ? `<span>Crew (EE): <b>${l.crew}</b></span>` : ""}<span>${l.rows.length} work order${l.rows.length > 1 ? "s" : ""}</span></div></div>
-      <div class="lbody"><table class="${l.grey ? "grey" : ""}"><thead><tr><th>WO</th><th class="c">SQ</th><th>Item</th><th>Description</th><th class="c">CT</th><th>Bulk</th><th class="c">BTL</th><th class="c">Cap</th><th class="c">A</th><th class="c">Des</th><th class="num">WO Qty</th><th>Progress / Changeover</th><th class="num">Left / C.O.</th><th class="num">Est. time</th></tr></thead><tbody>${body}</tbody></table></div>
+        <div class="meta"><span class="nx">Next shift: ${stChip(l.nx)}</span>${l.crew ? `<span>Crew (EE): <b>${l.crew}</b></span>` : ""}<span>${l.rows.length} work order${l.rows.length > 1 ? "s" : ""}</span></div>
+        <button class="note-add" data-note="line" data-key="${l.name}">${noteOf("line", l.name) ? "✎ Edit line note" : "+ Line note"}</button></div>
+      <div class="lbody"><table class="${l.grey ? "grey" : ""}"><thead><tr><th>WO</th><th class="c">SQ</th><th>Item</th><th>Description</th><th class="c">CT</th><th>Bulk</th><th class="c">BTL</th><th class="c">Cap</th><th class="c">A</th><th class="c">Des</th><th class="num">WO Qty</th><th>Progress / Changeover</th><th class="num">Left / C.O.</th><th class="num">Est. time</th><th></th></tr></thead><tbody>${lineNote}${body}</tbody></table></div>
     </article>`;
   }).join("");
   $("#lines").innerHTML = html || `<div class="card empty">No work orders match.</div>`;
@@ -578,14 +611,16 @@ function renderPrint(S) {
     <tr class="band3"><td colspan="13" style="font-weight:700;font-size:7.8pt;padding-left:8px">${withWo.length} lines · ${counts} &nbsp;|&nbsp; Changeovers before end of shift (${end}): ${minor} minor · ${cos.length - minor} major${next ? ` &nbsp;|&nbsp; Next: ${next.ln} at ${tm(next.coStart)}` : ""}</td><td colspan="4" class="lg">${hlLegend}</td></tr>
     <tr class="heads">${H.map(h => `<td>${h}</td>`).join("")}</tr></thead>`;
   const bodies = withWo.map(l => {
-    const nRows = l.rows.length + l.rows.reduce((n, x) => n + ((x.inShift && x.coParts && x.coParts.length && !l.grey) ? 1 : 0) + (x.remarks ? 1 : 0), 0);
+    const ln0 = noteOf("line", l.name);
+    const nRows = l.rows.length + (ln0 ? 1 : 0) + l.rows.reduce((n, x) => n + ((x.inShift && x.coParts && x.coParts.length && !l.grey) ? 1 : 0) + (x.remarks ? 1 : 0) + (noteOf("wo", x.wo) ? 1 : 0), 0);
+    const lnCell = `<td class="ln" rowspan="${nRows}"><span>${l.name}</span>${l.rows.length > 1 || ln0 ? `<small>${l.st}</small>` : ""}</td>`;
     const tagRow = l.rows.length > 1 ? 1 : 0;              // the next-shift chip: on the row of the status tag
     const trs = l.rows.map((r, i) => {
       const prog = r.first ? (r.pct > 0 ? `<span class="seg">${"▰".repeat(Math.round(r.pct / 10))}${"▱".repeat(10 - Math.round(r.pct / 10))}</span><span class="pct">${Math.round(r.pct)}%</span>` : `<i style="color:#7f7f7f">Not Started Yet</i>`)
         : `<span style="color:var(${CO[r.code][1]});${r.code === "S3" || r.code === "S4" ? "font-weight:700" : ""}">${CO[r.code][0]}${r.intl ? " · INTL" : ""}</span>`;
       const est = !l.running ? "" : r.est ? `<span style="${r.first ? "color:#1f3864;font-weight:700" : ""}">${fmtTime(r.est, S.asof).replace("Tomorrow ", (d => (d.getMonth() + 1) + "/" + d.getDate() + " ")(new Date(r.est)))}</span>` : r.noRate ? `<i style="color:#7f7f7f">no rate</i>` : "—";
       const left = r.first ? `<b style="color:var(--run)">${k(r.left)}</b>` : `<b style="color:var(${CO[r.code][1]})">${CO[r.code][2]} min</b>`;
-      const ln = i === 0 ? `<td class="ln" rowspan="${nRows}"><span>${l.name}</span>${l.rows.length > 1 ? `<small>${l.st}</small>` : ""}</td>` : "";
+      const ln = i === 0 && !ln0 ? lnCell : "";
       const nx = i === tagRow ? `<span class="chipx" style="background:var(${tint(l.nx)});color:var(${color(l.nx)})">${l.nx}</span>` : "";
       const d = "d";
       let tr = `<tr class="${l.grey ? "g" : r.hl ? "hl-" + r.hl : ""}">${ln}<td class="${d}">${r.wo}</td><td class="${d} c">${r.seq}</td><td class="${d}">${r.item}</td>
@@ -596,9 +631,11 @@ function renderPrint(S) {
       const note = text => `<tr class="n"><td class="arr">↳</td><td class="nt" colspan="14">${text}</td><td></td></tr>`;
       if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += note("Changeover Notes: " + r.coParts.join(", "));
       if (r.remarks) tr += note("Remarks: " + r.remarks);
+      if (noteOf("wo", r.wo)) tr += `<tr class="n"><td class="arr" style="color:#3d8fc7">↳</td><td class="nt un" colspan="14"><b>Note:</b> ${esc(noteOf("wo", r.wo))}</td><td></td></tr>`;
       return tr;
     }).join("");
-    return `<tbody class="box" style="--c:var(${color(l.st)});--t:var(${tint(l.st)})">${trs}</tbody><tbody><tr class="gap"><td colspan="17"></td></tr></tbody>`;
+    const lineRow = ln0 ? `<tr class="n">${lnCell}<td class="arr" style="color:#3d8fc7">↳</td><td class="nt un" colspan="14"><b>Line note:</b> ${esc(ln0)}</td><td></td></tr>` : "";
+    return `<tbody class="box" style="--c:var(${color(l.st)});--t:var(${tint(l.st)})">${lineRow}${trs}</tbody><tbody><tr class="gap"><td colspan="17"></td></tr></tbody>`;
   }).join("");
   $("#print-sched").innerHTML = `<table>${colg}${thead}${bodies}</table><div class="foot">Page 1 of 1</div>`;
   // 7. Washroom
@@ -663,19 +700,22 @@ function renderModern(S) {
         <td class="r">${r.qty.toLocaleString()}</td><td>${prog}</td><td class="r">${left}</td><td class="r">${est}</td></tr>`;
       if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>Changeover notes:</b> ${r.coParts.join(", ")}</td></tr>`;
       if (r.remarks) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>Remarks:</b> ${r.remarks}</td></tr>`;
+      if (noteOf("wo", r.wo)) tr += `<tr class="n un"><td class="arr">↳</td><td colspan="13"><b>Note:</b> ${esc(noteOf("wo", r.wo))}</td></tr>`;
       return tr;
     }).join("");
+    const lineNote = noteOf("line", l.name) ? `<tr class="n un"><td colspan="14"><b>Line note:</b> ${esc(noteOf("line", l.name))}</td></tr>` : "";
     // the line on the left (like the LINE column), its work orders on the right
     return `<div class="mbox side ${l.grey ? "grey" : ""}" style="--c:${ink(l.st)};--t:var(${tint(l.st)})">
       <div class="mside"><div class="nm" style="color:${INK2[l.st]}">${l.name}</div>
         <div class="srow"><span class="lab">Next shift</span>${stv(l.nx)}</div></div>
-      <table>${colg}<tbody>${rows}</tbody></table></div>`;
+      <table>${colg}<tbody>${lineNote}${rows}</tbody></table></div>`;
   }).join("");
   const key = `<div class="mkey"><b>Key</b>
     <span>Line color = this shift: ${STATUSES.map(([st]) => `<span class="sw" style="background:var(${tint(st)});border:1.5px solid ${ink(st)}"></span><span style="color:${INK2[st]};font-weight:700">${pretty(st)}</span>`).join(" ")}</span>
     <span><b style="color:var(--s1)">Minor · S1</b> <b style="color:var(--cnt)">Minor · Count</b> <b style="color:var(--s3)">MAJOR · S3</b> <b style="color:var(--s4)">MAJOR · S4</b> <span class="intl">INTL</span> international</span>
     <span><span class="sw" style="background:#fbe3d6"></span>Allergen <span class="sw" style="background:#fff1c2"></span>Oil <span class="sw" style="background:#ddebf7"></span>Dumping</span>
-    <span><b class="new">Cap</b> new cap · <b class="newct">CT</b> new count</span></div>`;
+    <span><b class="new">Cap</b> new cap · <b class="newct">CT</b> new count</span>
+    <span><span class="sw" style="background:#fff8e1;border:1px solid #e9d9a2"></span>Changeover notes / remarks <span class="sw" style="background:#dff1fd;border:1px solid #8fc7ee"></span>Your notes</span></div>`;
   // one compact band on top: the title, the day's numbers, the as-of time
   const band = `<div class="mband"><div><div class="mp-eyebrow">Production Line Schedule</div><div class="mt">${SHIFTS[state.shift]}</div><div class="md">${day}</div></div>
     <div class="mnums"><div><small>${withWo.length} lines</small>${STATUSES.map(([st]) => [st, withWo.filter(l => l.st === st).length]).filter(x => x[1])
@@ -725,6 +765,32 @@ function fitOnePage(el, pageW = 988, pageH = 744) {
   return lo;
 }
 
+// ---- the note editor ----
+function openNote(kind, key) {
+  const old = noteOf(kind, key);
+  const bg = document.createElement("div");
+  bg.className = "modal-bg";
+  bg.innerHTML = `<div class="modal" role="dialog" aria-label="Note"><h3>${kind === "wo" ? "Note for WO " + esc(key) : "Note for " + esc(key)}</h3>
+    <p>Shows in light blue under the ${kind === "wo" ? "work order" : "line"}, on screen and on the printout.</p>
+    <textarea id="note-text" placeholder="Type a note...">${esc(old)}</textarea>
+    <div class="row">${old ? '<button class="del">Delete note</button>' : ""}<button class="cancel">Cancel</button><button class="save">Save note</button></div></div>`;
+  document.body.appendChild(bg);
+  const ta = bg.querySelector("textarea"); ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  const close = () => bg.remove();
+  const set = v => {
+    state.notes = state.notes || { wo: {}, line: {} }; state.notes[kind] = state.notes[kind] || {};
+    if (v) state.notes[kind][key] = v; else delete state.notes[kind][key];
+    save(); close(); render(); toast(v ? "Note saved" : "Note deleted");
+  };
+  bg.addEventListener("click", e => {
+    if (e.target === bg || e.target.classList.contains("cancel")) close();
+    else if (e.target.classList.contains("save")) set(ta.value.trim());
+    else if (e.target.classList.contains("del")) set("");
+    e.stopPropagation();
+  });
+  bg.addEventListener("keydown", e => { if (e.key === "Escape") close(); if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) set(ta.value.trim()); });
+}
+
 // ---- interaction ----
 let toastT;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1800); }
@@ -752,6 +818,7 @@ document.addEventListener("click", e => {
     pop.style.transformOrigin = below ? "top left" : "bottom left";
     e.stopPropagation(); return;
   }
+  if (b.dataset.note) { openNote(b.dataset.note, b.dataset.key); return; }
   if (b.dataset.v) { closePop(); setLine(b.dataset.line, b.dataset.f, b.dataset.v); return; }
   if (b.dataset.crew) { const L = state.lines[b.dataset.line]; L.crew = Math.max(0, (L.crew || 0) + +b.dataset.crew) || null; save(); render(); return; }
   if (b.dataset.brk) { const L = state.lines[b.dataset.line]; L.breaks = !L.breaks; save(); render(); toast(`${b.dataset.line}: ${L.breaks ? "stops" : "runs through"} breaks and lunch`); return; }
