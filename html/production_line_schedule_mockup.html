@@ -170,35 +170,45 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
   .witem { grid-template-columns: 44px 1fr 1fr; }
   .legend { margin-left: 0; }
 }
-/* ---- the printouts: their own compact layout (hidden on screen) ---- */
+/* ---- the printouts, laid out like the workbook's 4. Schedule and 7. Washroom (hidden on screen) ---- */
 .print-only { display: none; }
-.ps { font-size: 8.4px; color: #1d2433; }
-.ps-head { display: flex; align-items: center; justify-content: space-between; background: var(--navy); color: #fff; padding: 7px 12px; border-radius: 6px 6px 0 0; }
-.ps-head h1 { margin: 0; font-size: 16px; font-weight: 700; }
-.ps-head .sub { font-size: 10px; color: #c9d7ee; }
-.ps-head .legend2 { font-size: 8px; color: #dbe6f7; text-align: right; line-height: 1.6; }
-.ps-head .legend2 i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin: 0 3px 0 8px; vertical-align: -1px; }
-.ps-sum { background: #ddebf7; color: var(--navy); font-weight: 700; padding: 4px 12px; font-size: 9px; display: flex; justify-content: space-between; }
-.ps table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; }
-.ps th { background: var(--blue); color: #fff; font-size: 7.4px; padding: 4px 3px; text-align: center; letter-spacing: .3px; border: 0; }
-.ps td { padding: 2.2px 3px; border-bottom: 1px solid #e6eaf0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ps td.l { text-align: left; } .ps td.r { text-align: right; } .ps td.c { text-align: center; }
-.ps tbody { break-inside: avoid; }
-.ps tbody tr:first-child td { border-top: 2px solid var(--c); }
-.ps td.ln { border-left: 4px solid var(--c); background: var(--t); color: var(--c); font-weight: 800; text-align: center; font-size: 9px; }
-.ps td.ln small { display: block; font-size: 7px; font-weight: 800; letter-spacing: .2px; }
-.ps .seg10 { display: inline-flex; gap: 1px; vertical-align: -1px; } .ps .seg10 i { width: 5px; height: 6px; border-radius: 1px; background: #dfe5ee; }
-.ps .seg10 i.f { background: var(--run); }
-.ps .co { font-weight: 800; } .ps .intl2 { border: 1px solid var(--navy); color: var(--navy); border-radius: 3px; padding: 0 2px; font-size: 6.6px; font-weight: 800; margin-left: 3px; }
-.ps tr.n td { background: var(--cream); color: var(--cream-ink); font-style: italic; font-size: 7.6px; padding: 1.4px 3px; border-bottom: 0; }
-.ps tr.n td.arr { text-align: right; font-style: normal; color: #b39540; }
-.ps .nchip { display: inline-block; padding: 0 5px; border-radius: 6px; font-weight: 800; font-size: 7.4px; }
-.ps tr.g td:not(.ln) { color: #a8aeb9; } .ps tr.g .co, .ps tr.g .seg10 i.f { filter: grayscale(1); opacity: .6; }
-.ps tr.hl-allergen td:not(.ln) { background: var(--hl-allergen); } .ps tr.hl-oil td:not(.ln) { background: var(--hl-oil); } .ps tr.hl-dump td:not(.ln) { background: var(--hl-dump); }
-.ps-foot { margin-top: 6px; font-size: 7.5px; color: #8a91a0; display: flex; justify-content: space-between; }
-.pw .box { width: 15px; height: 15px; border: 1.6px solid #6b7385; border-radius: 3px; display: inline-block; vertical-align: middle; }
-.pw td { font-size: 9.5px; padding: 8px 4px; } .pw th { font-size: 8px; }
-.ps td { box-shadow: none !important; }
+.xs { font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 7.6pt; color: #262626; }
+.xs table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.xs td { padding: 0 3px; height: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-left: 1px solid #d9d9d9;
+  border-bottom: 1px solid #d9d9d9; vertical-align: middle; }
+.xs td { box-shadow: none !important; }
+.xs .band1 td, .xs .band2 td, .xs .band3 td { border: 0 !important; }
+.xs .band1 td { background: #1f3864; color: #fff; height: 30px; }
+.xs .band1 .t { font-size: 15pt; font-weight: 700; padding-left: 8px; }
+.xs .band2 td { background: #ddebf7; height: 17px; border: 0; }
+.xs .band3 td { background: #fff; height: 17px; border: 0; }
+.xs .lg { text-align: right; padding-right: 8px; font-size: 7.2pt; }
+.xs .lg b { margin-left: 8px; } .xs .lg .sq { display: inline-block; width: 7px; height: 7px; margin: 0 2px 0 7px; vertical-align: 0; }
+.xs .heads td { background: #2e75b6; color: #fff; font-weight: 700; text-align: center; height: 26px; white-space: normal; line-height: 1.1;
+  border-left: 1px solid #fff; border-bottom: 1px solid #1f3864; font-size: 7.4pt; }
+.xs .gap td { border: 0; height: 9px; background: #fff; }
+.xs td.ln { background: var(--t); color: var(--c); font-weight: 700; text-align: center; vertical-align: top; font-size: 8.4pt; line-height: 15px; padding-top: 0; }
+.xs td.ln span { display: block; } .xs td.ln small { display: block; font-size: 8.2pt; font-weight: 700; }
+.xs tbody.box > tr > td:first-child { border-left: 1.6px solid var(--c); }
+.xs tbody.box > tr > td:last-child { border-right: 1.6px solid var(--c); }
+.xs tbody.box > tr:first-child > td { border-top: 1.6px solid var(--c); }
+.xs tbody.box > tr:last-child > td { border-bottom: 1.6px solid var(--c); }
+.xs td.ln { border-bottom: 1.6px solid var(--c) !important; }
+.xs .r { text-align: right; } .xs .c { text-align: center; }
+.xs .seg { color: var(--run); letter-spacing: -.5px; font-size: 7pt; } .xs .pct { color: var(--run); font-weight: 700; margin-left: 4px; }
+.xs tr.n td { height: 11px; font-size: 6.5pt; font-style: italic; color: #7f6000; }
+.xs tr.n td.nt { background: #fff8e1; }
+.xs tr.n td.arr { text-align: center; font-style: normal; color: #7f6000; font-size: 7pt; }
+.xs .chipx { display: block; margin: 0 -3px; text-align: center; font-weight: 700; line-height: 15px; }
+.xs tr.hl-allergen td.d { background: #f8cbad; } .xs tr.hl-oil td.d { background: #fff2cc; } .xs tr.hl-dump td.d { background: #bdd7ee; }
+.xs tr.g td.d, .xs tr.g td.d * { color: #a6a6a6 !important; font-weight: 400 !important; }
+.xs .intlx { font-weight: 700; }
+.xs .foot { text-align: center; font-size: 7pt; color: #595959; margin-top: 6px; }
+.xs .wt td { height: 22px; font-size: 8pt; }
+.xs .wt td.ty-o { background: #fff2cc; color: #7f6000; font-weight: 700; text-align: center; }
+.xs .wt td.ty-p { background: #ededed; color: #595959; font-weight: 700; text-align: center; }
+.xs .wt td.al { background: #f8cbad; color: #843c0c; font-weight: 700; text-align: center; }
+.xs .done { font-size: 13pt; color: #404040; text-align: center; }
 @media print {
   @page { size: letter landscape; margin: 0.35in; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -251,8 +261,8 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 </main>
 <footer>Mock-up with made-up work orders (real items and line rates). Statuses, crew and washroom ticks are kept in this browser only.</footer>
 <div class="toast" id="toast"></div>
-<div class="print-only ps" id="print-sched"></div>
-<div class="print-only ps pw" id="print-wash"></div>
+<div class="print-only xs" id="print-sched"></div>
+<div class="print-only xs" id="print-wash"></div>
 <script>
 const DATA = {"wos":[{"line":"VPKL01","wo":"2690101","seq":1,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002001","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":12000,"pct":62,"des":"","cot":"","rate":1645.0,"intl":false},{"line":"VPKL01","wo":"2690102","seq":2,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":60,"bulk":"BU002001","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"SOY","remarks":"Use the SOY allergen labels from the cage.","qty":9000,"pct":0,"des":"P","cot":"Y","rate":1645.0,"intl":false},{"line":"VPKL01","wo":"2690103","seq":3,"item":"1212","desc":"CALCIUM 600MG W-D","ct":60,"bulk":"BU002002","btl":150,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":20000,"pct":0,"des":"P-OR","cot":"","rate":942.0,"intl":false},{"line":"VPKL03","wo":"2690301","seq":1,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002010","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":8000,"pct":75,"des":"","cot":"","rate":1484.0,"intl":false},{"line":"VPKL03","wo":"2690302","seq":2,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":90,"bulk":"A662","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":6000,"pct":0,"des":"","cot":"","rate":1479.0,"intl":false},{"line":"VPKL03","wo":"2690303","seq":3,"item":"13174","desc":"CALCIUM 500MG WITH VITAMIN D3 + K2","ct":120,"bulk":"BU002011","btl":400,"cap":"CAP 53MM CT WHITE","allergen":"N","remarks":"","qty":10000,"pct":0,"des":"","cot":"","rate":958.0,"intl":true},{"line":"VPKL04","wo":"2690401","seq":1,"item":"1328","desc":"FISH OIL CONCENTRATE 1200MG","ct":100,"bulk":"BU002020","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":15000,"pct":40,"des":"","cot":"","rate":2326.0,"intl":false},{"line":"VPKL04","wo":"2690402","seq":2,"item":"13171","desc":"SUPER STRENGTH FISH OIL","ct":60,"bulk":"BU002021","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":8000,"pct":0,"des":"","cot":"","rate":1984.0,"intl":true},{"line":"VPKL05","wo":"2690501","seq":1,"item":"109304","desc":"MATURE MULTI SUB","ct":100,"bulk":"BU002030","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":20000,"pct":0,"des":"","cot":"","rate":2032.0,"intl":false},{"line":"VPKL07","wo":"2690701","seq":1,"item":"1212","desc":"CALCIUM 600MG W-D","ct":60,"bulk":"BU002040","btl":150,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":14000,"pct":50,"des":"","cot":"","rate":2505.8,"intl":false},{"line":"VPKL07","wo":"2690702","seq":2,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002041","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":1484.0,"intl":false},{"line":"VPKL08","wo":"2690801","seq":1,"item":"116416E","desc":"MULTI VITS W MINS 1500MG","ct":100,"bulk":"BU002050","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":11000,"pct":20,"des":"","cot":"","rate":1745.0,"intl":true},{"line":"VPKL09","wo":"2690901","seq":1,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002060","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":30000,"pct":0,"des":"","cot":"","rate":2178.1,"intl":false},{"line":"VPKL09","wo":"2690902","seq":2,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002060","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"Quality hold: check the lot numbers with QA before starting, and keep 10 retain samples.","qty":12000,"pct":0,"des":"","cot":"","rate":2178.1,"intl":false},{"line":"VPKL09","wo":"2690903","seq":3,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002061","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":3845.6,"intl":false},{"line":"VPKL10","wo":"2691001","seq":1,"item":"1190","desc":"MELATONIN 10MG TAB","ct":120,"bulk":"BU002070","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":40000,"pct":85,"des":"","cot":"","rate":4600.0,"intl":false},{"line":"VPKL10","wo":"2691002","seq":2,"item":"ZZ9001","desc":"NEW ITEM - NO RATE YET","ct":120,"bulk":"BU002071","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":7000,"pct":0,"des":"P","cot":"12G","rate":null,"intl":false},{"line":"VPKL10","wo":"2691003","seq":3,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":90,"bulk":"BU002072","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":8000,"pct":0,"des":"P","cot":"","rate":5000.2,"intl":false},{"line":"VPKL12","wo":"2691201","seq":1,"item":"13654","desc":"OMEGA 3","ct":60,"bulk":"BU002080","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":10000,"pct":95,"des":"","cot":"","rate":843.0,"intl":true},{"line":"VPKL12","wo":"2691202","seq":2,"item":"13693","desc":"TRIPLE OMEGA","ct":60,"bulk":"BU002081","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":6000,"pct":0,"des":"","cot":"","rate":1266.0,"intl":true},{"line":"VPKL12","wo":"2691203","seq":3,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":100,"bulk":"A624","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":2090.7,"intl":false}],"lines":[{"name":"LINE 1","breaks":true,"st":"RUNNING","nx":"RUNNING","crew":5},{"name":"LINE 3","breaks":true,"st":"PARTIAL SHIFT","nx":"OVERTIME","crew":4},{"name":"LINE 4","breaks":true,"st":"OVERTIME","nx":"NOT SCHEDULED","crew":3},{"name":"LINE 5","breaks":true,"st":"READY LINE","nx":"RUNNING","crew":null},{"name":"LINE 7","breaks":true,"st":"PM / CLEANING","nx":"RUNNING","crew":null},{"name":"LINE 8","breaks":false,"st":"NOT SCHEDULED","nx":"PM / CLEANING","crew":null},{"name":"LINE 9","breaks":false,"st":"RUNNING","nx":"READY LINE","crew":6},{"name":"LINE 10","breaks":false,"st":"RUNNING","nx":"PARTIAL SHIFT","crew":4},{"name":"LINE 11","breaks":false,"st":"NOT SCHEDULED","nx":"NOT SCHEDULED","crew":null},{"name":"LINE 12","breaks":false,"st":"RUNNING","nx":"RUNNING","crew":5}]};
 const STATUSES = [
@@ -435,62 +445,74 @@ function renderWash(S, topOnly) {
   }).join("") : `<div class="card empty">No changeovers expected this shift.</div>`;
 }
 
-// ---- the printouts ----
+// ---- the printouts: like the workbook's printed 4. Schedule and 7. Washroom ----
 function renderPrint(S) {
-  const end = new Date(S.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const when = new Date(S.asof).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" })
-    + "  ·  as of " + new Date(S.asof).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const tm = t => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const end = tm(S.end);
+  const day = new Date(S.asof).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const withWo = S.lines.filter(l => l.rows.length);
   const cos = S.lines.flatMap(l => l.running ? l.rows.filter(r => r.inShift).map(r => ({ ...r, ln: l.name })) : []);
   const minor = cos.filter(r => r.code === "S1" || r.code === "CNT").length;
   const next = cos.slice().sort((a, b) => a.coStart - b.coStart)[0];
-  const counts = STATUSES.map(([st]) => [st, withWo.filter(l => l.st === st).length]).filter(x => x[1]).map(([st, n]) => n + " " + st.toLowerCase()).join(" · ");
-  const head = (title, legend) => `<div class="ps-head"><div><h1>${title}  ·  ${SHIFTS[state.shift]}</h1><div class="sub">${when}</div></div><div class="legend2">${legend}</div></div>`;
-  const legend = `STATUS ${STATUSES.map(([st, c]) => `<i style="background:var(${c})"></i>${st.toLowerCase()}`).join("")}<br>`
-    + `CHANGEOVER ${Object.values(CO).map(([l, c]) => `<b style="color:color-mix(in srgb, var(${c}) 55%, white)">&nbsp; ${l}</b>`).join("")}`
-    + ` &nbsp; ROWS <i style="background:#f8cbad"></i>allergen<i style="background:#ffd966"></i>oil<i style="background:#9dc3e6"></i>dumping`;
-  const cols = [["LINE", 8.4], ["WO", 6], ["SQ", 2.6], ["ITEM", 6], ["ITEM DESCRIPTION", 15.6], ["CT", 3], ["BULK", 6.4], ["BTL", 3.4], ["CAP", 5.4],
-    ["A", 3], ["DES", 3.6], ["WO QTY", 5.6], ["PROGRESS / CHANGEOVER", 12], ["LEFT / C.O.", 5.4], ["EE", 2.6], ["EST. TIME", 10.6], ["NEXT SHIFT", 8]];
-  const colg = `<colgroup>${cols.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup>`;
-  const thead = `<thead><tr>${cols.map(([h]) => `<th>${h}</th>`).join("")}</tr></thead>`;
+  const counts = STATUSES.map(([st]) => [st, withWo.filter(l => l.st === st).length]).filter(x => x[1])
+    .map(([st, n]) => n + " " + (st === "RUNNING" ? "running" : st === "READY LINE" ? "ready" : st.toLowerCase())).join(" · ");
+  const strong = st => css(color(st)), cap = st => st === "PM / CLEANING" ? "PM / Cleaning" : st.charAt(0) + st.slice(1).toLowerCase();
+  // the workbook's column widths (Excel units)
+  const W = [11, 7.3, 3.6, 8.1, 25, 4.4, 8.3, 4.6, 7, 3, 5.2, 7.2, 15.5, 7.6, 3.4, 12.2, 12];
+  const H = ["LINE", "WO", "SQ", "ITEM", "ITEM DESCRIPTION", "CT", "BULK", "BTL", "CAP", "A", "DES", "WO QTY", "PROGRESS / CHANGEOVER",
+    "LEFT / C.O.", "EE", "EST. TIME", "NEXT: " + SHIFTS[(state.shift + 1) % 3].toUpperCase()];
+  const colg = `<colgroup>${W.map(w => `<col style="width:${w}%">`).join("")}</colgroup>`;
+  const stLegend = `<b style="color:#9dc3e6">STATUS</b>` + STATUSES.map(([st, c]) => `<span class="sq" style="background:var(${c})"></span>${cap(st)}`).join("");
+  const coLegend = `<b style="color:#1f3864">CHANGEOVER</b>` + Object.values(CO).map(([l, c]) => `<span style="color:var(${c});margin-left:7px;${l.startsWith("MAJOR") ? "font-weight:700" : ""}">● ${l.replace(" · ", " ")}</span>`).join("")
+    + ` <b style="color:var(--cap)">CAP</b> = new cap <b style="color:#1f3864">INTL</b> = international`;
+  const hlLegend = `<b style="color:#1f3864">HIGHLIGHT</b><span class="sq" style="background:#f8cbad"></span>Allergen<span class="sq" style="background:#ffd966"></span>Oil<span class="sq" style="background:#9dc3e6"></span>Dumping`;
+  const thead = `<thead>
+    <tr class="band1"><td colspan="9" class="t">Production Line Schedule &nbsp;·&nbsp; ${SHIFTS[state.shift]}</td><td colspan="8" class="lg" style="color:#fff">${stLegend}</td></tr>
+    <tr class="band2"><td colspan="9" style="color:#1f3864;font-weight:700;font-size:8.6pt;padding-left:8px">${day} &nbsp;·&nbsp; as of ${tm(S.asof)}</td><td colspan="8" class="lg">${coLegend}</td></tr>
+    <tr class="band3"><td colspan="13" style="font-weight:700;font-size:7.8pt;padding-left:8px">${withWo.length} lines · ${counts} &nbsp;|&nbsp; Changeovers before end of shift (${end}): ${minor} minor · ${cos.length - minor} major${next ? ` &nbsp;|&nbsp; Next: ${next.ln} at ${tm(next.coStart)}` : ""}</td><td colspan="4" class="lg">${hlLegend}</td></tr>
+    <tr class="heads">${H.map(h => `<td>${h}</td>`).join("")}</tr></thead>`;
   const bodies = withWo.map(l => {
-    let first = true;
+    const nRows = l.rows.length + l.rows.reduce((n, x) => n + ((x.inShift && x.coParts && x.coParts.length && !l.grey) ? 1 : 0) + (x.remarks ? 1 : 0), 0);
+    const tagRow = l.rows.length > 1 ? 1 : 0;              // the next-shift chip: on the row of the status tag
     const trs = l.rows.map((r, i) => {
-      const prog = r.first ? (r.pct > 0 ? `<span class="seg10">${Array.from({ length: 10 }, (_, j) => `<i class="${j < Math.round(r.pct / 10) ? "f" : ""}"></i>`).join("")}</span> <b style="color:var(--run)">${Math.round(r.pct)}%</b>` : `<i style="color:#8a91a0">Not started yet</i>`)
-        : `<span class="co" style="color:var(${CO[r.code][1]})">${CO[r.code][0]}</span>${r.intl ? '<span class="intl2">INTL</span>' : ""}`;
-      const est = !l.running ? "" : r.est ? fmtTime(r.est, S.asof) : r.noRate ? "<i>no rate</i>" : "—";
-      const ln = i === 0 ? `<td class="ln" rowspan="${l.rows.length + l.rows.reduce((n, x) => n + ((x.inShift && x.coParts && x.coParts.length && !l.grey) ? 1 : 0) + (x.remarks ? 1 : 0), 0)}">${l.name}<small>${l.st}</small></td>` : "";
-      const nx = i === 0 ? `<span class="nchip" style="background:var(${tint(l.nx)});color:var(${color(l.nx)})">${l.nx}</span>` : "";
-      let tr = `<tr class="${l.grey ? "g" : r.hl ? "hl-" + r.hl : ""}">${ln}<td class="l">${r.wo}</td><td class="c">${r.seq}</td><td class="l">${r.item}</td>
-        <td class="l" style="font-weight:600">${r.desc}</td><td class="c" style="${r.code === "CNT" ? "color:#c00000;font-weight:800" : ""}">${r.ct}</td><td class="l">${r.bulk}</td>
-        <td class="c">${r.btl}</td><td class="c" style="${r.capNew ? "color:var(--cap);font-weight:800" : ""}">${capCode(r.cap)}</td><td class="c">${r.allergen}</td><td class="c">${r.des}</td>
-        <td class="r">${r.qty.toLocaleString()}</td><td class="l">${prog}</td><td class="r" style="font-weight:700;color:${r.first ? "var(--run)" : `var(${CO[r.code][1]})`}">${r.first ? k(r.left) : CO[r.code][2] + " min"}</td>
-        <td class="c">${l.crew ?? ""}</td><td class="r" style="${r.first && r.est ? "font-weight:800;color:var(--navy)" : ""}">${est}</td><td class="c">${nx}</td></tr>`;
-      if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="n"><td class="arr">↳</td><td colspan="15">Changeover Notes: ${r.coParts.join(", ")}</td></tr>`;
-      if (r.remarks) tr += `<tr class="n"><td class="arr">↳</td><td colspan="15">Remarks: ${r.remarks}</td></tr>`;
+      const prog = r.first ? (r.pct > 0 ? `<span class="seg">${"▰".repeat(Math.round(r.pct / 10))}${"▱".repeat(10 - Math.round(r.pct / 10))}</span><span class="pct">${Math.round(r.pct)}%</span>` : `<i style="color:#7f7f7f">Not Started Yet</i>`)
+        : `<span style="color:var(${CO[r.code][1]});${r.code === "S3" || r.code === "S4" ? "font-weight:700" : ""}">${CO[r.code][0]}${r.intl ? " · INTL" : ""}</span>`;
+      const est = !l.running ? "" : r.est ? `<span style="${r.first ? "color:#1f3864;font-weight:700" : ""}">${fmtTime(r.est, S.asof).replace("Tomorrow ", (d => (d.getMonth() + 1) + "/" + d.getDate() + " ")(new Date(r.est)))}</span>` : r.noRate ? `<i style="color:#7f7f7f">no rate</i>` : "—";
+      const left = r.first ? `<b style="color:var(--run)">${k(r.left)}</b>` : `<b style="color:var(${CO[r.code][1]})">${CO[r.code][2]} min</b>`;
+      const ln = i === 0 ? `<td class="ln" rowspan="${nRows}"><span>${l.name}</span>${l.rows.length > 1 ? `<small>${l.st}</small>` : ""}</td>` : "";
+      const nx = i === tagRow ? `<span class="chipx" style="background:var(${tint(l.nx)});color:var(${color(l.nx)})">${l.nx}</span>` : "";
+      const d = "d";
+      let tr = `<tr class="${l.grey ? "g" : r.hl ? "hl-" + r.hl : ""}">${ln}<td class="${d}">${r.wo}</td><td class="${d} c">${r.seq}</td><td class="${d}">${r.item}</td>
+        <td class="${d}">${r.desc}</td><td class="${d} c" style="${r.code === "CNT" ? "color:#c00000;font-weight:700" : ""}">${r.ct}</td><td class="${d}">${r.bulk}</td>
+        <td class="${d} c">${r.btl}</td><td class="${d} c" style="${r.capNew ? "color:var(--cap);font-weight:700" : ""}">${capCode(r.cap)}</td><td class="${d} c" style="${r.allergen.length > 1 ? "font-size:6pt" : ""}">${r.allergen}</td>
+        <td class="${d} c">${r.des}</td><td class="${d} r">${r.qty.toLocaleString()}</td><td class="${d}">${prog}</td><td class="${d} r">${left}</td>
+        <td class="${d} c">${l.crew ?? ""}</td><td class="${d} r">${est}</td><td style="padding:0 3px">${nx}</td></tr>`;
+      const note = text => `<tr class="n"><td class="arr">↳</td><td class="nt" colspan="14">${text}</td><td></td></tr>`;
+      if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += note("Changeover Notes: " + r.coParts.join(", "));
+      if (r.remarks) tr += note("Remarks: " + r.remarks);
       return tr;
     }).join("");
-    return `<tbody style="--c:var(${color(l.st)});--t:var(${tint(l.st)})">${trs}</tbody>`;
+    return `<tbody class="box" style="--c:var(${color(l.st)});--t:var(${tint(l.st)})">${trs}</tbody><tbody><tr class="gap"><td colspan="17"></td></tr></tbody>`;
   }).join("");
-  $("#print-sched").innerHTML = head("Production Line Schedule", legend)
-    + `<div class="ps-sum"><span>${withWo.length} lines · ${counts}</span><span>Changeovers before end of shift (${end}): ${minor} minor · ${cos.length - minor} major${next ? ` &nbsp;|&nbsp; Next: ${next.ln} at ${fmtTime(next.coStart, S.asof)}` : ""}</span></div>`
-    + `<table>${colg}${thead}${bodies}</table><div class="ps-foot"><span>Printed ${new Date().toLocaleString([], { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" })}</span><span>Production Line Schedule</span></div>`;
-  // the washroom prep list
+  $("#print-sched").innerHTML = `<table>${colg}${thead}${bodies}</table><div class="foot">Page 1 of 1</div>`;
+  // 7. Washroom
   const oily = d => SET.oily.some(w => (" " + d.replace(/[-,()]/g, " ") + " ").includes(" " + w + " "));
   const list = S.lines.flatMap(l => l.running ? l.rows.map((r, i) => ({ r, p: l.rows[i - 1], l })).filter(x => x.r.inShift) : []).sort((a, b) => a.r.coStart - b.r.coStart);
-  const wc = [["#", 2.6], ["TIME", 9.4], ["LINE", 6.4], ["FILLER", 6], ["CHANGEOVER", 11.6], ["MIN", 5], ["OFF THE LINE - PARTS TO WASH", 24], ["TYPE", 6], ["ALLERGEN", 6.4], ["NEXT ON THE LINE", 24], ["TYPE", 6], ["DONE", 4.6]];
-  $("#print-wash").innerHTML = head("Washroom Prep List", `${list.length} changeovers from ${fmtTime(S.asof, S.asof)} to ${end} (the end of the shift)<br>Oily: ${list.filter(x => oily(x.p.desc)).length} · Powdery: ${list.filter(x => !oily(x.p.desc)).length} · Allergen: ${list.filter(x => x.p.allergen !== "N").length}`)
-    + `<table><colgroup>${wc.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup><thead><tr>${wc.map(([h]) => `<th>${h}</th>`).join("")}</tr></thead><tbody style="--c:var(--blue)">`
+  const WW = [4, 13, 9, 9, 17, 7, 36, 9, 10, 36, 9, 7];
+  const WH = ["#", "TIME", "LINE", "FILLER", "CHANGEOVER", "MIN", "OFF THE LINE - PARTS TO WASH", "TYPE", "ALLERGEN", "NEXT ON THE LINE", "TYPE", "DONE"];
+  const al = list.filter(x => x.p.allergen !== "N").length, cr = list.filter(x => SET.cremer.includes(num(x.l.name))).length, me = list.filter(x => SET.merrill.includes(num(x.l.name))).length;
+  $("#print-wash").innerHTML = `<table><colgroup>${WW.map(w => `<col style="width:${w}%">`).join("")}</colgroup><thead>
+    <tr class="band1"><td colspan="12" class="t">Washroom Prep List &nbsp;·&nbsp; ${SHIFTS[state.shift]}</td></tr>
+    <tr class="band2"><td colspan="12" style="color:#1f3864;font-weight:700;font-style:italic;padding-left:8px">Changeovers expected from today ${tm(S.asof)} to today ${end} (the end of the shift), first to last (Schedule as of on 3. Lines; the times from 4. Schedule)</td></tr>
+    <tr class="band3"><td colspan="12" style="font-weight:700;padding-left:8px">${list.length} changeovers &nbsp;|&nbsp; Oily parts: ${list.filter(x => oily(x.p.desc)).length} · Powdery parts: ${list.filter(x => !oily(x.p.desc)).length} &nbsp;|&nbsp; Allergen: ${al} &nbsp;|&nbsp; Cremer: ${cr} · Merrill: ${me}</td></tr>
+    <tr class="heads">${WH.map(h => `<td>${h}</td>`).join("")}</tr></thead><tbody class="wt">`
     + list.map(({ r, p, l }, i) => {
-      const n = num(l.name), fl = SET.cremer.includes(n) ? "Cremer" : SET.merrill.includes(n) ? "Merrill" : "";
-      const ty = d => oily(d) ? `<span class="nchip" style="background:#fff2cc;color:#7f6000">Oily</span>` : `<span class="nchip" style="background:#ededed;color:#595959">Powdery</span>`;
-      return `<tr><td class="c"><b>${i + 1}</b></td><td class="l">${fmtTime(r.coStart, S.asof)}</td><td class="l"><b>${l.name}</b></td>
-        <td class="c" style="font-weight:700;color:${fl === "Cremer" ? "#1f6f8b" : "#7b3f00"}">${fl}</td>
-        <td class="l"><span class="co" style="color:var(${CO[r.code][1]})">${CO[r.code][0]}</span>${r.intl ? '<span class="intl2">INTL</span>' : ""}</td>
-        <td class="c"><b>${CO[r.code][2]} min</b></td><td class="l">${p.item} &nbsp;${p.desc}</td><td class="c">${ty(p.desc)}</td>
-        <td class="c">${p.allergen !== "N" ? `<span class="nchip" style="background:#f8cbad;color:#843c0c">${p.allergen}</span>` : ""}</td>
-        <td class="l">${r.item} &nbsp;${r.desc}</td><td class="c">${ty(r.desc)}</td><td class="c"><span class="box"></span></td></tr>`;
-    }).join("") + `</tbody></table>`;
+      const n = num(l.name), fl = SET.cremer.includes(n) ? ["Cremer", "#1f6f8b"] : SET.merrill.includes(n) ? ["Merrill", "#7b3f00"] : ["", ""];
+      const ty = d => oily(d) ? `<td class="ty-o">Oily</td>` : `<td class="ty-p">Powdery</td>`;
+      return `<tr><td class="c"><b>${i + 1}</b></td><td>${fmtTime(r.coStart, S.asof)}</td><td><b>${l.name}</b></td><td class="c" style="color:${fl[1]};font-weight:700">${fl[0]}</td>
+        <td><b style="color:var(${CO[r.code][1]})">${CO[r.code][0]}${r.intl ? " · INTL" : ""}</b></td><td class="c"><b>${CO[r.code][2]} min</b></td>
+        <td>${p.item} &nbsp; ${p.desc}</td>${ty(p.desc)}${p.allergen !== "N" ? `<td class="al">${p.allergen}</td>` : "<td></td>"}<td>${r.item} &nbsp; ${r.desc}</td>${ty(r.desc)}<td class="done">☐</td></tr>`;
+    }).join("") + `</tbody></table><div class="foot">Page 1 of 1</div>`;
 }
 
 // ---- interaction ----
