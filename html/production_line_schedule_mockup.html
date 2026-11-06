@@ -265,12 +265,12 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp .mnums small { white-space: nowrap; display: block; font-size: 6.4pt; letter-spacing: 1.1px; text-transform: uppercase; color: #6b7385; font-weight: 700; }
 .mp .mnums b { font-size: 11pt; color: #1f3864; } .mp .mnums .st { display: inline-flex; align-items: center; gap: 3px; margin-right: 7px; font-weight: 700; font-size: 7.4pt; }
 .mp .mbox.side { display: grid; grid-template-columns: 150px 1fr; }
-.mp .mside { background: #fff; border-right: 1px solid #e3e8ef; padding: 3px 8px 4px; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; white-space: nowrap; }
+.mp .mside { background: var(--t); border-right: 1px solid #e3e8ef; padding: 3px 8px 4px; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; white-space: nowrap; }
 .mp .mside .srow { display: grid; grid-template-columns: 56px 1fr; align-items: center; }
-.mp .mside .lab { font-size: 5.6pt; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8a91a0; }
+.mp .mside .lab { font-size: 5.6pt; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #6b7385; }
 .mp .mside .val { font-size: 7.2pt; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
 .mp .mside .val i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.mp .mbox.grey .mside .nm { color: #8c93a0; }
+.mp .mbox.grey .mside { background: var(--t); }
 .mp .mside .nm { font-size: 10pt; font-weight: 800; color: #1d2433; margin-bottom: 1px; }
 .mp .mside .pill { margin-left: 0; white-space: nowrap; font-size: 6.2pt; padding: 0 6px; }
 .mp .mside .sm { font-size: 6.4pt; color: #4a5263; } .mp .mside .sm .pill { font-size: 5.6pt; padding: 0 5px; }
@@ -667,12 +667,12 @@ function renderModern(S) {
     }).join("");
     // the line on the left (like the LINE column), its work orders on the right
     return `<div class="mbox side ${l.grey ? "grey" : ""}" style="--c:${ink(l.st)};--t:var(${tint(l.st)})">
-      <div class="mside"><div class="nm">${l.name}</div>
-        <div class="srow"><span class="lab">This shift</span>${stv(l.st)}</div>
+      <div class="mside"><div class="nm" style="color:${INK2[l.st]}">${l.name}</div>
         <div class="srow"><span class="lab">Next shift</span>${stv(l.nx)}</div></div>
       <table>${colg}<tbody>${rows}</tbody></table></div>`;
   }).join("");
   const key = `<div class="mkey"><b>Key</b>
+    <span>Line color = this shift: ${STATUSES.map(([st]) => `<span class="sw" style="background:var(${tint(st)});border:1.5px solid ${ink(st)}"></span><span style="color:${INK2[st]};font-weight:700">${pretty(st)}</span>`).join(" ")}</span>
     <span><b style="color:var(--s1)">Minor · S1</b> <b style="color:var(--cnt)">Minor · Count</b> <b style="color:var(--s3)">MAJOR · S3</b> <b style="color:var(--s4)">MAJOR · S4</b> <span class="intl">INTL</span> international</span>
     <span><span class="sw" style="background:#fbe3d6"></span>Allergen <span class="sw" style="background:#fff1c2"></span>Oil <span class="sw" style="background:#ddebf7"></span>Dumping</span>
     <span><b class="new">Cap</b> new cap · <b class="newct">CT</b> new count</span></div>`;
