@@ -99,25 +99,26 @@ tr.hl-dump td:first-child { box-shadow: inset 3px 0 #79a8d8; }
 .grey td { color: #a3a9b5 !important; } .grey .cochip, .grey .bar-fill { filter: grayscale(1); opacity: .55; }
 .cap-new { color: var(--cap); font-weight: 750; } .ct-new { color: #c00000; font-weight: 750; }
 .allergen { display: inline-block; padding: 1px 7px; border-radius: 6px; background: #f8cbad; color: #843c0c; font-weight: 700; font-size: 12px; }
-tr.unote td { background: #dff1fd; color: #0b4f7a; font-size: 12px; padding: 4px 8px; border-bottom: 1px solid #c3e3f9; }
-tr.unote .arrow { color: #3d8fc7; padding-left: 14px; }
+tr.unote td:first-child { box-shadow: inset 3px 0 #2a9d8f; }
+tr.unote td { background: #ddf5f1; color: #0f6e66; font-size: 12px; padding: 4px 8px; border-bottom: 1px solid #b5e6de; }
+tr.unote .arrow { color: #2a9d8f; padding-left: 14px; }
 tr.unote b { font-weight: 700; }
 td.nb { width: 34px; padding: 0 6px 0 0; text-align: right; }
 .note-btn { border: 1px solid var(--line); background: #fff; color: #8a93a3; width: 26px; height: 26px; border-radius: 8px; font-size: 13px; opacity: .55;
   transition: all .15s; }
 tr.wo:hover .note-btn, .note-btn:focus { opacity: 1; }
-.note-btn:hover { color: #0b4f7a; border-color: #8fc7ee; background: #eef8ff; }
-.note-btn.has { opacity: 1; background: #dff1fd; border-color: #8fc7ee; color: #0b4f7a; }
-.note-add { border: 1px dashed #8fc7ee; background: #fff; color: #0b4f7a; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 650;
+.note-btn:hover { color: #0f6e66; border-color: #8fd3c8; background: #eefaf8; }
+.note-btn.has { opacity: 1; background: #ddf5f1; border-color: #8fd3c8; color: #0f6e66; }
+.note-add { border: 1px dashed #8fd3c8; background: #fff; color: #0f6e66; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 650;
   align-self: flex-start; transition: background .15s; }
-.note-add:hover { background: #eef8ff; }
+.note-add:hover { background: #eefaf8; }
 .modal-bg { position: fixed; inset: 0; background: rgba(16, 24, 40, .35); z-index: 80; display: grid; place-items: center; animation: fade .15s; }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .modal { background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(16,24,40,.3); width: min(520px, calc(100vw - 32px)); padding: 18px;
   animation: pop .18s cubic-bezier(.2,.8,.2,1); }
 .modal h3 { margin: 0 0 4px; font-size: 16px; } .modal p { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
-.modal textarea { width: 100%; min-height: 110px; border: 1px solid #c3e3f9; background: #f4faff; border-radius: 10px; padding: 10px 12px; font: inherit; resize: vertical; outline: none; }
-.modal textarea:focus { border-color: #3d8fc7; box-shadow: 0 0 0 3px #dff1fd; }
+.modal textarea { width: 100%; min-height: 110px; border: 1px solid #b5e6de; background: #f5fcfb; border-radius: 10px; padding: 10px 12px; font: inherit; resize: vertical; outline: none; }
+.modal textarea:focus { border-color: #2a9d8f; box-shadow: 0 0 0 3px #ddf5f1; }
 .modal .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 .modal .row button { border: 0; border-radius: 10px; padding: 8px 16px; font-weight: 650; }
 .modal .save { background: #2e75b6; color: #fff; } .modal .cancel { background: #eef1f6; color: var(--ink); } .modal .del { background: #fde8e8; color: #b42318; margin-right: auto; }
@@ -220,7 +221,7 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .xs .seg { color: var(--run); letter-spacing: -.5px; font-size: 7pt; } .xs .pct { color: var(--run); font-weight: 700; margin-left: 4px; }
 .xs tr.n td { height: 11px; font-size: 6.5pt; font-style: italic; color: #7f6000; }
 .xs tr.n td.nt { background: #fff8e1; }
-.xs tr.n td.nt.un { background: #dff1fd; color: #0b4f7a; font-style: normal; }
+.xs tr.n td.nt.un { background: #ddf5f1; color: #0f6e66; font-style: normal; box-shadow: inset 3px 0 #2a9d8f !important; }
 .xs tr.n td.ln { font-size: 8.4pt; font-style: normal; color: var(--c); height: auto; }
 .xs tr.n td.arr { text-align: center; font-style: normal; color: #7f6000; font-size: 7pt; }
 .xs .chipx { display: block; margin: 0 -3px; text-align: center; font-weight: 700; line-height: 15px; }
@@ -315,8 +316,9 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp .mbox tr.hl-allergen td { background: #fbe3d6; } .mp .mbox tr.hl-oil td { background: #fff1c2; } .mp .mbox tr.hl-dump td { background: #ddebf7; }
 .mp .mbox tr.n td { background: #fff8e1; color: #6e5a14; font-size: 6.8pt; font-style: normal; padding: 0 5px; line-height: 1.3; border-bottom: 1px solid #f3e7bf; }
 .mp .mbox tr.n td.arr { color: #b39540; text-align: right; }
-.mp .mbox tr.n.un td { background: #dff1fd; color: #0b4f7a; border-bottom-color: #c3e3f9; }
-.mp .mbox tr.n.un td.arr { color: #3d8fc7; } .mp .mbox tr.n.un b { color: #0b4f7a; }
+.mp .mbox tr.n.un td { background: #ddf5f1; color: #0f6e66; border-bottom-color: #b5e6de; }
+.mp .mbox tr.n.un td:first-child { box-shadow: inset 3px 0 #2a9d8f !important; }
+.mp .mbox tr.n.un td.arr { color: #2a9d8f; } .mp .mbox tr.n.un b { color: #0f6e66; }
 .mp .mbox tr.n b { color: #6e5a14; letter-spacing: 0; font-weight: 800; }
 .mp .alg { color: #9c3d10; }
 .mp .mbox td.desc2 { white-space: normal; line-height: 1.2; }
@@ -631,10 +633,10 @@ function renderPrint(S) {
       const note = text => `<tr class="n"><td class="arr">↳</td><td class="nt" colspan="14">${text}</td><td></td></tr>`;
       if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += note("Changeover Notes: " + r.coParts.join(", "));
       if (r.remarks) tr += note("Remarks: " + r.remarks);
-      if (noteOf("wo", r.wo)) tr += `<tr class="n"><td class="arr" style="color:#3d8fc7">↳</td><td class="nt un" colspan="14"><b>Note:</b> ${esc(noteOf("wo", r.wo))}</td><td></td></tr>`;
+      if (noteOf("wo", r.wo)) tr += `<tr class="n"><td class="arr" style="color:#2a9d8f">↳</td><td class="nt un" colspan="14"><b>Note:</b> ${esc(noteOf("wo", r.wo))}</td><td></td></tr>`;
       return tr;
     }).join("");
-    const lineRow = ln0 ? `<tr class="n">${lnCell}<td class="arr" style="color:#3d8fc7">↳</td><td class="nt un" colspan="14"><b>Line note:</b> ${esc(ln0)}</td><td></td></tr>` : "";
+    const lineRow = ln0 ? `<tr class="n">${lnCell}<td class="arr" style="color:#2a9d8f">↳</td><td class="nt un" colspan="14"><b>Line note:</b> ${esc(ln0)}</td><td></td></tr>` : "";
     return `<tbody class="box" style="--c:var(${color(l.st)});--t:var(${tint(l.st)})">${lineRow}${trs}</tbody><tbody><tr class="gap"><td colspan="17"></td></tr></tbody>`;
   }).join("");
   $("#print-sched").innerHTML = `<table>${colg}${thead}${bodies}</table><div class="foot">Page 1 of 1</div>`;
@@ -715,7 +717,7 @@ function renderModern(S) {
     <span><b style="color:var(--s1)">Minor · S1</b> <b style="color:var(--cnt)">Minor · Count</b> <b style="color:var(--s3)">MAJOR · S3</b> <b style="color:var(--s4)">MAJOR · S4</b> <span class="intl">INTL</span> international</span>
     <span><span class="sw" style="background:#fbe3d6"></span>Allergen <span class="sw" style="background:#fff1c2"></span>Oil <span class="sw" style="background:#ddebf7"></span>Dumping</span>
     <span><b class="new">Cap</b> new cap · <b class="newct">CT</b> new count</span>
-    <span><span class="sw" style="background:#fff8e1;border:1px solid #e9d9a2"></span>Changeover notes / remarks <span class="sw" style="background:#dff1fd;border:1px solid #8fc7ee"></span>Your notes</span></div>`;
+    <span><span class="sw" style="background:#fff8e1;border:1px solid #e9d9a2"></span>Changeover notes / remarks <span class="sw" style="background:#ddf5f1;border:1px solid #8fd3c8"></span>Your notes</span></div>`;
   // one compact band on top: the title, the day's numbers, the as-of time
   const band = `<div class="mband"><div><div class="mp-eyebrow">Production Line Schedule</div><div class="mt">${SHIFTS[state.shift]}</div><div class="md">${day}</div></div>
     <div class="mnums"><div><small>${withWo.length} lines</small>${STATUSES.map(([st]) => [st, withWo.filter(l => l.st === st).length]).filter(x => x[1])
@@ -771,7 +773,7 @@ function openNote(kind, key) {
   const bg = document.createElement("div");
   bg.className = "modal-bg";
   bg.innerHTML = `<div class="modal" role="dialog" aria-label="Note"><h3>${kind === "wo" ? "Note for WO " + esc(key) : "Note for " + esc(key)}</h3>
-    <p>Shows in light blue under the ${kind === "wo" ? "work order" : "line"}, on screen and on the printout.</p>
+    <p>Shows in light teal under the ${kind === "wo" ? "work order" : "line"}, on screen and on the printout.</p>
     <textarea id="note-text" placeholder="Type a note...">${esc(old)}</textarea>
     <div class="row">${old ? '<button class="del">Delete note</button>' : ""}<button class="cancel">Cancel</button><button class="save">Save note</button></div></div>`;
   document.body.appendChild(bg);
