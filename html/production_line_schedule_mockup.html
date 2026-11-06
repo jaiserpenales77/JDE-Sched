@@ -209,12 +209,69 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .xs .wt td.ty-p { background: #ededed; color: #595959; font-weight: 700; text-align: center; }
 .xs .wt td.al { background: #f8cbad; color: #843c0c; font-weight: 700; text-align: center; }
 .xs .done { font-size: 13pt; color: #404040; text-align: center; }
+/* ---- the modern printout: white, light on ink, its own look ---- */
+.mp { font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; color: #1d2433; font-size: 7.2pt; }
+.mp-top { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 8px; border-bottom: 2.5px solid #1f3864; }
+.mp-eyebrow { font-size: 7.4pt; font-weight: 800; letter-spacing: 2.2px; color: #2e75b6; text-transform: uppercase; }
+.mp-title { font-size: 18pt; font-weight: 800; color: #1f3864; line-height: 1.05; margin-top: 2px; }
+.mp-date { font-size: 9pt; color: #6b7385; margin-top: 3px; }
+.mp-asof { text-align: right; }
+.mp-asof small { display: block; font-size: 6.8pt; letter-spacing: 1.6px; color: #6b7385; font-weight: 700; }
+.mp-asof b { font-size: 15pt; color: #1f3864; }
+.mp-asof span { display: block; font-size: 6.8pt; color: #9aa1ae; margin-top: 2px; }
+.mp-kpis { display: grid; grid-template-columns: 2.2fr 1fr 1.3fr 1.3fr; gap: 8px; margin: 7px 0 6px; }
+.mp-kpi { border: 1px solid #dfe4ec; border-radius: 8px; padding: 4px 10px; }
+.mp-kpi small { display: block; font-size: 6.6pt; letter-spacing: 1.2px; text-transform: uppercase; color: #6b7385; font-weight: 700; margin-bottom: 2px; }
+.mp-kpi b { font-size: 12.5pt; color: #1f3864; }
+.mp-kpi .st { display: inline-flex; align-items: center; gap: 4px; margin-right: 9px; font-weight: 700; font-size: 8pt; }
+.mp-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.mp table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.mp thead th { font-size: 6.4pt; letter-spacing: .9px; text-transform: uppercase; color: #6b7385; font-weight: 700; text-align: left; padding: 3px 4px 4px;
+  border-bottom: 1px solid #c8cfdb; }
+.mp td { padding: 1.5px 4px; border-bottom: 1px solid #eef1f5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+.mp .r { text-align: right; } .mp .c { text-align: center; }
+.mp tbody { break-inside: avoid; }
+.mp tr.lh td { padding: 6px 4px 2px; border-bottom: 1.6px solid var(--c); }
+.mp tr.lh .nm { font-size: 9.6pt; font-weight: 800; color: #1d2433; }
+.mp tr.lh .sq { display: inline-block; width: 9px; height: 9px; border-radius: 2.5px; background: var(--c); margin-right: 6px; vertical-align: 0; }
+.mp tr.lh .stt { font-size: 7pt; font-weight: 800; letter-spacing: 1px; color: var(--c); margin-left: 8px; }
+.mp tr.lh .lhx { display: flex; align-items: baseline; justify-content: space-between; }
+.mp tr.lh .lmeta { color: #6b7385; font-size: 7.2pt; white-space: nowrap; }
+.mp tr.lh .lmeta b { color: #1d2433; } .mp tr.lh .lmeta .lnx { font-weight: 800; letter-spacing: .5px; }
+.mp td.wo { font-weight: 650; }
+.mp td.wo.mk { box-shadow: inset 2.5px 0 var(--mk) !important; }
+.mp .tag { display: inline-block; border-radius: 4px; padding: 0 4px; font-size: 6.2pt; font-weight: 800; letter-spacing: .4px; margin-left: 5px; vertical-align: 1px; }
+.mp .t-allergen { background: #fbe3d6; color: #9c3d10; } .mp .t-oil { background: #fff1c2; color: #7f6000; } .mp .t-dump { background: #ddebf7; color: #1f5c99; }
+.mp .co { display: inline-block; border: 1.2px solid currentColor; border-radius: 4px; padding: 0 5px; font-weight: 800; font-size: 6.4pt; line-height: 1.35; }
+.mp .co.minor { border-style: dashed; }
+.mp .intl { display: inline-block; background: #1f3864; color: #fff; border-radius: 3px; padding: 0 3px; font-size: 5.8pt; font-weight: 800; margin-left: 3px; vertical-align: 1px; }
+.mp .bar { display: inline-block; width: 52px; height: 5px; border-radius: 9px; background: #e3e8ef; vertical-align: 1px; overflow: hidden; }
+.mp .bar i { display: block; height: 100%; background: #2e7d32; border-radius: 9px; }
+.mp .pct { font-weight: 800; color: #2e7d32; margin-left: 5px; }
+.mp .new { color: #c55a11; font-weight: 800; } .mp .newct { color: #c00000; font-weight: 800; }
+.mp .first-est { font-weight: 800; color: #1f3864; }
+.mp tr.n td { border-bottom: 0; padding: 0 4px 1px; color: #7f6a2a; font-style: italic; font-size: 6.8pt; }
+.mp tr.n td.arr { text-align: right; font-style: normal; color: #b39540; }
+.mp tr.n b { font-style: normal; font-weight: 800; letter-spacing: .3px; color: #8a6d1a; }
+.mp tbody.grey td, .mp tbody.grey td b { color: #a7adb8 !important; } .mp tbody.grey .bar i { background: #b9bfca; } .mp tbody.grey .pct, .mp tbody.grey .co { color: #a7adb8 !important; }
+.mp tbody.grey tr.lh .nm { color: #8c93a0; }
+.mp-key { margin-top: 9px; padding-top: 6px; border-top: 1px solid #dfe4ec; display: flex; gap: 14px; flex-wrap: wrap; font-size: 6.8pt; color: #6b7385; }
+.mp-key b { color: #1d2433; }
+.mp-foot { display: flex; justify-content: space-between; font-size: 6.6pt; color: #9aa1ae; margin-top: 5px; }
+.mp .chk { width: 17px; height: 17px; border: 1.6px solid #4a5263; border-radius: 4px; display: inline-block; }
+.mp .wt td { padding: 7px 4px; border-bottom: 1px solid #e3e8ef; }
+.mp .wt .tm { font-size: 10.5pt; font-weight: 800; color: #1f3864; }
+.mp .wt .tp { display: inline-block; border-radius: 4px; padding: 0 5px; font-size: 6.4pt; font-weight: 800; margin-left: 4px; }
+.mp .wt .tp.o { background: #fff1c2; color: #7f6000; } .mp .wt .tp.p { background: #eef0f3; color: #59606c; }
+.mp .wt .arrow { color: #2e75b6; font-weight: 800; font-size: 11pt; text-align: center; }
+.mp .wt small { display: block; color: #6b7385; font-size: 6.4pt; letter-spacing: .8px; text-transform: uppercase; font-weight: 700; }
 @media print {
   @page { size: letter landscape; margin: 0.35in; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { background: #fff; }
   body > header, main, footer, .toast, .pop { display: none !important; }
-  body[data-print="sched"] #print-sched, body[data-print="wash"] #print-wash { display: block; }
+  body[data-style="classic"][data-print="sched"] #print-sched, body[data-style="classic"][data-print="wash"] #print-wash,
+  body[data-style="modern"][data-print="sched"] #mprint-sched, body[data-style="modern"][data-print="wash"] #mprint-wash { display: block; }
 }
 </style>
 </head>
@@ -242,6 +299,9 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
       <div class="search"><span>&#128269;</span><input id="q" placeholder="Search WO, item or description"></div>
       <button class="toggle" id="t-run">Running only</button>
       <button class="toggle on" id="t-notes">Notes</button>
+      <span class="toggle" style="padding:3px;display:inline-flex;gap:2px;border-radius:999px">
+        <button class="toggle on" id="ps-modern" style="border:0;padding:3px 10px">Modern print</button>
+        <button class="toggle" id="ps-classic" style="border:0;padding:3px 10px">Classic print</button></span>
       <div class="legend" id="legend"></div>
     </div>
     <div class="lines" id="lines"></div>
@@ -263,6 +323,8 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 <div class="toast" id="toast"></div>
 <div class="print-only xs" id="print-sched"></div>
 <div class="print-only xs" id="print-wash"></div>
+<div class="print-only mp" id="mprint-sched"></div>
+<div class="print-only mp" id="mprint-wash"></div>
 <script>
 const DATA = {"wos":[{"line":"VPKL01","wo":"2690101","seq":1,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002001","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":12000,"pct":62,"des":"","cot":"","rate":1645.0,"intl":false},{"line":"VPKL01","wo":"2690102","seq":2,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":60,"bulk":"BU002001","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"SOY","remarks":"Use the SOY allergen labels from the cage.","qty":9000,"pct":0,"des":"P","cot":"Y","rate":1645.0,"intl":false},{"line":"VPKL01","wo":"2690103","seq":3,"item":"1212","desc":"CALCIUM 600MG W-D","ct":60,"bulk":"BU002002","btl":150,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":20000,"pct":0,"des":"P-OR","cot":"","rate":942.0,"intl":false},{"line":"VPKL03","wo":"2690301","seq":1,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002010","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":8000,"pct":75,"des":"","cot":"","rate":1484.0,"intl":false},{"line":"VPKL03","wo":"2690302","seq":2,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":90,"bulk":"A662","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":6000,"pct":0,"des":"","cot":"","rate":1479.0,"intl":false},{"line":"VPKL03","wo":"2690303","seq":3,"item":"13174","desc":"CALCIUM 500MG WITH VITAMIN D3 + K2","ct":120,"bulk":"BU002011","btl":400,"cap":"CAP 53MM CT WHITE","allergen":"N","remarks":"","qty":10000,"pct":0,"des":"","cot":"","rate":958.0,"intl":true},{"line":"VPKL04","wo":"2690401","seq":1,"item":"1328","desc":"FISH OIL CONCENTRATE 1200MG","ct":100,"bulk":"BU002020","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":15000,"pct":40,"des":"","cot":"","rate":2326.0,"intl":false},{"line":"VPKL04","wo":"2690402","seq":2,"item":"13171","desc":"SUPER STRENGTH FISH OIL","ct":60,"bulk":"BU002021","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":8000,"pct":0,"des":"","cot":"","rate":1984.0,"intl":true},{"line":"VPKL05","wo":"2690501","seq":1,"item":"109304","desc":"MATURE MULTI SUB","ct":100,"bulk":"BU002030","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":20000,"pct":0,"des":"","cot":"","rate":2032.0,"intl":false},{"line":"VPKL07","wo":"2690701","seq":1,"item":"1212","desc":"CALCIUM 600MG W-D","ct":60,"bulk":"BU002040","btl":150,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":14000,"pct":50,"des":"","cot":"","rate":2505.8,"intl":false},{"line":"VPKL07","wo":"2690702","seq":2,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002041","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":1484.0,"intl":false},{"line":"VPKL08","wo":"2690801","seq":1,"item":"116416E","desc":"MULTI VITS W MINS 1500MG","ct":100,"bulk":"BU002050","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":11000,"pct":20,"des":"","cot":"","rate":1745.0,"intl":true},{"line":"VPKL09","wo":"2690901","seq":1,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002060","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":30000,"pct":0,"des":"","cot":"","rate":2178.1,"intl":false},{"line":"VPKL09","wo":"2690902","seq":2,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002060","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"Quality hold: check the lot numbers with QA before starting, and keep 10 retain samples.","qty":12000,"pct":0,"des":"","cot":"","rate":2178.1,"intl":false},{"line":"VPKL09","wo":"2690903","seq":3,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002061","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":3845.6,"intl":false},{"line":"VPKL10","wo":"2691001","seq":1,"item":"1190","desc":"MELATONIN 10MG TAB","ct":120,"bulk":"BU002070","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":40000,"pct":85,"des":"","cot":"","rate":4600.0,"intl":false},{"line":"VPKL10","wo":"2691002","seq":2,"item":"ZZ9001","desc":"NEW ITEM - NO RATE YET","ct":120,"bulk":"BU002071","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":7000,"pct":0,"des":"P","cot":"12G","rate":null,"intl":false},{"line":"VPKL10","wo":"2691003","seq":3,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":90,"bulk":"BU002072","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":8000,"pct":0,"des":"P","cot":"","rate":5000.2,"intl":false},{"line":"VPKL12","wo":"2691201","seq":1,"item":"13654","desc":"OMEGA 3","ct":60,"bulk":"BU002080","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":10000,"pct":95,"des":"","cot":"","rate":843.0,"intl":true},{"line":"VPKL12","wo":"2691202","seq":2,"item":"13693","desc":"TRIPLE OMEGA","ct":60,"bulk":"BU002081","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":6000,"pct":0,"des":"","cot":"","rate":1266.0,"intl":true},{"line":"VPKL12","wo":"2691203","seq":3,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":100,"bulk":"A624","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":2090.7,"intl":false}],"lines":[{"name":"LINE 1","breaks":true,"st":"RUNNING","nx":"RUNNING","crew":5},{"name":"LINE 3","breaks":true,"st":"PARTIAL SHIFT","nx":"OVERTIME","crew":4},{"name":"LINE 4","breaks":true,"st":"OVERTIME","nx":"NOT SCHEDULED","crew":3},{"name":"LINE 5","breaks":true,"st":"READY LINE","nx":"RUNNING","crew":null},{"name":"LINE 7","breaks":true,"st":"PM / CLEANING","nx":"RUNNING","crew":null},{"name":"LINE 8","breaks":false,"st":"NOT SCHEDULED","nx":"PM / CLEANING","crew":null},{"name":"LINE 9","breaks":false,"st":"RUNNING","nx":"READY LINE","crew":6},{"name":"LINE 10","breaks":false,"st":"RUNNING","nx":"PARTIAL SHIFT","crew":4},{"name":"LINE 11","breaks":false,"st":"NOT SCHEDULED","nx":"NOT SCHEDULED","crew":null},{"name":"LINE 12","breaks":false,"st":"RUNNING","nx":"RUNNING","crew":5}]};
 const STATUSES = [
@@ -366,7 +428,7 @@ function render() {
   $("#date").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   $("#asof").value = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   $("#shifts").innerHTML = SHIFTS.map((s, i) => `<button class="${i === state.shift ? "on" : ""}" data-s="${i}">${s}</button>`).join("");
-  renderSummary(S); renderLines(S); renderLt(S); renderWash(S); renderPrint(S);
+  renderSummary(S); renderLines(S); renderLt(S); renderWash(S); renderPrint(S); renderModern(S);
 }
 function renderSummary(S) {
   const withWo = S.lines.filter(l => l.rows.length);
@@ -515,6 +577,76 @@ function renderPrint(S) {
     }).join("") + `</tbody></table><div class="foot">Page 1 of 1</div>`;
 }
 
+// ---- the modern printouts ----
+function renderModern(S) {
+  const tm = t => new Date(t).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const end = tm(S.end), now = new Date();
+  const day = new Date(S.asof).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const withWo = S.lines.filter(l => l.rows.length);
+  const cos = S.lines.flatMap(l => l.running ? l.rows.filter(r => r.inShift).map(r => ({ ...r, ln: l.name })) : []);
+  const minor = cos.filter(r => r.code === "S1" || r.code === "CNT").length;
+  const next = cos.slice().sort((a, b) => a.coStart - b.coStart)[0];
+  const ink = st => `var(${color(st)})`;
+  const pretty = st => st === "PM / CLEANING" ? "PM / Cleaning" : st.charAt(0) + st.slice(1).toLowerCase();
+  const top = (eyebrow, title) => `<div class="mp-top"><div><div class="mp-eyebrow">${eyebrow}</div><div class="mp-title">${title}</div>
+      <div class="mp-date">${day}</div></div>
+    <div class="mp-asof"><small>SCHEDULE AS OF</small><b>${tm(S.asof)}</b><span>Printed ${now.toLocaleDateString([], { month: "numeric", day: "numeric" })} ${tm(now)}</span></div></div>`;
+  const kpis = `<div class="mp-kpis">
+    <div class="mp-kpi"><small>${withWo.length} lines today</small>${STATUSES.map(([st]) => [st, withWo.filter(l => l.st === st).length]).filter(x => x[1])
+      .map(([st, n]) => `<span class="st"><i class="mp-dot" style="background:${ink(st)}"></i>${n} ${pretty(st).toLowerCase()}</span>`).join("")}</div>
+    <div class="mp-kpi"><small>Running</small><b>${withWo.filter(l => l.running).length}</b> <span style="color:#6b7385">of ${withWo.length}</span></div>
+    <div class="mp-kpi"><small>Changeovers before ${end}</small><b>${minor}</b> <span style="color:#2e7d32;font-weight:700">minor</span> &nbsp;<b>${cos.length - minor}</b> <span style="color:#c00000;font-weight:700">major</span></div>
+    <div class="mp-kpi"><small>Next changeover</small><b>${next ? next.ln : "—"}</b> ${next ? `<span style="color:#6b7385">· ${tm(next.coStart)}</span>` : ""}</div></div>`;
+  const cols = [["WO", 6.4], ["SQ", 2.6], ["Item", 6.2], ["Description", 23.6], ["CT", 3.2], ["Bulk", 6.6], ["BTL", 3.4], ["Cap", 5.4], ["A", 3.4], ["Des", 3.6],
+    ["Qty", 5.6], ["Progress / changeover", 13.4], ["Left / C.O.", 5.6], ["Est. time", 11]];
+  const head = `<colgroup>${cols.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup><thead><tr>${cols.map(([h], i) => `<th class="${[1, 4, 6, 7, 8, 9].includes(i) ? "c" : [10, 12, 13].includes(i) ? "r" : ""}">${h}</th>`).join("")}</tr></thead>`;
+  const tagOf = r => r.hl === "allergen" ? `<span class="tag t-allergen">ALLERGEN · ${r.allergen}</span>` : r.hl === "oil" ? `<span class="tag t-oil">OIL</span>` : r.hl === "dump" ? `<span class="tag t-dump">DUMPING</span>` : "";
+  const mk = { allergen: "#e8956a", oil: "#e6c045", dump: "#79a8d8" };
+  const bodies = withWo.map(l => {
+    const rows = l.rows.map(r => {
+      const prog = r.first ? (r.pct > 0 ? `<span class="bar"><i style="width:${r.pct}%"></i></span><span class="pct">${Math.round(r.pct)}%</span>` : `<i style="color:#8a91a0">Not started yet</i>`)
+        : `<span class="co ${r.code === "S1" || r.code === "CNT" ? "minor" : ""}" style="color:var(${CO[r.code][1]})">${CO[r.code][0]}</span>${r.intl ? '<span class="intl">INTL</span>' : ""}`;
+      const est = !l.running ? "" : r.est ? `<span class="${r.first ? "first-est" : ""}">${fmtTime(r.est, S.asof)}</span>` : r.noRate ? `<i style="color:#8a91a0">no rate</i>` : "—";
+      const left = r.first ? `<b style="color:#2e7d32">${k(r.left)}</b>` : `<b style="color:var(${CO[r.code][1]})">${CO[r.code][2]} min</b>`;
+      let tr = `<tr><td class="wo ${r.hl && !l.grey ? "mk" : ""}" style="--mk:${mk[r.hl] || "transparent"}">${r.wo}</td><td class="c">${r.seq}</td><td>${r.item}</td>
+        <td>${r.desc}${l.grey ? "" : tagOf(r)}</td><td class="c ${r.code === "CNT" ? "newct" : ""}">${r.ct}</td><td>${r.bulk}</td><td class="c">${r.btl}</td>
+        <td class="c ${r.capNew ? "new" : ""}">${capCode(r.cap)}</td><td class="c">${r.allergen === "N" ? "–" : r.allergen}</td><td class="c">${r.des || "–"}</td>
+        <td class="r">${r.qty.toLocaleString()}</td><td>${prog}</td><td class="r">${left}</td><td class="r">${est}</td></tr>`;
+      if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>CHANGEOVER</b> &nbsp;${r.coParts.join(" · ")}</td></tr>`;
+      if (r.remarks) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>REMARK</b> &nbsp;${r.remarks}</td></tr>`;
+      return tr;
+    }).join("");
+    return `<tbody class="${l.grey ? "grey" : ""}" style="--c:${ink(l.st)}"><tr class="lh"><td colspan="14"><div class="lhx"><span><span class="sq"></span><span class="nm">${l.name}</span><span class="stt">${l.st}</span></span>
+      <span class="lmeta">Next shift <span class="lnx" style="color:${ink(l.nx)}">${l.nx}</span>${l.crew ? ` &nbsp;·&nbsp; Crew <b>${l.crew}</b>` : ""} &nbsp;·&nbsp; ${l.rows.length} WO</span></div></td></tr>${rows}</tbody>`;
+  }).join("");
+  const key = `<div class="mp-key"><span><b>Changeover</b> &nbsp;${Object.values(CO).map(([lab, c]) => `<span class="co ${lab.startsWith("Minor") ? "minor" : ""}" style="color:var(${c});font-size:6pt;padding:0 4px;border:1px ${lab.startsWith("Minor") ? "dashed" : "solid"} var(${c})">${lab}</span>`).join(" ")}</span>
+    <span><span style="color:#c55a11;font-weight:800">Cap</span> new cap · <span style="color:#c00000;font-weight:800">CT</span> new count</span>
+    <span><span class="tag t-allergen" style="margin:0">ALLERGEN</span> <span class="tag t-oil">OIL</span> <span class="tag t-dump">DUMPING</span></span>
+    <span>Grey: not running this shift</span></div>`;
+  $("#mprint-sched").innerHTML = top("Production Line Schedule", SHIFTS[state.shift]) + kpis + `<table>${head}${bodies}</table>` + key
+    + `<div class="mp-foot"><span>Estimated times from the line rates, breaks and changeover minutes</span><span>Production Line Schedule · ${SHIFTS[state.shift]}</span></div>`;
+  // the washroom checklist
+  const oily = d => SET.oily.some(w => (" " + d.replace(/[-,()]/g, " ") + " ").includes(" " + w + " "));
+  const list = S.lines.flatMap(l => l.running ? l.rows.map((r, i) => ({ r, p: l.rows[i - 1], l })).filter(x => x.r.inShift) : []).sort((a, b) => a.r.coStart - b.r.coStart);
+  const ty = d => oily(d) ? `<span class="tp o">OILY</span>` : `<span class="tp p">POWDERY</span>`;
+  const wk = `<div class="mp-kpis" style="grid-template-columns:repeat(4,1fr)">
+    <div class="mp-kpi"><small>Changeovers until ${end}</small><b>${list.length}</b></div>
+    <div class="mp-kpi"><small>Oily / powdery parts</small><b>${list.filter(x => oily(x.p.desc)).length}</b> <span style="color:#6b7385">oily</span> &nbsp;<b>${list.filter(x => !oily(x.p.desc)).length}</b> <span style="color:#6b7385">powdery</span></div>
+    <div class="mp-kpi"><small>Allergen washes</small><b>${list.filter(x => x.p.allergen !== "N").length}</b></div>
+    <div class="mp-kpi"><small>Cremer / Merrill</small><b>${list.filter(x => SET.cremer.includes(num(x.l.name))).length}</b> <span style="color:#6b7385">Cremer</span> &nbsp;<b>${list.filter(x => SET.merrill.includes(num(x.l.name))).length}</b> <span style="color:#6b7385">Merrill</span></div></div>`;
+  $("#mprint-wash").innerHTML = top("Washroom Prep List", SHIFTS[state.shift]) + wk
+    + `<table class="wt"><colgroup><col style="width:5%"><col style="width:11%"><col style="width:11%"><col style="width:15%"><col style="width:27%"><col style="width:4%"><col style="width:27%"></colgroup>
+      <thead><tr><th class="c">Done</th><th>Time</th><th>Line</th><th>Changeover</th><th>Off the line - parts to wash</th><th></th><th>Next on the line</th></tr></thead><tbody>`
+    + list.map(({ r, p, l }) => {
+      const n = num(l.name), fl = SET.cremer.includes(n) ? "Cremer" : SET.merrill.includes(n) ? "Merrill" : "";
+      return `<tr><td class="c"><span class="chk"></span></td><td><span class="tm">${tm(r.coStart)}</span></td>
+        <td><b>${l.name}</b><small>${fl}</small></td>
+        <td><span class="co ${r.code === "S1" || r.code === "CNT" ? "minor" : ""}" style="color:var(${CO[r.code][1]})">${CO[r.code][0]}</span>${r.intl ? '<span class="intl">INTL</span>' : ""}<small>${CO[r.code][2]} min</small></td>
+        <td>${p.item} &nbsp;${p.desc}<br>${ty(p.desc)}${p.allergen !== "N" ? `<span class="tp" style="background:#fbe3d6;color:#9c3d10">ALLERGEN · ${p.allergen}</span>` : ""}</td>
+        <td class="arrow">→</td><td>${r.item} &nbsp;${r.desc}<br>${ty(r.desc)}</td></tr>`;
+    }).join("") + `</tbody></table><div class="mp-foot"><span>Tick each changeover when its parts are washed</span><span>Washroom Prep List · ${SHIFTS[state.shift]}</span></div>`;
+}
+
 // ---- interaction ----
 let toastT;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1800); }
@@ -546,10 +678,15 @@ document.addEventListener("click", e => {
   if (b.dataset.crew) { const L = state.lines[b.dataset.line]; L.crew = Math.max(0, (L.crew || 0) + +b.dataset.crew) || null; save(); render(); return; }
   if (b.dataset.brk) { const L = state.lines[b.dataset.line]; L.breaks = !L.breaks; save(); render(); toast(`${b.dataset.line}: ${L.breaks ? "stops" : "runs through"} breaks and lunch`); return; }
   if (b.dataset.done) { state.done[b.dataset.done] = !state.done[b.dataset.done]; save(); b.closest(".witem").classList.toggle("done"); renderWashTop(); return; }
+  if (b.id === "ps-modern" || b.id === "ps-classic") {
+    document.body.dataset.style = b.id === "ps-modern" ? "modern" : "classic";
+    $("#ps-modern").classList.toggle("on", b.id === "ps-modern"); $("#ps-classic").classList.toggle("on", b.id === "ps-classic");
+    toast((b.id === "ps-modern" ? "Modern" : "Classic") + " print"); return;
+  }
   if (b.id === "t-run" || b.id === "t-notes") { b.classList.toggle("on"); renderLines(build()); return; }
   if (b.id === "now") { const d = new Date(); d.setSeconds(0, 0); state.asof = d.getTime(); save(); render(); toast("As of now"); return; }
   // Print: the washroom list from the Washroom tab, else the schedule
-  if (b.id === "print") { document.body.dataset.print = $(".tab.on").dataset.p === "wash" ? "wash" : "sched"; renderPrint(build()); window.print(); return; }
+  if (b.id === "print") { document.body.dataset.print = $(".tab.on").dataset.p === "wash" ? "wash" : "sched"; const S = build(); renderPrint(S); renderModern(S); window.print(); return; }
   if (b.id === "a-run") { const S = build(); let n = 0; S.lines.forEach(l => { if (l.rows.length && !RUN.includes(l.st)) { state.lines[l.name].st = "RUNNING"; n++; } }); save(); render(); toast(n ? `${n} line(s) set RUNNING` : "Every line with work orders is already running"); return; }
   if (b.id === "a-next") { Object.values(state.lines).forEach(L => L.nx = L.st); save(); render(); toast("Next shift = this shift"); return; }
   if (b.id === "a-reset") { const s = fresh(); s.asof = state.asof; s.shift = state.shift; state = s; save(); render(); toast("Back to the mock-up"); return; }
@@ -560,7 +697,8 @@ $("#asof").addEventListener("change", e => { const [h, m] = e.target.value.split
 function moveInk() { const on = $(".tab.on"), ink = $("#ink"); ink.style.left = on.offsetLeft + 12 + "px"; ink.style.width = on.offsetWidth - 24 + "px"; }
 window.addEventListener("resize", moveInk);
 document.body.dataset.print = "sched";
-window.addEventListener("beforeprint", () => renderPrint(build()));
+document.body.dataset.style = "modern";
+window.addEventListener("beforeprint", () => { const S = build(); renderPrint(S); renderModern(S); });
 render(); moveInk();
 </script>
 </body>
