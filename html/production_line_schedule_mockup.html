@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Production Line Schedule</title>
+<style>
+:root {
+  --navy: #1f3864; --navy-2: #2e4a7d; --blue: #2e75b6; --ink: #1d2433; --muted: #6b7385; --line: #e4e8ef;
+  --bg: #f3f5f9; --card: #ffffff; --cream: #fff8e1; --cream-ink: #7f6000;
+  --run: #2e7d32; --part: #ed7d31; --ot: #e0a800; --ready: #7030a0; --pm: #0070c0; --ns: #8c8c8c;
+  --run-t: #e2f0d9; --part-t: #fbe5d6; --ot-t: #fff2cc; --ready-t: #e4dfec; --pm-t: #ddebf7; --ns-t: #ededed;
+  --s1: #2e7d32; --cnt: #b45309; --s3: #7030a0; --s4: #c00000; --cap: #c55a11;
+  --hl-allergen: #fbe3d6; --hl-oil: #fff4cc; --hl-dump: #deebf7;
+  --radius: 14px; --shadow: 0 1px 2px rgba(16,24,40,.06), 0 4px 14px rgba(16,24,40,.06);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif; }
+button { font: inherit; cursor: pointer; }
+
+/* ---- app bar ---- */
+.bar { position: sticky; top: 0; z-index: 20; background: linear-gradient(120deg, var(--navy), var(--navy-2)); color: #fff;
+  box-shadow: 0 2px 12px rgba(0,0,0,.18); }
+.bar-in { max-width: 1480px; margin: 0 auto; padding: 14px 20px 0; }
+.bar-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.brand { display: flex; align-items: baseline; gap: 12px; margin-right: auto; }
+.brand h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .2px; }
+.brand .date { color: #bcd0ee; font-size: 14px; }
+.seg { display: inline-flex; background: rgba(255,255,255,.12); border-radius: 999px; padding: 3px; }
+.seg button { border: 0; background: transparent; color: #dbe6f7; padding: 6px 14px; border-radius: 999px; font-weight: 600;
+  transition: background .2s, color .2s; }
+.seg button.on { background: #fff; color: var(--navy); }
+.asof { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border-radius: 999px; padding: 4px 6px 4px 14px; }
+.asof label { font-size: 12px; color: #bcd0ee; text-transform: uppercase; letter-spacing: .6px; }
+.asof input { border: 0; background: transparent; color: #fff; font: inherit; font-weight: 600; width: 112px; color-scheme: dark; }
+.pill-btn { border: 0; border-radius: 999px; padding: 6px 14px; font-weight: 600; background: #fff; color: var(--navy);
+  transition: transform .12s, box-shadow .2s; }
+.pill-btn:hover { box-shadow: 0 2px 10px rgba(0,0,0,.2); }
+.pill-btn:active { transform: scale(.96); }
+.pill-btn.ghost { background: rgba(255,255,255,.14); color: #fff; }
+.tabs { display: flex; gap: 4px; margin-top: 12px; position: relative; }
+.tab { border: 0; background: transparent; color: #c9d7ee; padding: 10px 16px 12px; font-weight: 600; font-size: 14px; position: relative; }
+.tab.on { color: #fff; }
+.tab .badge { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: rgba(255,255,255,.18);
+  font-size: 12px; text-align: center; }
+.tab-ink { position: absolute; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: #8fb8ff; transition: left .3s cubic-bezier(.4,0,.2,1), width .3s cubic-bezier(.4,0,.2,1); }
+
+main { max-width: 1480px; margin: 0 auto; padding: 18px 20px 40px; }
+.panel { display: none; }
+.panel.on { display: block; animation: rise .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* ---- summary ---- */
+.summary { display: grid; grid-template-columns: 2fr 1.3fr 1.1fr; gap: 14px; margin-bottom: 14px; }
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); }
+.stat { padding: 14px 16px; }
+.stat h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); font-weight: 700; }
+.stat .big { font-size: 22px; font-weight: 700; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+.chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+.toolbar { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; flex-wrap: wrap; }
+.search { flex: 0 1 280px; display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 999px; padding: 7px 14px; box-shadow: var(--shadow); }
+.search input { border: 0; outline: 0; font: inherit; width: 100%; background: transparent; }
+.toggle { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 12px; font-weight: 600; color: var(--muted); transition: all .2s; }
+.toggle.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+.legend { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+.legend b { color: var(--ink); font-weight: 700; margin-right: 2px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+/* ---- line cards ---- */
+.lines { display: grid; gap: 12px; }
+.lcard { display: grid; grid-template-columns: 190px 1fr; overflow: hidden; animation: rise .4s both; position: relative; }
+.lcard::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--c); transition: background .3s; }
+.lhead { padding: 14px 12px 14px 20px; background: var(--t); display: flex; flex-direction: column; gap: 8px; transition: background .3s; }
+.lname { font-size: 18px; font-weight: 750; color: var(--c); letter-spacing: .2px; transition: color .3s; }
+.stchip { border: 0; align-self: flex-start; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; background: var(--c); color: #fff;
+  display: inline-flex; align-items: center; gap: 6px; transition: transform .15s, background .3s; }
+.stchip:hover { transform: translateY(-1px); }
+.stchip .caret { font-size: 9px; opacity: .8; }
+.meta { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.meta .nx { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; margin-bottom: 2px; }
+.lbody { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 1060px; }
+th { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 700; text-align: left; padding: 9px 8px 7px;
+  border-bottom: 1px solid var(--line); white-space: nowrap; background: #fbfcfe; }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.c, th.c { text-align: center; }
+td.desc { white-space: normal; min-width: 220px; font-weight: 550; }
+tr.wo { transition: background .25s; }
+tr.wo:hover { background: #f6f9ff; }
+tr.hl-allergen { background: var(--hl-allergen); } tr.hl-oil { background: var(--hl-oil); } tr.hl-dump { background: var(--hl-dump); }
+tr.hl-allergen td:first-child { box-shadow: inset 3px 0 #e8956a; } tr.hl-oil td:first-child { box-shadow: inset 3px 0 #e6c045; }
+tr.hl-dump td:first-child { box-shadow: inset 3px 0 #79a8d8; }
+.grey td { color: #a3a9b5 !important; } .grey .cochip, .grey .bar-fill { filter: grayscale(1); opacity: .55; }
+.cap-new { color: var(--cap); font-weight: 750; } .ct-new { color: #c00000; font-weight: 750; }
+.allergen { display: inline-block; padding: 1px 7px; border-radius: 6px; background: #f8cbad; color: #843c0c; font-weight: 700; font-size: 12px; }
+tr.note td { background: var(--cream); color: var(--cream-ink); font-size: 12px; font-style: italic; padding: 4px 8px; border-bottom: 1px solid #f3e7bf; }
+tr.note .arrow { font-style: normal; color: #b39540; padding-left: 14px; }
+tr.note b { font-style: normal; font-weight: 700; }
+
+.prog { display: flex; align-items: center; gap: 8px; min-width: 150px; }
+.bar-track { flex: 1; height: 8px; background: #e7ecf3; border-radius: 99px; overflow: hidden; }
+.bar-fill { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, #43a047, #2e7d32); transition: width 1s cubic-bezier(.2,.8,.2,1); }
+.prog b { font-size: 12.5px; color: var(--run); min-width: 34px; text-align: right; }
+.nostart { color: var(--muted); font-style: italic; }
+.cochip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.intl { display: inline-block; padding: 0 6px; border-radius: 5px; border: 1.5px solid var(--navy); color: var(--navy); font-size: 10.5px; font-weight: 800; letter-spacing: .4px; }
+.est { font-weight: 650; } .est.first { color: var(--navy); font-weight: 750; } .est.dim { color: var(--muted); font-style: italic; font-weight: 500; }
+
+/* ---- popover, toast ---- */
+.pop { position: absolute; z-index: 50; background: #fff; border-radius: 12px; box-shadow: 0 10px 40px rgba(16,24,40,.22); padding: 8px; display: grid; gap: 4px;
+  transform-origin: top left; animation: pop .16s cubic-bezier(.2,.8,.2,1); min-width: 190px; }
+@keyframes pop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: none; } }
+.pop h4 { margin: 4px 8px 6px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+.opt { border: 0; background: transparent; text-align: left; padding: 7px 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.opt:hover { background: #f1f4f9; }
+.opt .dot { width: 10px; height: 10px; border-radius: 50%; }
+.toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 30px); opacity: 0; background: var(--ink); color: #fff; padding: 10px 18px;
+  border-radius: 999px; font-weight: 600; box-shadow: 0 8px 30px rgba(0,0,0,.25); transition: all .3s cubic-bezier(.2,.8,.2,1); z-index: 60; pointer-events: none; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---- lines tab ---- */
+.lt-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.act { border: 0; border-radius: 10px; padding: 9px 16px; font-weight: 650; background: var(--blue); color: #fff; box-shadow: var(--shadow); transition: transform .12s, filter .2s; }
+.act:hover { filter: brightness(1.08); } .act:active { transform: scale(.97); } .act.go { background: var(--run); } .act.off { background: #8c8c8c; }
+.lt { display: grid; gap: 10px; }
+.lt-row { display: grid; grid-template-columns: 130px 70px 1fr 1fr 120px 90px; align-items: center; gap: 14px; padding: 12px 16px; animation: rise .35s both; }
+.lt-row .nm { font-weight: 750; font-size: 16px; }
+.lt-row .wo { color: var(--muted); font-size: 12px; }
+.lt-row.lt-head { padding: 0 16px; font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 700;
+  animation: none; background: none; box-shadow: none; }
+.stpick { display: flex; flex-wrap: wrap; gap: 5px; }
+.stpick button { border: 1.5px solid var(--c); background: #fff; color: var(--c); border-radius: 999px; padding: 3px 9px; font-size: 11.5px; font-weight: 700;
+  transition: all .18s; }
+.stpick button.on { background: var(--c); color: #fff; transform: scale(1.04); box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.stepper button { border: 0; background: #f4f6fa; width: 30px; height: 30px; font-size: 16px; font-weight: 700; color: var(--navy); }
+.stepper span { min-width: 34px; text-align: center; font-weight: 700; }
+.switch { width: 44px; height: 24px; border-radius: 999px; border: 0; background: #cfd6e2; position: relative; transition: background .2s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.switch.on { background: var(--run); } .switch.on::after { left: 23px; }
+
+/* ---- washroom ---- */
+.wash-top { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.wlist { display: grid; gap: 10px; }
+.witem { display: grid; grid-template-columns: 44px 120px 120px 1fr 1fr 70px; align-items: center; gap: 14px; padding: 12px 16px; animation: rise .35s both;
+  transition: opacity .3s, transform .3s; }
+.witem.done { opacity: .5; }
+.witem.done .parts { text-decoration: line-through; }
+.check { width: 30px; height: 30px; border-radius: 9px; border: 2px solid #b8c2d3; background: #fff; display: grid; place-items: center; transition: all .2s; }
+.check svg { width: 16px; height: 16px; stroke: #fff; stroke-width: 3; fill: none; stroke-dasharray: 22; stroke-dashoffset: 22; transition: stroke-dashoffset .3s .05s; }
+.witem.done .check { background: var(--run); border-color: var(--run); } .witem.done .check svg { stroke-dashoffset: 0; }
+.wtime { font-weight: 750; color: var(--navy); } .wline { font-weight: 700; }
+.parts small { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+.type { display: inline-block; padding: 1px 8px; border-radius: 6px; font-size: 11.5px; font-weight: 700; margin-top: 3px; }
+.type.oily { background: #fff2cc; color: #7f6000; } .type.powdery { background: #ededed; color: #595959; }
+.filler { font-size: 12px; font-weight: 700; } .filler.cremer { color: #1f6f8b; } .filler.merrill { color: #7b3f00; }
+.empty { padding: 40px; text-align: center; color: var(--muted); }
+footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--muted); font-size: 12px; }
+
+@media (max-width: 900px) {
+  .summary { grid-template-columns: 1fr; }
+  .lcard { grid-template-columns: 1fr; }
+  .lt-row { grid-template-columns: 1fr 1fr; } .lt-head { display: none; }
+  .witem { grid-template-columns: 44px 1fr 1fr; }
+  .legend { margin-left: 0; }
+}
+@media print {
+  body { background: #fff; font-size: 11px; }
+  .bar { position: static; box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .tabs, .asof, .seg, .pill-btn, .toolbar .search, .toolbar .toggle, #p-lines, #p-wash { display: none !important; }
+  .panel#p-sched { display: block !important; animation: none; }
+  .card { box-shadow: none; border: 1px solid #d5dbe5; }
+  .lcard { break-inside: avoid; animation: none; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  main { padding: 10px; } .bar-fill { transition: none; }
+  table { min-width: 0; }
+}
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="bar-top">
+      <div class="brand"><h1>Production Line Schedule</h1><span class="date" id="date"></span></div>
+      <div class="seg" id="shifts"></div>
+      <div class="asof"><label for="asof">As of</label><input type="time" id="asof"><button class="pill-btn" id="now">Now</button></div>
+      <button class="pill-btn" id="print">Print</button>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab on" data-p="sched">Schedule</button>
+      <button class="tab" data-p="lines">Lines <span class="badge" id="b-lines"></span></button>
+      <button class="tab" data-p="wash">Washroom <span class="badge" id="b-wash"></span></button>
+      <span class="tab-ink" id="ink"></span>
+    </nav>
+  </div>
+</header>
+<main>
+  <section class="panel on" id="p-sched">
+    <div class="summary" id="summary"></div>
+    <div class="toolbar">
+      <div class="search"><span>&#128269;</span><input id="q" placeholder="Search WO, item or description"></div>
+      <button class="toggle" id="t-run">Running only</button>
+      <button class="toggle on" id="t-notes">Notes</button>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="lines" id="lines"></div>
+  </section>
+  <section class="panel" id="p-lines">
+    <div class="lt-actions">
+      <button class="act go" id="a-run">This shift: all RUNNING</button>
+      <button class="act" id="a-next">Next shift = this shift</button>
+      <button class="act off" id="a-reset">Reset to the mock-up</button>
+    </div>
+    <div class="lt" id="lt"></div>
+  </section>
+  <section class="panel" id="p-wash">
+    <div class="wash-top" id="wtop"></div>
+    <div class="wlist" id="wlist"></div>
+  </section>
+</main>
+<footer>Mock-up with made-up work orders (real items and line rates). Statuses, crew and washroom ticks are kept in this browser only.</footer>
+<div class="toast" id="toast"></div>
+<script>
+const DATA = {"wos":[{"line":"VPKL01","wo":"2690101","seq":1,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002001","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":12000,"pct":62,"des":"","cot":"","rate":1645.0,"intl":false},{"line":"VPKL01","wo":"2690102","seq":2,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":60,"bulk":"BU002001","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"SOY","remarks":"Use the SOY allergen labels from the cage.","qty":9000,"pct":0,"des":"P","cot":"Y","rate":1645.0,"intl":false},{"line":"VPKL01","wo":"2690103","seq":3,"item":"1212","desc":"CALCIUM 600MG W-D","ct":60,"bulk":"BU002002","btl":150,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":20000,"pct":0,"des":"P-OR","cot":"","rate":942.0,"intl":false},{"line":"VPKL03","wo":"2690301","seq":1,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002010","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":8000,"pct":75,"des":"","cot":"","rate":1484.0,"intl":false},{"line":"VPKL03","wo":"2690302","seq":2,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":90,"bulk":"A662","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":6000,"pct":0,"des":"","cot":"","rate":1479.0,"intl":false},{"line":"VPKL03","wo":"2690303","seq":3,"item":"13174","desc":"CALCIUM 500MG WITH VITAMIN D3 + K2","ct":120,"bulk":"BU002011","btl":400,"cap":"CAP 53MM CT WHITE","allergen":"N","remarks":"","qty":10000,"pct":0,"des":"","cot":"","rate":958.0,"intl":true},{"line":"VPKL04","wo":"2690401","seq":1,"item":"1328","desc":"FISH OIL CONCENTRATE 1200MG","ct":100,"bulk":"BU002020","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":15000,"pct":40,"des":"","cot":"","rate":2326.0,"intl":false},{"line":"VPKL04","wo":"2690402","seq":2,"item":"13171","desc":"SUPER STRENGTH FISH OIL","ct":60,"bulk":"BU002021","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":8000,"pct":0,"des":"","cot":"","rate":1984.0,"intl":true},{"line":"VPKL05","wo":"2690501","seq":1,"item":"109304","desc":"MATURE MULTI SUB","ct":100,"bulk":"BU002030","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":20000,"pct":0,"des":"","cot":"","rate":2032.0,"intl":false},{"line":"VPKL07","wo":"2690701","seq":1,"item":"1212","desc":"CALCIUM 600MG W-D","ct":60,"bulk":"BU002040","btl":150,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":14000,"pct":50,"des":"","cot":"","rate":2505.8,"intl":false},{"line":"VPKL07","wo":"2690702","seq":2,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002041","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":1484.0,"intl":false},{"line":"VPKL08","wo":"2690801","seq":1,"item":"116416E","desc":"MULTI VITS W MINS 1500MG","ct":100,"bulk":"BU002050","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":11000,"pct":20,"des":"","cot":"","rate":1745.0,"intl":true},{"line":"VPKL09","wo":"2690901","seq":1,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002060","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":30000,"pct":0,"des":"","cot":"","rate":2178.1,"intl":false},{"line":"VPKL09","wo":"2690902","seq":2,"item":"1162","desc":"VITAMIN E 400IU DLA","ct":100,"bulk":"BU002060","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"Quality hold: check the lot numbers with QA before starting, and keep 10 retain samples.","qty":12000,"pct":0,"des":"","cot":"","rate":2178.1,"intl":false},{"line":"VPKL09","wo":"2690903","seq":3,"item":"1237","desc":"CALCIUM 600MG W-D","ct":90,"bulk":"BU002061","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":3845.6,"intl":false},{"line":"VPKL10","wo":"2691001","seq":1,"item":"1190","desc":"MELATONIN 10MG TAB","ct":120,"bulk":"BU002070","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":40000,"pct":85,"des":"","cot":"","rate":4600.0,"intl":false},{"line":"VPKL10","wo":"2691002","seq":2,"item":"ZZ9001","desc":"NEW ITEM - NO RATE YET","ct":120,"bulk":"BU002071","btl":225,"cap":"CAP 45MM CT WHITE","allergen":"N","remarks":"","qty":7000,"pct":0,"des":"P","cot":"12G","rate":null,"intl":false},{"line":"VPKL10","wo":"2691003","seq":3,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":90,"bulk":"BU002072","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":8000,"pct":0,"des":"P","cot":"","rate":5000.2,"intl":false},{"line":"VPKL12","wo":"2691201","seq":1,"item":"13654","desc":"OMEGA 3","ct":60,"bulk":"BU002080","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":10000,"pct":95,"des":"","cot":"","rate":843.0,"intl":true},{"line":"VPKL12","wo":"2691202","seq":2,"item":"13693","desc":"TRIPLE OMEGA","ct":60,"bulk":"BU002081","btl":150,"cap":"CAP 38MM CT WHITE","allergen":"N","remarks":"","qty":6000,"pct":0,"des":"","cot":"","rate":1266.0,"intl":true},{"line":"VPKL12","wo":"2691203","seq":3,"item":"1160","desc":"VITAMIN E 400IU DL-ALPHA","ct":100,"bulk":"A624","btl":300,"cap":"CAP 45MM CRC WHITE","allergen":"N","remarks":"","qty":9000,"pct":0,"des":"","cot":"","rate":2090.7,"intl":false}],"lines":[{"name":"LINE 1","breaks":true,"st":"RUNNING","nx":"RUNNING","crew":5},{"name":"LINE 3","breaks":true,"st":"PARTIAL SHIFT","nx":"OVERTIME","crew":4},{"name":"LINE 4","breaks":true,"st":"OVERTIME","nx":"NOT SCHEDULED","crew":3},{"name":"LINE 5","breaks":true,"st":"READY LINE","nx":"RUNNING","crew":null},{"name":"LINE 7","breaks":true,"st":"PM / CLEANING","nx":"RUNNING","crew":null},{"name":"LINE 8","breaks":false,"st":"NOT SCHEDULED","nx":"PM / CLEANING","crew":null},{"name":"LINE 9","breaks":false,"st":"RUNNING","nx":"READY LINE","crew":6},{"name":"LINE 10","breaks":false,"st":"RUNNING","nx":"PARTIAL SHIFT","crew":4},{"name":"LINE 11","breaks":false,"st":"NOT SCHEDULED","nx":"NOT SCHEDULED","crew":null},{"name":"LINE 12","breaks":false,"st":"RUNNING","nx":"RUNNING","crew":5}]};
+const STATUSES = [
+  ["RUNNING", "--run"], ["PARTIAL SHIFT", "--part"], ["OVERTIME", "--ot"],
+  ["READY LINE", "--ready"], ["PM / CLEANING", "--pm"], ["NOT SCHEDULED", "--ns"]];
+const RUN = ["RUNNING", "PARTIAL SHIFT", "OVERTIME"], GREY = ["PM / CLEANING", "NOT SCHEDULED"];
+const CO = { "S1": ["Minor · S1", "--s1", 15], "CNT": ["Minor · Count", "--cnt", 15], "S3": ["MAJOR · S3", "--s3", 40], "S4": ["MAJOR · S4", "--s4", 45] };
+const SET = { start: 7.25, eff: 1, breaks: { 2: 6 / 7, 6: 6 / 7, 4: 4 / 7 }, cremer: [1, 5, 9, 10, 12], merrill: [3, 7, 8, 11], oily: ["SG", "LSG", "S/G"] };
+const SHIFTS = ["1st Shift", "2nd Shift", "3rd Shift"];
+const KEY = "pls-mockup-v1";
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const color = st => (STATUSES.find(s => s[0] === st) || STATUSES[5])[1];
+const tint = st => color(st) + "-t";
+const num = s => +String(s).replace(/\D/g, "");
+const $ = s => document.querySelector(s);
+
+let state = load();
+function fresh() {
+  const d = new Date(); d.setHours(5, 15, 0, 0);
+  return { shift: 0, asof: d.getTime(), lines: Object.fromEntries(DATA.lines.map(l => [l.name, { st: l.st, nx: l.nx, crew: l.crew, breaks: l.breaks }])), done: {} };
+}
+function load() { try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.lines) return s; } catch (e) {} return fresh(); }
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+// ---- the schedule logic (as in the workbook) ----
+const capCode = c => { const m = /(\d+)\s*MM\s+(\S+)/i.exec(c); return m ? m[1] + "-" + m[2].toUpperCase() : c; };
+function shiftEnd(asof, k) {
+  const d = new Date(asof); d.setHours(0, 0, 0, 0);
+  let end = d.getTime() + (((SET.start + (k + 1) * 8) % 24) * 3600e3);
+  if (end < asof) end += 864e5;
+  return end;
+}
+// add `units` full-hour units of work from t: hours of the shift with a break or lunch make less on lines that stop for them
+function work(t, units, breaks) {
+  if (!breaks) return t + units * 3600e3;
+  for (let guard = 0; units > 1e-9 && guard < 500; guard++) {
+    const d = new Date(t); d.setHours(0, 0, 0, 0);
+    const into = ((t - d.getTime()) / 3600e3 - SET.start + 48) % 8;          // hours into the shift
+    const h = Math.floor(into) + 1, share = SET.breaks[h] || 1, left = Math.ceil(into + 1e-9) - into || 1;
+    if (units <= left * share) return t + units / share * 3600e3;
+    units -= left * share; t += left * 3600e3;
+  }
+  return t;
+}
+function build() {
+  const byLine = {};
+  for (const w of DATA.wos) (byLine["LINE " + num(w.line)] = byLine["LINE " + num(w.line)] || []).push(w);
+  const out = [], asof = state.asof, end = shiftEnd(asof, state.shift);
+  for (const L of DATA.lines) {
+    const wos = (byLine[L.name] || []).slice().sort((a, b) => a.seq - b.seq);
+    const ls = state.lines[L.name];
+    const running = RUN.includes(ls.st);
+    let t = asof, ok = true;
+    const rows = wos.map((w, i) => {
+      const p = wos[i - 1], r = { ...w, first: i === 0 };
+      if (p) {
+        r.code = w.btl !== p.btl ? "S4" : w.bulk !== p.bulk ? "S3" : w.ct !== p.ct ? "CNT" : "S1";
+        r.capNew = capCode(w.cap) !== capCode(p.cap);
+        const sz = (r.capNew ? 1 : 0) + (r.code === "CNT" ? 2 : 0) + (w.btl !== p.btl ? 4 : 0);
+        const parts = [];
+        if (sz) parts.push(["Cap Change", "Count Change", "Cap & Count Change", "Bottle Change", "Cap & Bottle Change", "Count & Bottle Change", "Cap, Count & Bottle Change"][sz - 1]);
+        const cot = v => /^(Y|YES|X|1)$/i.test(v) ? "Yes" : /^(N|NO|0|-|NONE)?$/i.test(v) ? "" : v;
+        const c = cot(w.cot), pc = cot(p.cot);
+        if (c && !pc) parts.push("Add Cotton" + (c === "Yes" ? "" : ` (${c})`)); else if (c && c !== pc) parts.push(`Change Cotton (${c})`); else if (!c && pc) parts.push("Remove Cotton");
+        const de = v => /^(N|NO|0|-|NONE)?$/i.test(v) ? "" : v, d = de(w.des), pd = de(p.des);
+        if (d && !pd) parts.push("Add Desiccant"); else if (d && d.toUpperCase() !== pd.toUpperCase()) parts.push("Change Desiccant"); else if (!d && pd) parts.push("Remove Desiccant");
+        if (["A662", "A624"].includes(w.bulk)) parts.push("Dumping");
+        if (w.intl) parts.push("Prepare For INTERNATIONAL WO");
+        r.coParts = parts;
+      }
+      r.left = r.first ? Math.round(w.qty * (1 - w.pct / 100)) : w.qty;
+      r.hl = w.allergen && w.allergen !== "N" ? "allergen" : / OIL\b/.test(" " + w.desc) ? "oil" : ["A662", "A624"].includes(w.bulk) ? "dump" : "";
+      if (running && ok) {
+        // its changeover starts when the work order before it is done (even when it has no rate itself)
+        r.coStart = r.first ? null : t;
+        if (w.rate) { t = work(t, (r.code ? CO[r.code][2] / 60 : 0) + r.left / (w.rate * SET.eff), ls.breaks); r.est = t; }
+        else { r.noRate = true; ok = false; }
+      }
+      r.inShift = r.coStart != null && r.coStart >= asof && r.coStart < end;
+      return r;
+    });
+    out.push({ ...L, ...ls, rows, running, grey: GREY.includes(ls.st) });
+  }
+  return { lines: out, asof, end };
+}
+
+// ---- rendering ----
+const fmtTime = (t, ref) => {
+  const d = new Date(t), r = new Date(ref), tm = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const day = (x => { const y = new Date(x); y.setHours(0, 0, 0, 0); return y.getTime(); });
+  const diff = Math.round((day(t) - day(ref)) / 864e5);
+  return diff === 0 ? "Today " + tm : diff === 1 ? "Tomorrow " + tm : (d.getMonth() + 1) + "/" + d.getDate() + " " + tm;
+};
+const k = n => n >= 1000 ? (Math.round(n / 100) / 10) + "k" : String(n);
+const stChip = (st, cls = "") => `<span class="chip ${cls}" style="background:var(${color(st)}-t);color:var(${color(st)})"><span class="dot" style="background:var(${color(st)})"></span>${st}</span>`;
+const coChip = r => { const [lab, c] = CO[r.code]; return `<span class="cochip" style="color:var(${c});background:color-mix(in srgb, var(${c}) 12%, white)">${lab}</span>${r.intl ? ' <span class="intl">INTL</span>' : ""}`; };
+
+function render() {
+  const S = build();
+  const d = new Date(state.asof);
+  $("#date").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  $("#asof").value = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  $("#shifts").innerHTML = SHIFTS.map((s, i) => `<button class="${i === state.shift ? "on" : ""}" data-s="${i}">${s}</button>`).join("");
+  renderSummary(S); renderLines(S); renderLt(S); renderWash(S);
+}
+function renderSummary(S) {
+  const withWo = S.lines.filter(l => l.rows.length);
+  const counts = STATUSES.map(([st]) => [st, withWo.filter(l => l.st === st).length]).filter(x => x[1]);
+  const cos = S.lines.flatMap(l => l.running ? l.rows.filter(r => r.inShift).map(r => ({ ...r, ln: l.name })) : []);
+  const minor = cos.filter(r => r.code === "S1" || r.code === "CNT").length, major = cos.length - minor;
+  const next = cos.slice().sort((a, b) => a.coStart - b.coStart)[0];
+  $("#summary").innerHTML = `
+    <div class="card stat"><h3>${withWo.length} lines today</h3><div class="chips">${counts.map(([st, n]) => stChip(st).replace(st, n + " " + st.toLowerCase())).join("")}</div></div>
+    <div class="card stat"><h3>Changeovers before ${new Date(S.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</h3>
+      <div class="big">${minor} <span style="font-size:14px;color:var(--s1)">minor</span> &nbsp; ${major} <span style="font-size:14px;color:var(--s4)">major</span></div></div>
+    <div class="card stat"><h3>Next changeover</h3><div class="big">${next ? `${next.ln} <span style="font-size:15px;color:var(--muted)">· ${fmtTime(next.coStart, S.asof)}</span>` : "—"}</div></div>`;
+  $("#legend").innerHTML = `<span><b>Changeover</b></span>` + Object.values(CO).map(([l, c]) => `<span style="color:var(${c});font-weight:650">● ${l}</span>`).join("")
+    + `<span><span class="cap-new">CAP</span> new cap</span><span><span class="intl">INTL</span> international</span>`
+    + `<span><b>Rows</b></span><span><i class="sw" style="background:#f8cbad"></i>Allergen</span><span><i class="sw" style="background:#ffd966"></i>Oil</span><span><i class="sw" style="background:#9dc3e6"></i>Dumping</span>`;
+  $("#b-lines").textContent = withWo.filter(l => l.running).length;
+  $("#b-wash").textContent = cos.length;
+}
+function renderLines(S) {
+  const q = $("#q").value.trim().toUpperCase(), runOnly = $("#t-run").classList.contains("on"), notes = $("#t-notes").classList.contains("on");
+  const html = S.lines.filter(l => l.rows.length && (!runOnly || l.running)).map((l, i) => {
+    const rows = l.rows.filter(r => !q || (r.wo + " " + r.item + " " + r.desc).toUpperCase().includes(q));
+    if (!rows.length) return "";
+    const body = rows.map(r => {
+      const prog = r.first ? (r.pct > 0 ? `<div class="prog"><div class="bar-track"><div class="bar-fill" data-w="${r.pct}"></div></div><b>${Math.round(r.pct)}%</b></div>` : `<span class="nostart">Not started yet</span>`) : coChip(r);
+      const leftCo = r.first ? k(r.left) : CO[r.code][2] + " min";
+      const est = !l.running ? "" : r.est ? `<span class="est ${r.first ? "first" : ""}">${fmtTime(r.est, S.asof)}</span>` : r.noRate ? `<span class="est dim">no rate</span>` : `<span class="est dim">—</span>`;
+      let tr = `<tr class="wo ${l.grey ? "" : r.hl ? "hl-" + r.hl : ""}">
+        <td>${r.wo}</td><td class="c">${r.seq}</td><td>${r.item}</td><td class="desc">${r.desc}</td>
+        <td class="c ${r.code === "CNT" ? "ct-new" : ""}">${r.ct}</td><td>${r.bulk}</td><td class="c">${r.btl}</td>
+        <td class="c ${r.capNew ? "cap-new" : ""}">${capCode(r.cap)}</td>
+        <td class="c">${r.allergen !== "N" ? `<span class="allergen">${r.allergen}</span>` : "N"}</td><td class="c">${r.des}</td>
+        <td class="num">${r.qty.toLocaleString()}</td><td>${prog}</td><td class="num" style="font-weight:650;color:${r.first ? "var(--run)" : `var(${CO[r.code][1]})`}">${leftCo}</td>
+        <td class="num">${est}</td></tr>`;
+      if (notes && !l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="note"><td class="arrow">↳</td><td colspan="13"><b>Changeover notes:</b> ${r.coParts.join(", ")}</td></tr>`;
+      if (notes && r.remarks) tr += `<tr class="note"><td class="arrow">↳</td><td colspan="13"><b>Remarks:</b> ${r.remarks}</td></tr>`;
+      return tr;
+    }).join("");
+    return `<article class="card lcard" style="--c:var(${color(l.st)});--t:var(${tint(l.st)});animation-delay:${i * 40}ms">
+      <div class="lhead"><div class="lname">${l.name}</div>
+        <button class="stchip" data-line="${l.name}" data-f="st">${l.st} <span class="caret">▼</span></button>
+        <div class="meta"><span class="nx">Next shift: ${stChip(l.nx)}</span>${l.crew ? `<span>Crew (EE): <b>${l.crew}</b></span>` : ""}<span>${l.rows.length} work order${l.rows.length > 1 ? "s" : ""}</span></div></div>
+      <div class="lbody"><table class="${l.grey ? "grey" : ""}"><thead><tr><th>WO</th><th class="c">SQ</th><th>Item</th><th>Description</th><th class="c">CT</th><th>Bulk</th><th class="c">BTL</th><th class="c">Cap</th><th class="c">A</th><th class="c">Des</th><th class="num">WO Qty</th><th>Progress / Changeover</th><th class="num">Left / C.O.</th><th class="num">Est. time</th></tr></thead><tbody>${body}</tbody></table></div>
+    </article>`;
+  }).join("");
+  $("#lines").innerHTML = html || `<div class="card empty">No work orders match.</div>`;
+  requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll(".bar-fill").forEach(b => b.style.width = b.dataset.w + "%")));
+}
+function renderLt(S) {
+  const pick = (l, f) => `<div class="stpick">${STATUSES.map(([st, c]) => `<button style="--c:var(${c})" class="${l[f] === st ? "on" : ""}" data-line="${l.name}" data-f="${f}" data-v="${st}">${st}</button>`).join("")}</div>`;
+  $("#lt").innerHTML = `<div class="lt-row lt-head"><span>Line</span><span>Today</span><span>This shift</span><span>Next shift</span><span>Crew (EE)</span><span>Breaks</span></div>`
+    + S.lines.map((l, i) => `<div class="card lt-row" style="animation-delay:${i * 30}ms"><div><div class="nm" style="color:var(${color(l.st)})">${l.name}</div></div>
+      <div class="wo">${l.rows.length ? l.rows.length + " WO" : "none"}</div>${pick(l, "st")}${pick(l, "nx")}
+      <div class="stepper"><button data-line="${l.name}" data-crew="-1">−</button><span>${l.crew ?? "–"}</span><button data-line="${l.name}" data-crew="1">+</button></div>
+      <button class="switch ${l.breaks ? "on" : ""}" data-line="${l.name}" data-brk="1" title="Stops for breaks and lunch"></button></div>`).join("");
+}
+function renderWash(S, topOnly) {
+  const oily = d => SET.oily.some(w => (" " + d.replace(/[-,()]/g, " ") + " ").includes(" " + w + " "));
+  const list = S.lines.flatMap(l => l.running ? l.rows.map((r, i) => ({ r, p: l.rows[i - 1], l })).filter(x => x.r.inShift) : []).sort((a, b) => a.r.coStart - b.r.coStart);
+  const done = list.filter(x => state.done[x.r.wo]).length;
+  $("#wtop").innerHTML = `<span class="chip" style="background:#fff;box-shadow:var(--shadow)">${list.length} changeovers before ${new Date(S.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>
+    <span class="chip" style="background:var(--run-t);color:var(--run)">${done} done</span>
+    <span class="chip" style="background:#fff2cc;color:#7f6000">${list.filter(x => oily(x.p.desc)).length} oily</span>
+    <span class="chip" style="background:#ededed;color:#595959">${list.filter(x => !oily(x.p.desc)).length} powdery</span>`;
+  if (topOnly) return;
+  $("#wlist").innerHTML = list.length ? list.map(({ r, p, l }, i) => {
+    const n = num(l.name), fl = SET.cremer.includes(n) ? "cremer" : SET.merrill.includes(n) ? "merrill" : "";
+    const ty = d => oily(d) ? `<span class="type oily">Oily</span>` : `<span class="type powdery">Powdery</span>`;
+    return `<div class="card witem ${state.done[r.wo] ? "done" : ""}" style="animation-delay:${i * 35}ms">
+      <button class="check" data-done="${r.wo}" title="Done"><svg viewBox="0 0 20 20"><path d="M4 10.5l4 4 8-9"/></svg></button>
+      <div><div class="wtime">${fmtTime(r.coStart, S.asof)}</div>${coChip(r)}</div>
+      <div><div class="wline">${l.name}</div>${fl ? `<span class="filler ${fl}">${fl[0].toUpperCase() + fl.slice(1)}</span> · ` : ""}${CO[r.code][2]} min</div>
+      <div class="parts"><small>Off the line - parts to wash</small>${p.item} &nbsp;${p.desc}<br>${ty(p.desc)} ${p.allergen !== "N" ? `<span class="allergen">${p.allergen}</span>` : ""}</div>
+      <div class="parts"><small>Next on the line</small>${r.item} &nbsp;${r.desc}<br>${ty(r.desc)}</div>
+      <div style="color:var(--muted);font-size:12px">WO ${r.wo}</div></div>`;
+  }).join("") : `<div class="card empty">No changeovers expected this shift.</div>`;
+}
+
+// ---- interaction ----
+let toastT;
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 1800); }
+function setLine(name, f, v) { state.lines[name][f] = v; save(); render(); toast(`${name} · ${f === "st" ? "this shift" : "next shift"}: ${v}`); }
+function closePop() { document.querySelectorAll(".pop").forEach(p => p.remove()); }
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!e.target.closest(".pop")) closePop();
+  if (!b) return;
+  if (b.classList.contains("tab")) {
+    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t === b));
+    document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "p-" + b.dataset.p));
+    moveInk(); render(); return;
+  }
+  if (b.dataset.s != null && b.parentElement.id === "shifts") { state.shift = +b.dataset.s; save(); render(); toast(SHIFTS[state.shift]); return; }
+  if (b.classList.contains("stchip")) {
+    const r = b.getBoundingClientRect(), pop = document.createElement("div");
+    pop.className = "pop";
+    pop.innerHTML = `<h4>${b.dataset.line} · this shift</h4>` + STATUSES.map(([st, c]) => `<button class="opt" data-line="${b.dataset.line}" data-f="st" data-v="${st}"><span class="dot" style="background:var(${c})"></span>${st}</button>`).join("");
+    document.body.appendChild(pop);
+    // below the chip, or above it when there is no room below
+    const h = pop.offsetHeight, below = r.bottom + 6 + h <= innerHeight;
+    pop.style.left = (r.left + scrollX) + "px";
+    pop.style.top = ((below ? r.bottom + 6 : r.top - 6 - h) + scrollY) + "px";
+    pop.style.transformOrigin = below ? "top left" : "bottom left";
+    e.stopPropagation(); return;
+  }
+  if (b.dataset.v) { closePop(); setLine(b.dataset.line, b.dataset.f, b.dataset.v); return; }
+  if (b.dataset.crew) { const L = state.lines[b.dataset.line]; L.crew = Math.max(0, (L.crew || 0) + +b.dataset.crew) || null; save(); render(); return; }
+  if (b.dataset.brk) { const L = state.lines[b.dataset.line]; L.breaks = !L.breaks; save(); render(); toast(`${b.dataset.line}: ${L.breaks ? "stops" : "runs through"} breaks and lunch`); return; }
+  if (b.dataset.done) { state.done[b.dataset.done] = !state.done[b.dataset.done]; save(); b.closest(".witem").classList.toggle("done"); renderWashTop(); return; }
+  if (b.id === "t-run" || b.id === "t-notes") { b.classList.toggle("on"); renderLines(build()); return; }
+  if (b.id === "now") { const d = new Date(); d.setSeconds(0, 0); state.asof = d.getTime(); save(); render(); toast("As of now"); return; }
+  if (b.id === "print") { document.querySelector('.tab[data-p="sched"]').click(); setTimeout(() => window.print(), 350); return; }
+  if (b.id === "a-run") { const S = build(); let n = 0; S.lines.forEach(l => { if (l.rows.length && !RUN.includes(l.st)) { state.lines[l.name].st = "RUNNING"; n++; } }); save(); render(); toast(n ? `${n} line(s) set RUNNING` : "Every line with work orders is already running"); return; }
+  if (b.id === "a-next") { Object.values(state.lines).forEach(L => L.nx = L.st); save(); render(); toast("Next shift = this shift"); return; }
+  if (b.id === "a-reset") { const s = fresh(); s.asof = state.asof; s.shift = state.shift; state = s; save(); render(); toast("Back to the mock-up"); return; }
+});
+function renderWashTop() { renderWash(build(), true); }
+$("#q").addEventListener("input", () => renderLines(build()));
+$("#asof").addEventListener("change", e => { const [h, m] = e.target.value.split(":").map(Number); const d = new Date(state.asof); d.setHours(h, m, 0, 0); state.asof = d.getTime(); save(); render(); });
+function moveInk() { const on = $(".tab.on"), ink = $("#ink"); ink.style.left = on.offsetLeft + 12 + "px"; ink.style.width = on.offsetWidth - 24 + "px"; }
+window.addEventListener("resize", moveInk);
+render(); moveInk();
+</script>
+</body>
+</html>
