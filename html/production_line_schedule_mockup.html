@@ -264,9 +264,14 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp .mnums > div:not(:first-child) { white-space: nowrap; }
 .mp .mnums small { white-space: nowrap; display: block; font-size: 6.4pt; letter-spacing: 1.1px; text-transform: uppercase; color: #6b7385; font-weight: 700; }
 .mp .mnums b { font-size: 11pt; color: #1f3864; } .mp .mnums .st { display: inline-flex; align-items: center; gap: 3px; margin-right: 7px; font-weight: 700; font-size: 7.4pt; }
-.mp .mbox.side { display: grid; grid-template-columns: 124px 1fr; }
-.mp .mside { background: var(--t); padding: 2px 6px; display: flex; flex-direction: column; gap: 0; line-height: 1.25; white-space: nowrap; }
-.mp .mside .nm { font-size: 9.6pt; font-weight: 800; color: #1d2433; }
+.mp .mbox.side { display: grid; grid-template-columns: 150px 1fr; }
+.mp .mside { background: #fff; border-right: 1px solid #e3e8ef; padding: 3px 8px 4px; display: flex; flex-direction: column; gap: 1px; line-height: 1.25; white-space: nowrap; }
+.mp .mside .srow { display: grid; grid-template-columns: 56px 1fr; align-items: center; }
+.mp .mside .lab { font-size: 5.6pt; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8a91a0; }
+.mp .mside .val { font-size: 7.2pt; font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
+.mp .mside .val i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.mp .mbox.grey .mside .nm { color: #8c93a0; }
+.mp .mside .nm { font-size: 10pt; font-weight: 800; color: #1d2433; margin-bottom: 1px; }
 .mp .mside .pill { margin-left: 0; white-space: nowrap; font-size: 6.2pt; padding: 0 6px; }
 .mp .mside .sm { font-size: 6.4pt; color: #4a5263; } .mp .mside .sm .pill { font-size: 5.6pt; padding: 0 5px; }
 .mp .mbox .mkey { margin: 0; }
@@ -642,6 +647,9 @@ function renderModern(S) {
   const al = i => [1, 4, 6, 7, 8, 9].includes(i) ? "c" : [10, 12, 13].includes(i) ? "r" : "";
   const colg = `<colgroup>${cols.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup>`;
   const thr = `<tr class="th">${cols.map(([h], i) => `<td class="${al(i)}">${h}</td>`).join("")}</tr>`;
+  // a status as a colored dot and its name (readable inks: gold and orange darker)
+  const INK2 = { "RUNNING": "#2e7d32", "PARTIAL SHIFT": "#c55a11", "OVERTIME": "#9c6500", "READY LINE": "#7030a0", "PM / CLEANING": "#0070c0", "NOT SCHEDULED": "#6e6e6e" };
+  const stv = st => `<span class="val" style="color:${INK2[st]}"><i style="background:${ink(st)}"></i>${pretty(st)}</span>`;
   const pill = st => `<span class="pill" style="background:${ink(st)};color:${st === "OVERTIME" ? "#1d2433" : "#fff"}">${st}</span>`;
   const boxes = withWo.map(l => {
     const rows = l.rows.map((r, i) => {
@@ -659,8 +667,9 @@ function renderModern(S) {
     }).join("");
     // the line on the left (like the LINE column), its work orders on the right
     return `<div class="mbox side ${l.grey ? "grey" : ""}" style="--c:${ink(l.st)};--t:var(${tint(l.st)})">
-      <div class="mside"><div><span class="nm">${l.name}</span></div><div>${pill(l.st)}</div>
-        <div class="sm">Next ${pill(l.nx)}</div></div>
+      <div class="mside"><div class="nm">${l.name}</div>
+        <div class="srow"><span class="lab">This shift</span>${stv(l.st)}</div>
+        <div class="srow"><span class="lab">Next shift</span>${stv(l.nx)}</div></div>
       <table>${colg}<tbody>${rows}</tbody></table></div>`;
   }).join("");
   const key = `<div class="mkey"><b>Key</b>
