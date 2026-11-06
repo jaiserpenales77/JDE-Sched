@@ -262,14 +262,16 @@ footer { max-width: 1480px; margin: 0 auto; padding: 0 20px 30px; color: var(--m
 .mp .mhead .nm { font-size: 11pt; font-weight: 800; color: #1d2433; margin-right: 8px; }
 .mp .pill { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 6.8pt; font-weight: 800; letter-spacing: .4px; margin-left: 4px; vertical-align: 1px; }
 .mp .mmeta { font-size: 7.6pt; color: #4a5263; } .mp .mmeta .sep { margin-left: 12px; } .mp .mmeta b { color: #1d2433; }
-.mp .mbox table td { font-size: 7.8pt; padding: 2.4px 5px; border-bottom: 1px solid #edf0f4; }
-.mp .mbox tr.th td { white-space: normal; line-height: 1.15; font-size: 6.4pt; font-weight: 700; color: #6b7385; text-transform: uppercase; letter-spacing: .5px; background: #fafbfd; padding: 2px 5px; }
+.mp .mbox table td { font-size: 7.4pt; padding: 2.4px 4px; border-bottom: 1px solid #edf0f4; }
+.mp .mbox tr.th td { white-space: nowrap; font-size: 7pt; font-weight: 800; color: #1f3864; background: #e9eff8; padding: 3px 4px;
+  border-bottom: 1.5px solid #b9c9e2; letter-spacing: 0; text-transform: none; }
 .mp .mbox tr.alt td { background: #f7f9fc; }
 .mp .mbox tr.hl-allergen td { background: #fbe3d6; } .mp .mbox tr.hl-oil td { background: #fff1c2; } .mp .mbox tr.hl-dump td { background: #ddebf7; }
 .mp .mbox tr.n td { background: #fff8e1; color: #6e5a14; font-size: 7pt; font-style: normal; padding: 1.5px 5px; border-bottom: 1px solid #f3e7bf; }
 .mp .mbox tr.n td.arr { color: #b39540; text-align: right; }
 .mp .mbox tr.n b { color: #6e5a14; letter-spacing: 0; font-weight: 800; }
 .mp .alg { color: #9c3d10; }
+.mp .mbox td.desc2 { white-space: normal; line-height: 1.2; }
 .mp .muted { color: #8a91a0; font-style: italic; }
 .mp .mbox.grey { border-left-color: #b9bfca; } .mp .mbox.grey td, .mp .mbox.grey td b { color: #a7adb8 !important; }
 .mp .mbox.grey .bar i { background: #b9bfca; } .mp .mbox.grey .pct { color: #a7adb8; }
@@ -618,8 +620,8 @@ function renderModern(S) {
     <div class="mp-kpi"><small>Changeovers before ${end}</small><b>${minor}</b> <span style="color:#2e7d32;font-weight:700">minor</span> &nbsp;<b>${cos.length - minor}</b> <span style="color:#c00000;font-weight:700">major</span></div>
     <div class="mp-kpi"><small>Next changeover</small><b>${next ? next.ln : "—"}</b> ${next ? `<span style="color:#6b7385">· ${tm(next.coStart)}</span>` : ""}</div></div>`;
   // one box per line: its header bar, its own column titles, its work orders
-  const cols = [["WO", 7], ["SQ", 3], ["Item", 6.4], ["Description", 20.4], ["CT", 3.4], ["Bulk", 7], ["BTL", 3.6], ["Cap", 5.6], ["A", 3.8], ["Des", 3.8],
-    ["WO qty", 5.8], ["Progress / changeover", 12.4], ["Left / C.O.", 5.6], ["Est. time", 11.8]];
+  const cols = [["WO", 6.4], ["Seq", 3.2], ["Item", 6], ["Description", 15.6], ["Count", 4], ["Bulk", 6.8], ["Bottle", 4.4], ["Cap", 5.4], ["Allergen", 5.2],
+    ["Desiccant", 6.6], ["WO qty", 5.6], ["Progress / changeover", 12.6], ["Left / C.O.", 6.6], ["Est. time", 11.6]];
   const al = i => [1, 4, 6, 7, 8, 9].includes(i) ? "c" : [10, 12, 13].includes(i) ? "r" : "";
   const colg = `<colgroup>${cols.map(([, w]) => `<col style="width:${w}%">`).join("")}</colgroup>`;
   const thr = `<tr class="th">${cols.map(([h], i) => `<td class="${al(i)}">${h}</td>`).join("")}</tr>`;
@@ -631,7 +633,7 @@ function renderModern(S) {
       const est = !l.running ? "" : r.est ? `<b class="${r.first ? "first-est" : ""}">${fmtTime(r.est, S.asof)}</b>` : r.noRate ? `<span class="muted">no rate</span>` : "—";
       const left = r.first ? `<b style="color:#2e7d32">${k(r.left)}</b>` : `<b style="color:var(${CO[r.code][1]})">${CO[r.code][2]} min</b>`;
       let tr = `<tr class="wo ${i % 2 ? "alt" : ""} ${!l.grey && r.hl ? "hl-" + r.hl : ""}"><td><b>${r.wo}</b></td><td class="c">${r.seq}</td><td>${r.item}</td>
-        <td>${r.desc}</td><td class="c ${r.code === "CNT" ? "newct" : ""}">${r.ct}</td><td>${r.bulk}</td><td class="c">${r.btl}</td>
+        <td class="desc2">${r.desc}</td><td class="c ${r.code === "CNT" ? "newct" : ""}">${r.ct}</td><td>${r.bulk}</td><td class="c">${r.btl}</td>
         <td class="c ${r.capNew ? "new" : ""}">${capCode(r.cap)}</td><td class="c">${r.allergen === "N" ? "N" : `<b class="alg">${r.allergen}</b>`}</td><td class="c">${r.des}</td>
         <td class="r">${r.qty.toLocaleString()}</td><td>${prog}</td><td class="r">${left}</td><td class="r">${est}</td></tr>`;
       if (!l.grey && r.inShift && r.coParts && r.coParts.length) tr += `<tr class="n"><td class="arr">↳</td><td colspan="13"><b>Changeover notes:</b> ${r.coParts.join(", ")}</td></tr>`;
