@@ -69,7 +69,7 @@ Changes apply to the next sign-in; nothing needs redeploying.
 | 1 | Upgrade sign-in to **Identity Platform** (accounts and passwords stay) | Firebase console → Authentication → Settings → Upgrade |
 | 2 | Create the `jde-sched-access/network` document with `enabled` = **false**, and the networks in `allowed` | Firestore Database → Data |
 | 3 | Install the check (below) | Google Cloud Shell |
-| 4 | Check it's connected: **Before sign-in (beforeSignIn)** shows `allowedNetworksOnly` | Authentication → Settings → Blocking functions |
+| 4 | Check it's connected: **Before sign-in (beforeSignIn)** shows `allowedNetworksOnly`. **Don't pick it there or click Save** (see below) | Authentication → Settings → Blocking functions |
 | 5 | Release the LineUp and Hub updates (the message, and the Hub's button) | Done 2026-11-09 |
 | 6 | At work: set `enabled` = **true**, then unlock LineUp. It should open | Firestore Database → Data |
 | 7 | Try from a phone on mobile data: it should be refused | |
@@ -88,6 +88,25 @@ npx firebase-tools@14 deploy --only functions --project jde-schedule-database
 This installs both functions. If it asks to turn on Google Cloud services
 (Cloud Functions, Cloud Build, Artifact Registry and so on), say yes. The check costs next to nothing at
 LineUp's size (a few sign-ins a day).
+
+## Don't click Save on the Blocking functions page
+
+The deploy connects the check by its `run.app` address. Picking
+`allowedNetworksOnly` in the console's dropdown and clicking **Save**
+connects it by its old `cloudfunctions.net` address instead, and then
+**every sign-in fails** (LineUp and the Hub): the function's log says the
+token has an incorrect "aud" (audience) claim, expected "run.app".
+(This happened on 2026-11-09.) To connect it again, in Cloud Shell:
+
+```
+URL=$(gcloud run services describe allowednetworksonly --region us-central1 --project jde-schedule-database --format='value(status.url)'); echo $URL
+curl -s -X PATCH -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "X-Goog-User-Project: jde-schedule-database" -H "Content-Type: application/json" "https://identitytoolkit.googleapis.com/admin/v2/projects/jde-schedule-database/config?updateMask=blockingFunctions" -d "{\"blockingFunctions\":{\"triggers\":{\"beforeSignIn\":{\"functionUri\":\"$URL\"}}}}" | grep -A3 beforeSignIn
+```
+
+The first line prints the address (ending in `.run.app`); the second
+connects it and shows it. If sign-ins fail and you need everyone back in
+right away, set **Before sign-in** to **None** there and Save (that one is
+safe): sign-in works as before, without the check.
 
 ## Turning it off
 

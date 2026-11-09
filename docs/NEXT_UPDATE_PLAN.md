@@ -8,7 +8,15 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+1. **Unlock screen: a failed sign-in that isn't the password says so.**
+   Only Firebase's wrong-password errors show "That password isn't right";
+   anything else (for example the network check failing, as on 2026-11-09)
+   shows "Couldn't unlock right now (the error). Try again in a minute; if
+   it keeps happening, contact the LineUp administrator." "Access
+   restricted", too many tries and no internet are unchanged. Tested on
+   the test database: a wrong password, the right one, and a refused
+   network. Nothing changes in Firebase or the Job Instruction.
+   **How to check it:** type a wrong password: it still says "isn't right".
 
 ---
 
