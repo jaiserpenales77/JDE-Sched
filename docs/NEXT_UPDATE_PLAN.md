@@ -68,8 +68,8 @@ together.
      (REQUIRED, Pass / Fail, when an allergen comes off the line; otherwise
      Done / N/A) and QA initials and time.
    - **QA Gemba Walk:** each running line with its WO running now and what
-     should be on the line (item, bulk, count, bottle, cap, allergen,
-     desiccant, cotton), three product checks (product looks right, label
+     should be on the line (item, bulk, count, bottle, cap; allergen,
+     desiccant and cotton only when the WO has them), three product checks (product looks right, label
      & lot correct, cap on & sealed), three rounds (time, OK / Issue,
      initials) and notes; lines not running get "idle and clear".
    Both come from the same schedule, statuses and times, and have QA / Date

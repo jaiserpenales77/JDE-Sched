@@ -717,8 +717,9 @@ export function qaWalkLines(lines: ScheduleLine[]): QaWalkLine[] {
       { label: "Bottle", value: String(wo.bottleSize).trim() || "—" },
       { label: "Cap", value: capShort(wo.capDescription) || "—" },
       ...(allergen ? [{ label: "Allergen", value: allergen, flag: true }] : []),
-      { label: "Desiccant", value: desiccantOf(wo) || "—" },
-      { label: "Cotton", value: first.cotton || "—" },
+      // Desiccant and cotton only when the work order has them.
+      ...(desiccantOf(wo) ? [{ label: "Desiccant", value: desiccantOf(wo) }] : []),
+      ...(first.cotton ? [{ label: "Cotton", value: first.cotton }] : []),
     ];
     const second = l.rows[1];
     running.push({
