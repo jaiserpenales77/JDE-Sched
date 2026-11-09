@@ -228,9 +228,11 @@ export function PrintSchedule({
   // printing, the print effect in App.tsx works it out on the page itself.)
   useLayoutEffect(() => {
     const root = rootRef.current;
-    if (!setColumnWidths || !root || !tableRef.current) return;
+    // Line boxes draws its own table.
+    const table = tableRef.current ?? root?.querySelector<HTMLElement>("table.sb-table");
+    if (!setColumnWidths || !root || !table) return;
     if (showScene) {
-      root.dataset.scene = sceneSizeFor(tableRef.current, printedScheduleHeightsPx(design), design.printScaleMode === "fit");
+      root.dataset.scene = sceneSizeFor(table, printedScheduleHeightsPx(design), design.printScaleMode === "fit");
     } else {
       delete root.dataset.scene;
     }
@@ -413,8 +415,15 @@ export function PrintSchedule({
   // The JDE Schedule workbook's look: its own columns, no resizing.
   if (design.tableStyle === "boxes" && boxes) {
     return (
-      <div ref={rootRef} className="print-schedule sched-style-boxes" style={scheduleCssVars(design, null)}>
-        <ScheduleBoxes view={boxes} title={design.title} hidden={hiddenColumns} />
+      <div ref={rootRef} className="print-schedule sched-style-boxes" style={scheduleCssVars(design, theme)}>
+        <ScheduleBoxes
+          view={boxes}
+          title={design.title}
+          hidden={hiddenColumns}
+          theme={theme}
+          stripCount={design.orientation === "landscape" ? 36 : 27}
+        />
+        {showScene && <HolidayScene theme={theme} />}
       </div>
     );
   }

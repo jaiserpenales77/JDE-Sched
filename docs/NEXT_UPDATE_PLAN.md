@@ -20,9 +20,14 @@ together.
    count, bottle, cotton, desiccant, dumping, international) and remarks
    go on a line under the work order. At the top: the shift, the date and
    "as of" time, the lines by status, the minor and major changeovers left
-   before the end of the shift, and the next one. Classic, Clean grid,
-   Line bands and Striped are still in Customize Print Design, and they
-   now take their green boxes and READY / PM / OT tags from the statuses.
+   before the end of the shift, and the next one. **Holiday themes** work
+   on it too: the theme's color on the title bar, the band under it and
+   the column titles, its icons by the title and in a strip, its greeting
+   by the date, and its scene under the schedule when there's room (the
+   status colors never change; the washroom list stays plain). Classic,
+   Clean grid, Line bands and Striped are still in Customize Print Design,
+   and they now take their green boxes and READY / PM / OT tags from the
+   statuses.
 2. **Lines panel** (in place of Scheduled Lines): each line's status this
    shift and next as colored buttons in the printout's colors (Running,
    Partial, OT, Ready, PM, Off: one click; a status that's automatic, not

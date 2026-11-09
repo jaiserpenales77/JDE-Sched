@@ -94,12 +94,12 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
           {boxes && (
             <p className="panel-hint print-design-note">
               Line boxes uses the JDE Schedule workbook's colors and column titles: each line is boxed in the color of
-              its status (pick it in Lines). The holiday theme, the column titles and most colors below are for the
-              other designs.
+              its status (pick it in Lines). A holiday theme colors its title bar, the band under it and the column
+              titles, and adds its icons and greeting; the status colors never change. The column titles and most
+              colors below are for the other designs.
             </p>
           )}
 
-          {!boxes && (
           <div>
             <div className="print-design-row">
               <label className="print-design-field">
@@ -141,7 +141,6 @@ export default function SchedulePrintDesign({ settings, setSettings }: Props) {
               </p>
             )}
           </div>
-          )}
 
           <div className="print-design-row">
             <label className="print-design-field">

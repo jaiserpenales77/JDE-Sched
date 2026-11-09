@@ -4171,14 +4171,38 @@ td.time-off-is-today {
   justify-content: space-between;
   gap: 4px 16px;
   padding: 6px 12px;
-  background: #1f3864;
+  background: var(--sb-bar, #1f3864);
   color: #fff;
 }
 .sb-title h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   font-size: var(--sched-title-size, 16pt);
   font-weight: 700;
   line-height: 1.15;
+}
+/* A holiday theme's icons by the title, each on a white disc so any color
+   shows on the theme's bar. */
+.sb-title-icons {
+  display: inline-flex;
+  gap: 4px;
+}
+.sb-title-icons svg {
+  width: 0.9em;
+  height: 0.9em;
+  padding: 0.12em;
+  border-radius: 50%;
+  background: #fff;
+}
+.sb-themed .holiday-strip {
+  margin: 3px 0;
+}
+.sb-greeting {
+  margin-left: 14px;
+  font-size: 0.85em;
+  font-style: italic;
 }
 .sb-sub {
   display: flex;
@@ -4187,8 +4211,8 @@ td.time-off-is-today {
   justify-content: space-between;
   gap: 2px 16px;
   padding: 3px 12px;
-  background: #ddebf7;
-  color: #1f3864;
+  background: var(--sb-band, #ddebf7);
+  color: var(--sb-band-text, #1f3864);
   font-size: 7.5pt;
 }
 .sb-date {
@@ -4257,8 +4281,8 @@ td.time-off-is-today {
 }
 .sb-table th {
   padding: 3px 2px;
-  border: 1px solid #1f4e79;
-  background: #2e75b6;
+  border: 1px solid var(--sb-head, #1f4e79);
+  background: var(--sb-head, #2e75b6);
   color: #fff;
   font-size: var(--sched-header-size, 6.5pt);
   font-weight: 700;

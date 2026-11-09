@@ -1,5 +1,7 @@
 import { Fragment } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import type { HolidayTheme } from "../holidayThemes";
+import { HolidayIconSvg, HolidayStrip } from "./HolidayDecor";
 import type { RunStatus } from "../types";
 import { isAllergenRow, isBulkHighlightRow, isOilRow } from "../scheduleLogic";
 import {
@@ -28,10 +30,17 @@ export function ScheduleBoxes({
   view,
   title,
   hidden = [],
+  theme = null,
+  stripCount = 36,
 }: {
   view: BoxesView;
   title: string;
   hidden?: readonly string[];
+  // A holiday theme: its color on the title bar, the band under it and the
+  // column titles, its icons by the title and in a strip under the bar, and
+  // its greeting by the date. The status colors never change.
+  theme?: HolidayTheme | null;
+  stripCount?: number;
 }) {
   const cols = BOX_COLUMNS.filter((c) => !hidden.includes(c.key));
   const show = (key: BoxColumnKey) => cols.some((c) => c.key === key);
@@ -40,12 +49,26 @@ export function ScheduleBoxes({
   const { asOf } = view;
   const date = asOf.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const n = view.summary.next;
+  const themeVars = theme
+    ? ({ "--sb-bar": theme.accent, "--sb-band": theme.tint, "--sb-band-text": theme.accent, "--sb-head": theme.accent } as CSSProperties)
+    : undefined;
+  const sideIcons = (order: 0 | 1) =>
+    theme && (
+      <span className="sb-title-icons" aria-hidden="true">
+        <HolidayIconSvg icon={theme.side[order]} />
+        <HolidayIconSvg icon={theme.side[1 - order]} />
+      </span>
+    );
   return (
-    <div className="sb-report">
+    <div className={`sb-report${theme ? " sb-themed" : ""}`} style={themeVars}>
       <div className="sb-title">
         <h1>
-          {title}
-          {view.shiftLabel && <span className="sb-title-shift"> · {view.shiftLabel}</span>}
+          {sideIcons(0)}
+          <span>
+            {title}
+            {view.shiftLabel && <span className="sb-title-shift"> · {view.shiftLabel}</span>}
+          </span>
+          {sideIcons(1)}
         </h1>
         <div className="sb-legend sb-legend-status">
           <b>STATUS</b>
@@ -57,9 +80,15 @@ export function ScheduleBoxes({
           ))}
         </div>
       </div>
+      {theme && <HolidayStrip theme={theme} count={stripCount} />}
       <div className="sb-sub">
         <span className="sb-date">
           {date} · as of {clockText(asOf)}
+          {theme && (
+            <span className="sb-greeting" style={{ color: theme.greetingColor }}>
+              {theme.greeting(asOf)}
+            </span>
+          )}
         </span>
         <span className="sb-legend">
           <b>CHANGEOVER</b>
