@@ -114,8 +114,23 @@ export function unlockErrorMessage(err: unknown, shiftLabel: string): string {
   if (code === "auth/user-disabled") {
     return `The ${shiftLabel} login has been turned off.`;
   }
-  return `That password isn't right for ${shiftLabel}. Check it and try again.`;
+  if (WRONG_PASSWORD.has(code)) {
+    return `That password isn't right for ${shiftLabel}. Check it and try again.`;
+  }
+  // Anything else isn't the password (for example the sign-in check failing):
+  // say so, with the error, so it can be looked up.
+  return `Couldn't unlock right now${code ? ` (${code})` : ""}. Try again in a minute; if it keeps happening, contact the LineUp administrator.`;
 }
+
+// The errors Firebase gives for a wrong password (which one depends on the
+// project's settings, e.g. email enumeration protection).
+const WRONG_PASSWORD = new Set([
+  "auth/invalid-credential",
+  "auth/invalid-login-credentials",
+  "auth/wrong-password",
+  "auth/user-not-found",
+  "auth/missing-password",
+]);
 
 // remember: keep the sign-in on this computer for REMEMBER_HOURS, even when
 // the app is closed, instead of only until it's closed.
