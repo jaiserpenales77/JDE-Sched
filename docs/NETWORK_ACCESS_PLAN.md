@@ -29,9 +29,9 @@ For access, please contact the LineUp administrator."
   off). `functions/allowed.js` matches IP addresses and ranges (IPv4 and
   IPv6).
 - The unlock screen's message for a refused network, with the network it
-  saw (in the next LineUp update).
-- The Hub's **Admin → LineUp: Network Access** section (on the Hub's
-  `claude/next-update` branch).
+  saw (live since 2026-11-09).
+- The Hub's **Admin → LineUp: Network Access** section (live since
+  2026-11-09).
 - Tested on the test database (Firebase emulators): no list or turned off
   = everyone signs in; turned on = refused unless the network is listed;
   an empty list refuses everyone; the Hub only when `hub` is on; the app
@@ -70,7 +70,7 @@ Changes apply to the next sign-in; nothing needs redeploying.
 | 2 | Create the `jde-sched-access/network` document with `enabled` = **false**, and the networks in `allowed` | Firestore Database → Data |
 | 3 | Install the check (below) | Google Cloud Shell |
 | 4 | Check it's connected: **Before sign-in (beforeSignIn)** shows `allowedNetworksOnly` | Authentication → Settings → Blocking functions |
-| 5 | Release the LineUp and Hub updates (the message, and the Hub's button) | "execute the update" |
+| 5 | Release the LineUp and Hub updates (the message, and the Hub's button) | Done 2026-11-09 |
 | 6 | At work: set `enabled` = **true**, then unlock LineUp. It should open | Firestore Database → Data |
 | 7 | Try from a phone on mobile data: it should be refused | |
 | 8 | At home: Hub → Admin → LineUp: Network Access → **Allow LineUp from this network**, then unlock LineUp | |

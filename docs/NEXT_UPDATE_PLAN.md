@@ -8,7 +8,37 @@ together.
 
 ## What's in the next update
 
-### The Production Schedule in the JDE Schedule workbook's look
+Nothing yet.
+
+---
+
+## Running the update
+
+| # | Step | Who | Time |
+|---|------|-----|------|
+| 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
+| 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
+| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
+| 4 | Check the new version (each item lists what to look at) | You | 5 min |
+| 5 | Send the announcement (written with each item) | You | – |
+
+## If something goes wrong
+
+Claude puts the previous version back, and it's live again in a few
+minutes.
+
+## Adding to this plan
+
+Each new change is built and tested on this branch first, then added
+under "What's in the next update": what changes for people, anything it
+needs outside the app (rules, logins), how to check it, and what to do
+once it's live.
+
+---
+
+## Released
+
+### 2026-11-09: Production Schedule in the workbook's look, Washroom and QA printouts, network check
 
 1. **New printout design, Line boxes (now the default):** each line is a
    box in the color of its status (Running, Partial shift, Overtime, Ready
@@ -77,8 +107,7 @@ together.
 7. **Only from the company's network and home (optional, off until set up):**
    the unlock screen explains a sign-in refused by the new network check
    ("Access restricted. LineUp can only be used on approved company
-   networks…", with the network it saw). In the Hub (its `claude/next-update` branch,
-   released with this): **Admin → LineUp: Network Access**, where an
+   networks…", with the network it saw). In the Hub (released with this): **Admin → LineUp: Network Access**, where an
    Owner allows the network they're on (home) for 30 days. The check
    itself is set up once in Firebase: see `docs/NETWORK_ACCESS_PLAN.md`.
 8. **Printing fix: pages centered, nothing cut off.** With 🖨 Print Both,
@@ -99,12 +128,27 @@ Stored Data tab. Until then, an item is oily when its
 description has SG, LSG or S/G, international when its description says
 INTL or INTERNATIONAL, and the rates are the Hub's Line Rates.
 
-**Firebase:** nothing changes; the new settings are saved with each
+**Firebase:** nothing changed in the database rules; the new settings are saved with each
 shift's schedule, and LineUp's shift accounts can already read the Hub's
 Stored Data (where `cottonItems` goes; Hub admins can change it without a
 rules change). **Job Instruction:** the Production Schedule part
 changes (Lines panel, Set to now, the new printout and the washroom list),
-so it gets a new revision at step 2.
+so it has a new revision, **Rev. 2026-11-09** (14 pages): Part B is now
+"Set each line's status" (the Lines panel, next shift, breaks and crew,
+Set to now, the preview), the printout check shows Line boxes, the
+troubleshooting table has the red CHECK, "No line rate" and "Access
+restricted", and Extras 8–11 cover changeover notes, the Washroom Prep
+List, the QA sheets and the Estimated times panel.
+
+**Also released with it, in the Packaging Lead Hub** (its `claude/next-update`
+into `claude/modest-gauss-y18sdh`): the Admin tab's **LineUp: Network
+Access** section (item 7), and `tools/pk030_db.py` taking cotton.
+
+**The network check itself** was installed in Firebase by the project's
+owner before the release (Identity Platform, the `allowedNetworksOnly`
+blocking function and `lineupNetwork`, from Cloud Shell), with the
+`jde-sched-access/network` document's `enabled` still **false**: nobody is
+checked until it is set to true (`docs/NETWORK_ACCESS_PLAN.md`, steps 6–8).
 
 **How to check it, once it's live:** on the Production Schedule tab, set
 each line's This shift status in Lines, click 🕒 Set to now, and look at
@@ -120,34 +164,6 @@ bottles left and estimated times on every work order. Set each line's
 status in the new Lines panel at the start of the shift and click Set to
 now (until then the printout shows a red CHECK). New: Print → Washroom
 Prep List, and for QA, Print → QA Changeover List and QA Gemba Walk."
-
----
-
-## Running the update
-
-| # | Step | Who | Time |
-|---|------|-----|------|
-| 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
-| 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
-| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
-| 4 | Check the new version (each item lists what to look at) | You | 5 min |
-| 5 | Send the announcement (written with each item) | You | – |
-
-## If something goes wrong
-
-Claude puts the previous version back, and it's live again in a few
-minutes.
-
-## Adding to this plan
-
-Each new change is built and tested on this branch first, then added
-under "What's in the next update": what changes for people, anything it
-needs outside the app (rules, logins), how to check it, and what to do
-once it's live.
-
----
-
-## Released
 
 ### 2026-11-04 (evening): Packaging Lead Hub only, Stored Data → Cotton
 
