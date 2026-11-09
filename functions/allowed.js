@@ -34,4 +34,4 @@ function isAllowed(ip, entries) {
   return !!type && list.check(address, type);
 }
 
-module.exports = { isAllowed };
+module.exports = { isAllowed, plainIp };

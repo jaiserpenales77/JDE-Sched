@@ -14,18 +14,31 @@ company's network or from home."
   one Firestore document that only the Firebase console can change.
 - It covers LineUp's three shift accounts. The Packaging Lead Hub's
   accounts are included only if you turn that on (`hub`, below).
+- **Home without looking up IPs:** in the Hub, **Admin → LineUp: Network
+  Access → Allow LineUp from this network** (Owners only), pressed from
+  home, allows that network for **30 days**. When home changes, press it
+  again (it replaces your last one). The Hub itself isn't locked, so the
+  button can always be reached.
 
 ## What's built
 
 - `functions/index.js`: the check (a "before sign-in" blocking function,
-  `allowedNetworksOnly`). `functions/allowed.js` matches IP addresses and
-  ranges (IPv4 and IPv6).
-- The unlock screen's message for a refused network (in the next LineUp
-  update).
+  `allowedNetworksOnly`), and `lineupNetwork`, which the Hub's button calls
+  (Owners only: shows this network, allows it for 30 days, or takes it
+  off). `functions/allowed.js` matches IP addresses and ranges (IPv4 and
+  IPv6).
+- The unlock screen's message for a refused network, with the network it
+  saw (in the next LineUp update).
+- The Hub's **Admin → LineUp: Network Access** section (on the Hub's
+  `claude/next-update` branch).
 - Tested on the test database (Firebase emulators): no list or turned off
   = everyone signs in; turned on = refused unless the network is listed;
   an empty list refuses everyone; the Hub only when `hub` is on; the app
-  can't read or change the list.
+  can't read or change the list. The Hub's button: only Owners can use it
+  (not Admins, Leads or LineUp's shift accounts); it allows this network
+  for 30 days, pressing again replaces the Owner's entry, Remove takes it
+  off, an entry past its date lets nobody in, and the console's list is
+  never touched.
 
 ## The allowed networks (Firestore document)
 
@@ -36,7 +49,8 @@ document ID `network`, with these fields:
 |---|---|---|
 | `enabled` | boolean | `false` while setting up; `true` to turn the check on |
 | `allowed` | array of strings | each network: an address like `203.0.113.7`, or a range like `198.51.100.0/24` (IPv6 works too) |
-| `hub` | boolean | `true` to also check the Hub's accounts; leave out or `false` for LineUp only |
+| `hub` | boolean | `true` to also check the Hub's accounts; leave out or `false` for LineUp only (keep it `false`, so the Hub's button can be reached from home) |
+| `temporary` | (made by the Hub's button) | the networks Owners allowed from the Hub, each with its end date; don't type here |
 
 Changes apply to the next sign-in; nothing needs redeploying.
 
@@ -55,9 +69,10 @@ Changes apply to the next sign-in; nothing needs redeploying.
 | 2 | Create the `jde-sched-access/network` document with `enabled` = **false**, and the networks in `allowed` | Firestore Database → Data |
 | 3 | Install the check (below) | Google Cloud Shell |
 | 4 | Check it's connected: **Before sign-in (beforeSignIn)** shows `allowedNetworksOnly` | Authentication → Settings → Blocking functions |
-| 5 | Release the LineUp update (so a refused sign-in shows the message) | "execute the update" |
+| 5 | Release the LineUp and Hub updates (the message, and the Hub's button) | "execute the update" |
 | 6 | At work: set `enabled` = **true**, then unlock LineUp. It should open | Firestore Database → Data |
-| 7 | Try from a phone on mobile data: it should be refused. Then from home | |
+| 7 | Try from a phone on mobile data: it should be refused | |
+| 8 | At home: Hub → Admin → LineUp: Network Access → **Allow LineUp from this network**, then unlock LineUp | |
 
 Step 3, in Google Cloud Shell (console.cloud.google.com, the `>_` button
 at the top), signed in with the project's owner account:
@@ -69,8 +84,8 @@ npx firebase-tools@14 login --no-localhost
 npx firebase-tools@14 deploy --only functions --project jde-schedule-database
 ```
 
-If it asks to turn on Google Cloud services (Cloud Functions, Cloud Build,
-Artifact Registry and so on), say yes. The check costs next to nothing at
+This installs both functions. If it asks to turn on Google Cloud services
+(Cloud Functions, Cloud Build, Artifact Registry and so on), say yes. The check costs next to nothing at
 LineUp's size (a few sign-ins a day).
 
 ## Turning it off
