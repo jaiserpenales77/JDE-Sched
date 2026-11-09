@@ -76,8 +76,8 @@ together.
    / Lead lines at the bottom.
 7. **Only from the company's network and home (optional, off until set up):**
    the unlock screen explains a sign-in refused by the new network check
-   ("LineUp can only be opened from the company's network or from home",
-   with the network it saw). In the Hub (its `claude/next-update` branch,
+   ("Access restricted. LineUp can only be used on approved company
+   networks…", with the network it saw). In the Hub (its `claude/next-update` branch,
    released with this): **Admin → LineUp: Network Access**, where an
    Owner allows the network they're on (home) for 30 days. The check
    itself is set up once in Firebase: see `docs/NETWORK_ACCESS_PLAN.md`.

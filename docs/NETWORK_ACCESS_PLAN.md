@@ -3,8 +3,9 @@
 The three shift passwords stay as they are. On top of them, a **sign-in
 check** in Firebase refuses a sign-in that doesn't come from one of the
 allowed networks (the company's, and home), even with the right password.
-The unlock screen then says: "LineUp can only be opened from the
-company's network or from home."
+The unlock screen then says: "Access restricted. LineUp can only be used
+on approved company networks. This device's network (…) is not approved.
+For access, please contact the LineUp administrator."
 
 - It checks **sign-ins**. A computer that's already unlocked (a remembered
   one, for up to 12 hours) keeps working until it locks.

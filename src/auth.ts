@@ -103,7 +103,7 @@ export function unlockErrorMessage(err: unknown, shiftLabel: string): string {
   const message = String((err as { message?: string })?.message ?? "");
   if (message.includes("can only be opened from")) {
     const network = message.match(/This network: ([0-9a-fA-F.:]+)/)?.[1];
-    return `LineUp can only be opened from the company's network or from home. This computer's network${network ? ` (${network})` : ""} isn't on the list.`;
+    return `Access restricted. LineUp can only be used on approved company networks. This device's network${network ? ` (${network})` : ""} is not approved. For access, please contact the LineUp administrator.`;
   }
   if (code === "auth/too-many-requests") {
     return "Too many tries. Wait a few minutes, then try again.";
