@@ -1067,6 +1067,11 @@ table.roster select {
   .print-root > .print-slot + .print-slot {
     break-before: page;
   }
+  /* Anything sticking out past a report is cut off at its edge, so it can't
+     make Chrome shrink every page (see the print effect in App.tsx). */
+  .print-root > .print-slot {
+    overflow-x: clip;
+  }
 }
 
 .print-table {

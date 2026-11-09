@@ -244,11 +244,25 @@ function App() {
     // live preview that also uses the .print-schedule class.
     const printRoot = document.querySelector(".print-root") as HTMLElement | null;
 
+    const PX_PER_IN = 96;
+    const PX_PER_MM = PX_PER_IN / 25.4;
+    const designOf = (report: PrintReport) => (report === "assignments" ? printSettings : schedulePrintSettings);
+    const marginOf = (report: PrintReport) => Math.min(30, Math.max(0, Number(designOf(report).printMarginMm) || 0));
+    const pageWidthOf = (report: PrintReport) => (designOf(report).orientation === "landscape" ? 11 : 8.5) * PX_PER_IN;
+    const contentWidthOf = (report: PrintReport) => pageWidthOf(report) - marginOf(report) * PX_PER_MM * 2;
+    // Chrome lays the whole printout out at the first page's width: a page
+    // with more room got its report pushed to the left, and a report wider
+    // than that made Chrome shrink every page. So with Print Both, every
+    // report is as wide as the narrowest page allows, and each page's left
+    // and right margins take what's left, half each side.
+    const printWidthPx = Math.min(...reports.map(contentWidthOf));
+
     reports.forEach((report, index) => {
-      const design = report === "assignments" ? printSettings : schedulePrintSettings;
+      const design = designOf(report);
       const orientation = design.orientation;
-      const marginMm = Math.min(30, Math.max(0, Number(design.printMarginMm) || 0));
-      const pageRule = `size: ${orientation}; margin: ${marginMm}mm;`;
+      const marginMm = marginOf(report);
+      const sideMm = (pageWidthOf(report) - printWidthPx) / 2 / PX_PER_MM;
+      const pageRule = `size: ${orientation}; margin: ${marginMm}mm ${sideMm.toFixed(2)}mm;`;
       if (index === 0) pageRules.push(`@page { ${pageRule} }`);
       pageRules.push(`@page ${report} { ${pageRule} }`);
 
@@ -256,9 +270,6 @@ function App() {
       const reportEl = slot?.querySelector(`:scope > .print-${report}`) as HTMLElement | null;
       if (!printRoot || !slot || !reportEl) return;
 
-      const PX_PER_IN = 96;
-      const PX_PER_MM = PX_PER_IN / 25.4;
-      const pageWidthIn = orientation === "landscape" ? 11 : 8.5;
       const pageHeightIn = orientation === "landscape" ? 8.5 : 11;
       const marginPx = marginMm * PX_PER_MM;
       // Chrome's own print header/footer (date/title above, URL/page
@@ -269,7 +280,6 @@ function App() {
       // of landing right on the edge and spilling a sliver onto page 2.
       const HEADER_FOOTER_BUFFER_PX = 0.75 * PX_PER_IN;
       const FIT_SAFETY_FACTOR = 0.98;
-      const pageContentWidthPx = pageWidthIn * PX_PER_IN - marginPx * 2;
       const pageContentHeightPx = pageHeightIn * PX_PER_IN - marginPx * 2 - HEADER_FOOTER_BUFFER_PX;
 
       // A fixed Print size is applied with zoom, which (unlike transform:
@@ -279,7 +289,8 @@ function App() {
       const fixed = design.printScaleMode === "fixed";
       const zoom = fixed ? Math.min(200, Math.max(25, Number(design.printScalePercent) || 100)) / 100 : 1;
       if (zoom !== 1) reportEl.style.zoom = String(zoom);
-      reportEl.style.width = `${pageContentWidthPx / zoom}px`;
+      const reportWidthPx = printWidthPx;
+      reportEl.style.width = `${reportWidthPx / zoom}px`;
 
       // At the printed width, fit each 👥 badge beside its title without
       // cutting off anything in its box (see tightenCrewBadges).
@@ -307,7 +318,7 @@ function App() {
         if (scale < 1) {
           // Shift right by half the width it lost, so it's centered on the
           // page. Transform lengths are in the element's zoomed units.
-          const offsetPx = ((1 - scale) * pageContentWidthPx) / 2 / zoom;
+          const offsetPx = ((1 - scale) * reportWidthPx) / 2 / zoom;
           reportEl.style.transformOrigin = "top left";
           reportEl.style.transform = `translateX(${offsetPx}px) scale(${scale})`;
           // A transform doesn't shrink the space the report takes up, so

@@ -58,7 +58,16 @@ together.
    file, or typed in the box) wins over the list, and N in the box means
    none.
 
-6. The Hub's **Stored Data → Cotton** section, which this reads, is already
+6. **Printing fix: pages centered, nothing cut off.** With 🖨 Print Both,
+   Chrome lays every page out at the first page's width: when Line
+   Assignments and the Production Schedule had different margins (or
+   orientations), one page came out shrunk and off to the left, and its
+   left edge could be cut off by the printer. Now every report in the
+   printout is as wide as the narrowest page allows, each page's left and
+   right margins split what's left evenly (top and bottom stay as set),
+   and anything sticking out past a report is cut off at its edge instead
+   of shrinking every page. Printing one report alone is unchanged.
+7. The Hub's **Stored Data → Cotton** section, which this reads, is already
    live (released on its own, 2026-11-04, see Released below).
 
 **Not in it yet:** the workbook's product list (oily / powdery and
