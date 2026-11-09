@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-export type PrintChoice = "assignments" | "schedule" | "both" | "washroom";
+export type PrintChoice = "assignments" | "schedule" | "both" | "washroom" | "qa-changeovers" | "qa-walk";
 
 const BUTTON_LABEL: Record<PrintChoice, string> = {
   both: "Print Both",
   assignments: "Print Line Assignments",
   schedule: "Print Schedule",
   washroom: "Print Washroom List",
+  "qa-changeovers": "Print QA Changeover List",
+  "qa-walk": "Print QA Gemba Walk",
 };
 
 interface Props {
@@ -25,8 +27,8 @@ export default function PrintMenu({ choice, onPrint, boardDate, today }: Props) 
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const hasBoard = !!boardDate;
-  // Without a board only the schedule (or the washroom list) can print.
-  const effective: PrintChoice = hasBoard || choice === "washroom" ? choice : "schedule";
+  // Without a board only the schedule and the lists made from it can print.
+  const effective: PrintChoice = hasBoard || (choice !== "both" && choice !== "assignments") ? choice : "schedule";
 
   useEffect(() => {
     if (!open) return;
@@ -65,6 +67,18 @@ export default function PrintMenu({ choice, onPrint, boardDate, today }: Props) 
       key: "washroom",
       title: "Washroom Prep List",
       note: "Changeovers until the end of the shift: what comes off each line to wash",
+      disabled: false,
+    },
+    {
+      key: "qa-changeovers",
+      title: "QA Changeover List",
+      note: "Each changeover, first to last: components, line clearance, swab and allergen tests",
+      disabled: false,
+    },
+    {
+      key: "qa-walk",
+      title: "QA Gemba Walk",
+      note: "What should be on each line right now, with rounds to sign",
       disabled: false,
     },
   ];

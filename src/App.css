@@ -1048,7 +1048,9 @@ table.roster select {
 
   body.printing-schedule .print-root > .print-slot-schedule,
   body.printing-assignments .print-root > .print-slot-assignments,
-  body.printing-washroom .print-root > .print-slot-washroom {
+  body.printing-washroom .print-root > .print-slot-washroom,
+  body.printing-qa-changeovers .print-root > .print-slot-qa-changeovers,
+  body.printing-qa-walk .print-root > .print-slot-qa-walk {
     display: block;
   }
 
@@ -1063,6 +1065,12 @@ table.roster select {
   }
   .print-root > .print-slot-washroom {
     page: washroom;
+  }
+  .print-root > .print-slot-qa-changeovers {
+    page: qa-changeovers;
+  }
+  .print-root > .print-slot-qa-walk {
+    page: qa-walk;
   }
   .print-root > .print-slot + .print-slot {
     break-before: page;
@@ -4740,4 +4748,148 @@ table.run-lines {
 }
 .estimate-wide {
   flex: 1 1 260px;
+}
+
+/* ---------- QA sheets: changeover list and Gemba walk ---------- */
+
+.qa-title-note {
+  font-size: 8pt;
+}
+.qa-table td {
+  padding: 3px 4px;
+  white-space: normal;
+  vertical-align: top;
+}
+.qa-desc {
+  display: block;
+  color: #444;
+  font-size: 0.9em;
+}
+.qa-time {
+  color: #1f3864;
+  font-weight: 700;
+  white-space: nowrap !important;
+}
+.qa-row.qa-major td.wr-line {
+  border-left: 3px solid #c00000;
+}
+.qa-row.qa-allergen td {
+  background: #fff4ee;
+}
+.qa-tag {
+  display: inline-block;
+  margin-top: 3px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: var(--sched-allergen, #f8cbad);
+  color: #7a2e00;
+  font-size: 0.82em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.qa-tag-intl {
+  background: #ddebf7;
+  color: #1f3864;
+}
+.qa-check {
+  line-height: 1.55;
+  white-space: nowrap;
+}
+.qa-check.qa-wrap {
+  padding-left: 1.4em;
+  text-indent: -1.4em;
+  white-space: normal;
+}
+.qa-box {
+  margin-right: 3px;
+  font-style: normal;
+  font-size: 1.2em;
+}
+.qa-k {
+  color: #555;
+  font-size: 0.9em;
+}
+.qa-flag {
+  color: #7a2e00;
+  font-weight: 700;
+}
+.qa-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 6px;
+}
+.qa-small {
+  margin-top: 2px;
+  color: #888;
+  font-size: 0.82em;
+  font-style: italic;
+}
+.qa-required {
+  display: inline-block;
+  margin-bottom: 2px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: #c00000;
+  color: #fff;
+  font-size: 0.8em;
+  font-weight: 700;
+}
+.qa-sign,
+.qa-round {
+  text-align: center;
+  vertical-align: middle !important;
+}
+.qa-line {
+  height: 14px;
+  margin: 0 6px;
+  border-bottom: 1px solid #999;
+}
+.qa-time-blank {
+  color: #999;
+  letter-spacing: 1px;
+}
+.qa-ok {
+  margin: 3px 0;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.qa-next {
+  display: block;
+  margin-top: 3px;
+  color: #1f3864;
+  font-size: 0.88em;
+}
+.qa-linecell {
+  border-left: 3px solid var(--st, #1f3864) !important;
+  background: var(--st-tint, #fff);
+  color: var(--st-text, #1f3864);
+  text-align: center;
+  vertical-align: middle !important;
+}
+.qa-linecell b {
+  display: block;
+  font-size: 1.15em;
+}
+.qa-linecell span {
+  font-size: 0.8em;
+  font-weight: 700;
+}
+.qa-idletext {
+  vertical-align: middle !important;
+  color: #555;
+}
+.qa-key {
+  margin: 6px 0 0;
+  color: #444;
+  font-size: 7.5pt;
+}
+.qa-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin-top: 12px;
+  font-size: 9pt;
+}
+.qa-row {
+  break-inside: avoid;
 }

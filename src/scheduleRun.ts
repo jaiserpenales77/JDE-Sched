@@ -397,6 +397,9 @@ export interface ScheduleRow {
   changeoverAt: Date | null;
   // Shown under the row, for changeovers that start before the end of the shift.
   notes: string;
+  // Its cotton ("Yes", the cotton it takes, or "" for none): its own Cotton
+  // box, else the Hub's cotton list.
+  cotton: string;
 }
 
 export interface ScheduleLine {
@@ -445,6 +448,7 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
         estimate: estimates[i],
         changeoverAt,
         notes: changeoverAt && changeoverAt < end ? changeoverNotes(rows, i, intl, input.cottonListed) : "",
+        cotton: cottonOf(wo, input.cottonListed?.(wo.item) ?? null),
       };
     });
     return { line, setup, name: setup.name || line, status, next: nextShiftStatus(setup), runs, rows: out };
@@ -580,4 +584,150 @@ export function fileLineStatus(status: RunStatus | ""): "Ready" | "PM" | "OT" | 
   if (status === "PM / CLEANING") return "PM";
   if (status === "OVERTIME") return "OT";
   return "";
+}
+
+// ---- QA sheets ----
+
+// An allergen code that counts ("" for none: blank or N).
+export function allergenOf(wo: WorkOrder): string {
+  const a = wo.allergen.trim().toUpperCase();
+  return a && a !== "N" ? a : "";
+}
+
+export interface QaChangeoverRow {
+  at: Date;
+  line: string;
+  code: ChangeoverCode;
+  // S3 / S4: a full line clearance.
+  major: boolean;
+  off: WorkOrder;
+  next: WorkOrder;
+  // The components that change, to check one by one.
+  checks: string[];
+  sameItem: boolean;
+  // The allergen coming off and going on ("" for none); the allergen test is
+  // required when one comes off and the next work order doesn't have it.
+  offAllergen: string;
+  nextAllergen: string;
+  allergenTestRequired: boolean;
+  international: boolean;
+}
+
+const changed = (a: string, b: string) => !!a.trim() && !!b.trim() && !sameText(a, b);
+
+// What QA checks at a changeover: each component that changes.
+export function qaChecks(
+  off: WorkOrder,
+  next: WorkOrder,
+  cotton: { off: string; next: string },
+  intl: boolean,
+  oily: { off: boolean; next: boolean },
+): string[] {
+  const out: string[] = [];
+  if (changed(off.item, next.item)) out.push(`Item / label ${off.item.trim()} → ${next.item.trim()}`);
+  if (changed(off.bulkItem, next.bulkItem)) out.push(`Bulk ${off.bulkItem.trim()} → ${next.bulkItem.trim()}`);
+  if (changed(off.capDescription, next.capDescription)) out.push(`Cap ${capShort(off.capDescription)} → ${capShort(next.capDescription)}`);
+  if (changed(String(off.bottleSize), String(next.bottleSize))) out.push(`Bottle ${off.bottleSize} → ${next.bottleSize}`);
+  if (changed(String(off.count), String(next.count))) out.push(`Count ${off.count} → ${next.count}`);
+  const dOff = desiccantOf(off);
+  const dNext = desiccantOf(next);
+  if (dNext && !dOff) out.push(`Desiccant: add ${dNext}`);
+  else if (!dNext && dOff) out.push(`Desiccant: remove ${dOff}`);
+  else if (dNext && !sameText(dOff, dNext)) out.push(`Desiccant ${dOff} → ${dNext}`);
+  if (cotton.next && !cotton.off) out.push(`Cotton: add${cotton.next === "Yes" ? "" : ` ${cotton.next}`}`);
+  else if (!cotton.next && cotton.off) out.push("Cotton: remove");
+  else if (cotton.next && !sameText(cotton.off, cotton.next)) out.push(`Cotton → ${cotton.next}`);
+  if (isDumping(next)) out.push(`Dumping (bulk ${next.bulkItem.trim()})`);
+  if (intl) out.push("International WO: labels");
+  if (oily.off !== oily.next) out.push(`Parts: ${oily.off ? "oily" : "powdery"} → ${oily.next ? "oily" : "powdery"}`);
+  return out;
+}
+
+// Every changeover from Schedule as of to the end of the shift, first to
+// last, with what QA checks there.
+export function qaChangeoverList(
+  lines: ScheduleLine[],
+  asOf: Date,
+  end: Date,
+  settings: ScheduleRunSettings,
+  oilyOf?: (item: string) => boolean | null,
+): QaChangeoverRow[] {
+  const oily = (wo: WorkOrder) => {
+    const marked = oilyOf?.(wo.item);
+    return marked === undefined || marked === null ? isOily(wo.description, settings.oilyWords) : marked;
+  };
+  const out: QaChangeoverRow[] = [];
+  for (const l of lines) {
+    l.rows.forEach((r, i) => {
+      if (i === 0 || !r.changeoverAt || r.changeoverAt < asOf || r.changeoverAt >= end || !r.code) return;
+      const before = l.rows[i - 1];
+      const offAllergen = allergenOf(before.wo);
+      const nextAllergen = allergenOf(r.wo);
+      out.push({
+        at: r.changeoverAt,
+        line: l.name,
+        code: r.code,
+        major: r.code === "S3" || r.code === "S4",
+        off: before.wo,
+        next: r.wo,
+        checks: qaChecks(before.wo, r.wo, { off: before.cotton, next: r.cotton }, r.intl, { off: oily(before.wo), next: oily(r.wo) }),
+        sameItem: !changed(before.wo.item, r.wo.item),
+        offAllergen,
+        nextAllergen,
+        allergenTestRequired: !!offAllergen && offAllergen !== nextAllergen,
+        international: r.intl,
+      });
+    });
+  }
+  return out.sort((a, b) => a.at.getTime() - b.at.getTime());
+}
+
+export interface QaWalkLine {
+  name: string;
+  status: RunStatus | "";
+  // The work order on the line now, and what should be on the line for it
+  // (null for a line that isn't running).
+  wo: WorkOrder | null;
+  components: { label: string; value: string; flag?: boolean }[];
+  // The next changeover on the line, if one is expected.
+  nextChangeover: { at: Date; code: ChangeoverCode } | null;
+}
+
+// The quality checks on each round of the Gemba walk.
+export const QA_QUALITY_CHECKS = ["Product looks right", "Label & lot correct", "Cap on & sealed"];
+export const QA_WALK_ROUNDS = 3;
+
+// Each line for the Gemba walk: running lines first (with their work order
+// running now and its components), then the lines that aren't running.
+export function qaWalkLines(lines: ScheduleLine[]): QaWalkLine[] {
+  const running: QaWalkLine[] = [];
+  const idle: QaWalkLine[] = [];
+  for (const l of lines) {
+    const first = l.rows[0];
+    if (!l.runs || !first) {
+      idle.push({ name: l.name, status: l.status, wo: null, components: [], nextChangeover: null });
+      continue;
+    }
+    const wo = first.wo;
+    const allergen = allergenOf(wo);
+    const components = [
+      { label: "Item", value: wo.item.trim() || "—" },
+      { label: "Bulk", value: wo.bulkItem.trim() || "—" },
+      { label: "Count", value: String(wo.count).trim() || "—" },
+      { label: "Bottle", value: String(wo.bottleSize).trim() || "—" },
+      { label: "Cap", value: capShort(wo.capDescription) || "—" },
+      ...(allergen ? [{ label: "Allergen", value: allergen, flag: true }] : []),
+      { label: "Desiccant", value: desiccantOf(wo) || "—" },
+      { label: "Cotton", value: first.cotton || "—" },
+    ];
+    const second = l.rows[1];
+    running.push({
+      name: l.name,
+      status: l.status,
+      wo,
+      components,
+      nextChangeover: second?.changeoverAt ? { at: second.changeoverAt, code: second.code } : null,
+    });
+  }
+  return [...running, ...idle];
 }

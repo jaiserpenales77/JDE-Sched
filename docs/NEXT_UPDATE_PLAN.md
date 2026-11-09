@@ -58,7 +58,23 @@ together.
    file, or typed in the box) wins over the list, and N in the box means
    none.
 
-6. **Printing fix: pages centered, nothing cut off.** With 🖨 Print Both,
+6. **For QA: 🖨 Print → QA Changeover List and QA Gemba Walk.**
+   - **QA Changeover List:** every changeover until the end of the shift,
+     first to last, with its time, line and type, the WO coming off and
+     going on, a box for each component that changes (item / label, bulk,
+     cap, bottle, count, desiccant, cotton, dumping, international, oily /
+     powdery parts), "No [item] left on the line" (a full clearance on a
+     major S3 / S4, red edge), a swab test (Done / N/A), an allergen test
+     (REQUIRED, Pass / Fail, when an allergen comes off the line; otherwise
+     Done / N/A) and QA initials and time.
+   - **QA Gemba Walk:** each running line with its WO running now and what
+     should be on the line (item, bulk, count, bottle, cap, allergen,
+     desiccant, cotton), three product checks (product looks right, label
+     & lot correct, cap on & sealed), three rounds (time, OK / Issue,
+     initials) and notes; lines not running get "idle and clear".
+   Both come from the same schedule, statuses and times, and have QA / Date
+   / Lead lines at the bottom.
+7. **Printing fix: pages centered, nothing cut off.** With 🖨 Print Both,
    Chrome lays every page out at the first page's width: when Line
    Assignments and the Production Schedule had different margins (or
    orientations), one page came out shrunk and off to the left, and its
@@ -67,7 +83,7 @@ together.
    right margins split what's left evenly (top and bottom stay as set),
    and anything sticking out past a report is cut off at its edge instead
    of shrinking every page. Printing one report alone is unchanged.
-7. The Hub's **Stored Data → Cotton** section, which this reads, is already
+8. The Hub's **Stored Data → Cotton** section, which this reads, is already
    live (released on its own, 2026-11-04, see Released below).
 
 **Not in it yet:** the workbook's product list (oily / powdery and
@@ -96,7 +112,7 @@ JDE Schedule workbook, with each line boxed in its status color, progress,
 bottles left and estimated times on every work order. Set each line's
 status in the new Lines panel at the start of the shift and click Set to
 now (until then the printout shows a red CHECK). New: Print → Washroom
-Prep List."
+Prep List, and for QA, Print → QA Changeover List and QA Gemba Walk."
 
 ---
 

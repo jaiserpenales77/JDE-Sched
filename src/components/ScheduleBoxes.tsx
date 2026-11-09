@@ -12,9 +12,11 @@ import {
   clockText,
   leftText,
   progressText,
+  QA_QUALITY_CHECKS,
+  QA_WALK_ROUNDS,
   whenText,
 } from "../scheduleRun";
-import type { WashroomRow } from "../scheduleRun";
+import type { QaChangeoverRow, QaWalkLine, WashroomRow } from "../scheduleRun";
 import { BOX_COLUMNS, STATUS_CLASS } from "../scheduleBoxes";
 import type { BoxColumnKey, BoxesView } from "../scheduleBoxes";
 
@@ -281,8 +283,10 @@ export function WashroomList({
     <div className="wr-report">
       <div className="sb-title">
         <h1>
-          Washroom Prep List
-          {shiftLabel && <span className="sb-title-shift"> · {shiftLabel}</span>}
+          <span>
+            Washroom Prep List
+            {shiftLabel && <span className="sb-title-shift"> · {shiftLabel}</span>}
+          </span>
         </h1>
       </div>
       <div className="sb-sub wr-sub">
@@ -342,6 +346,331 @@ export function WashroomList({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+const Box = () => <i className="qa-box">☐</i>;
+
+function QaSignOff({ who }: { who: string }) {
+  return (
+    <div className="qa-foot">
+      <span>
+        <b>{who}:</b> ______________________
+      </span>
+      <span>
+        <b>Date:</b> __________
+      </span>
+      <span>
+        <b>Lead:</b> ______________________
+      </span>
+    </div>
+  );
+}
+
+function QaWo({ wo }: { wo: { wo: string; item: string; description: string } }) {
+  return (
+    <>
+      <b>{wo.wo}</b> · {wo.item}
+      <span className="qa-desc">{wo.description}</span>
+    </>
+  );
+}
+
+// For QA: every changeover until the end of the shift, first to last, with
+// the components that change, the line clearance, and the swab and
+// allergen tests to tick and sign.
+export function QaChangeoverList({
+  rows,
+  asOf,
+  end,
+  shiftLabel,
+}: {
+  rows: QaChangeoverRow[];
+  asOf: Date;
+  end: Date;
+  shiftLabel: string;
+}) {
+  const date = asOf.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const major = rows.filter((r) => r.major).length;
+  return (
+    <div className="wr-report qa-report">
+      <div className="sb-title">
+        <h1>
+          <span>
+            QA Changeover List
+            {shiftLabel && <span className="sb-title-shift"> · {shiftLabel}</span>}
+          </span>
+        </h1>
+        <span className="qa-title-note">Components, line clearance, swab and allergen tests, first to last</span>
+      </div>
+      <div className="sb-sub wr-sub">
+        {date} · as of {clockText(asOf)}, to the end of the shift ({lowerWhen(end, asOf)})
+      </div>
+      <div className="sb-summary">
+        <span>
+          {rows.length} changeover{rows.length === 1 ? "" : "s"}
+          {"  |  "}
+          {major} major (full line clearance) · {rows.length - major} minor
+          {"  |  "}Allergen test required: {rows.filter((r) => r.allergenTestRequired).length}
+          {"  |  "}International: {rows.filter((r) => r.international).length}
+        </span>
+      </div>
+      <table className="sb-table qa-table">
+        <colgroup>
+          {[2.6, 8, 5.6, 8.4, 14, 14, 16.4, 11.5, 6, 6.5, 7].map((w, i) => (
+            <col key={i} style={{ width: `${w}%` }} />
+          ))}
+        </colgroup>
+        <thead>
+          <tr>
+            {["#", "TIME", "LINE", "CHANGEOVER", "OFF THE LINE", "NEXT ON THE LINE", "COMPONENTS (WHAT CHANGES)", "LINE CLEAR OF THE LAST WO", "SWAB TEST", "ALLERGEN TEST", "QA"].map((t) => (
+              <th key={t}>{t}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 && (
+            <tr>
+              <td colSpan={11} className="sb-empty">
+                No changeovers expected before the end of the shift.
+              </td>
+            </tr>
+          )}
+          {rows.map((r, i) => (
+            <tr
+              key={`${r.line}-${r.next.id}`}
+              className={`qa-row${r.major ? " qa-major" : ""}${r.allergenTestRequired ? " qa-allergen" : ""}`}
+            >
+              <td className="wr-num">{i + 1}</td>
+              <td className="qa-time">{whenText(r.at, asOf)}</td>
+              <td className="wr-line">{r.line}</td>
+              <td>
+                <span className={`sb-co sb-co-${CODE_CLASS[r.code]}`}>
+                  {CHANGEOVER_LABELS[r.code as keyof typeof CHANGEOVER_LABELS]}
+                </span>
+                {(r.offAllergen || r.nextAllergen) && (
+                  <span className="qa-tag">
+                    ALLERGEN {r.offAllergen || "N"} → {r.nextAllergen || "N"}
+                  </span>
+                )}
+                {r.international && <span className="qa-tag qa-tag-intl">INTERNATIONAL</span>}
+              </td>
+              <td>
+                <QaWo wo={r.off} />
+              </td>
+              <td>
+                <QaWo wo={r.next} />
+              </td>
+              <td className="qa-checks">
+                {(r.checks.length ? r.checks : [r.sameItem ? "Same components (same item)" : "Same components"]).map((c) => (
+                  <div key={c} className="qa-check">
+                    <Box />
+                    {c}
+                  </div>
+                ))}
+              </td>
+              <td>
+                <div className="qa-check qa-wrap">
+                  <Box />
+                  No {r.off.item.trim() || "product"} left on the line
+                </div>
+                <div className="qa-small">{r.major ? "full clearance (major)" : "minor"}</div>
+              </td>
+              <td>
+                <div className="qa-check">
+                  <Box />
+                  Done
+                </div>
+                <div className="qa-check">
+                  <Box />
+                  N/A
+                </div>
+              </td>
+              <td>
+                {r.allergenTestRequired ? (
+                  <>
+                    <div className="qa-required">REQUIRED</div>
+                    <div className="qa-check">
+                      <Box />
+                      Pass
+                    </div>
+                    <div className="qa-check">
+                      <Box />
+                      Fail
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="qa-check">
+                      <Box />
+                      Done
+                    </div>
+                    <div className="qa-check">
+                      <Box />
+                      N/A
+                    </div>
+                  </>
+                )}
+              </td>
+              <td className="qa-sign">
+                <div className="qa-line" />
+                <div className="qa-small">initials · time</div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="qa-key">
+        Every changeover: check the components that change and that nothing from the last WO is left on the line. Major
+        (S3 / S4, red edge) = full line clearance. The allergen test is REQUIRED when an allergen comes off the line;
+        otherwise tick Done or N/A, as for the swab test. Times are estimates.
+      </p>
+      <QaSignOff who="Reviewed by (QA)" />
+    </div>
+  );
+}
+
+// For QA's Gemba walk: what should be on each line right now, to check on
+// every round, and the lines that should be idle and clear.
+export function QaWalkSheet({
+  lines,
+  asOf,
+  shiftLabel,
+}: {
+  lines: QaWalkLine[];
+  asOf: Date;
+  shiftLabel: string;
+}) {
+  const date = asOf.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const running = lines.filter((l) => l.wo);
+  const allergenLines = running.filter((l) => l.components.some((c) => c.flag));
+  const rounds = Array.from({ length: QA_WALK_ROUNDS }, (_, i) => i + 1);
+  const nextUp = running
+    .filter((l) => l.nextChangeover)
+    .sort((a, b) => a.nextChangeover!.at.getTime() - b.nextChangeover!.at.getTime())[0];
+  return (
+    <div className="wr-report qa-report">
+      <div className="sb-title">
+        <h1>
+          <span>
+            QA Gemba Walk
+            {shiftLabel && <span className="sb-title-shift"> · {shiftLabel}</span>}
+          </span>
+        </h1>
+        <span className="qa-title-note">What should be on each line right now: check it on every round</span>
+      </div>
+      <div className="sb-sub wr-sub">
+        {date} · as of {clockText(asOf)}
+      </div>
+      <div className="sb-summary">
+        <span>
+          {running.length} line{running.length === 1 ? "" : "s"} running · {lines.length - running.length} not running
+          {allergenLines.length > 0 && (
+            <>
+              {"  |  "}Allergen on a line:{" "}
+              {allergenLines.map((l) => `${l.name} (${l.components.find((c) => c.flag)!.value})`).join(", ")}
+            </>
+          )}
+          {nextUp && (
+            <>
+              {"  |  "}Next changeover: {nextUp.name} at {clockText(nextUp.nextChangeover!.at)} (see the QA Changeover
+              List)
+            </>
+          )}
+        </span>
+      </div>
+      <table className="sb-table qa-table qa-walk">
+        <colgroup>
+          {[8, 17, 23, 13, ...rounds.map(() => 28.5 / QA_WALK_ROUNDS), 10.5].map((w, i) => (
+            <col key={i} style={{ width: `${w}%` }} />
+          ))}
+        </colgroup>
+        <thead>
+          <tr>
+            <th>LINE</th>
+            <th>RUNNING NOW</th>
+            <th>COMPONENTS: WHAT SHOULD BE ON THE LINE</th>
+            <th>PRODUCT QUALITY</th>
+            {rounds.map((n) => (
+              <th key={n}>ROUND {n}</th>
+            ))}
+            <th>NOTES</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l) => {
+            const allergen = l.components.find((c) => c.flag);
+            const statusCls = l.status ? STATUS_CLASS[l.status] : "none";
+            return (
+              <tr key={l.name} className={`qa-row${l.wo ? "" : " qa-idle"}${allergen ? " qa-allergen" : ""}`}>
+                <td className={`qa-linecell sb-st-${statusCls}`}>
+                  <b>{l.name}</b>
+                  <span>{l.status || "NO STATUS"}</span>
+                </td>
+                {l.wo ? (
+                  <>
+                    <td>
+                      <QaWo wo={l.wo} />
+                      <span className="qa-next">
+                        {l.wo.percentComplete ? `${Math.round(Number(l.wo.percentComplete))}% done` : "Not started"}
+                        {l.nextChangeover &&
+                          ` · next: ${clockText(l.nextChangeover.at)} · ${CHANGEOVER_LABELS[l.nextChangeover.code as keyof typeof CHANGEOVER_LABELS]}`}
+                      </span>
+                      {allergen && <span className="qa-tag">ALLERGEN {allergen.value}</span>}
+                    </td>
+                    <td>
+                      <div className="qa-two">
+                        {l.components.map((c) => (
+                          <div key={c.label} className={`qa-check${c.flag ? " qa-flag" : ""}`}>
+                            <Box />
+                            <span className="qa-k">{c.label}</span> <b>{c.value}</b>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td>
+                      {QA_QUALITY_CHECKS.map((q) => (
+                        <div key={q} className="qa-check qa-wrap">
+                          <Box />
+                          {q}
+                        </div>
+                      ))}
+                    </td>
+                  </>
+                ) : (
+                  <td colSpan={3} className="qa-idletext">
+                    <Box />
+                    Line idle and clear: no product or components left from the last WO
+                  </td>
+                )}
+                {rounds.map((n) => (
+                  <td key={n} className="qa-round">
+                    <div className="qa-time-blank">__:__</div>
+                    {l.wo && (
+                      <div className="qa-ok">
+                        <Box />
+                        OK <Box />
+                        Issue
+                      </div>
+                    )}
+                    <div className="qa-line" />
+                    <div className="qa-small">initials</div>
+                  </td>
+                ))}
+                <td />
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <p className="qa-key">
+        Each round: tick each component that matches the running WO and each quality check, then write the time and
+        your initials and tick OK or Issue (describe it in Notes). Allergen lines are tinted. Lines not running: check
+        they're idle and clear. If a WO has changed over since this was printed, use the QA Changeover List or print a
+        new one.
+      </p>
+      <QaSignOff who="QA" />
     </div>
   );
 }

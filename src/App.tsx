@@ -7,7 +7,17 @@ import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import { useHubData } from "./hubData";
 import { useShiftNames } from "./shiftNames";
 import { DEFAULT_SHIFT_START, findLineRate } from "./scheduleLogic";
-import { buildSchedule, fileLineStatus, scheduleAsOfDate, scheduleCheck, scheduleSummary, washroomList, whenText } from "./scheduleRun";
+import {
+  buildSchedule,
+  fileLineStatus,
+  qaChangeoverList,
+  qaWalkLines,
+  scheduleAsOfDate,
+  scheduleCheck,
+  scheduleSummary,
+  washroomList,
+  whenText,
+} from "./scheduleRun";
 import { sceneSizeFor } from "./holidayThemes";
 import { tightenCrewBadges } from "./printLayout";
 import UnlockScreen from "./components/UnlockScreen";
@@ -22,7 +32,7 @@ import TypeToConfirmDialog from "./components/TypeToConfirmDialog";
 import type { PrintChoice } from "./components/PrintMenu";
 import { todayIso } from "./timeOffLogic";
 import { PrintSchedule, PrintAssignments } from "./components/PrintViews";
-import { WashroomList } from "./components/ScheduleBoxes";
+import { QaChangeoverList, QaWalkSheet, WashroomList } from "./components/ScheduleBoxes";
 import type { BoxesView } from "./scheduleBoxes";
 import {
   exportAppDataToJson,
@@ -45,7 +55,7 @@ import { SHIFT_KEYS, SHIFT_LABELS } from "./types";
 import type { SheetGrid } from "./importColumns";
 
 type Tab = "schedule" | "assignments" | "roster" | "timeoff";
-type PrintReport = "assignments" | "schedule" | "washroom";
+type PrintReport = "assignments" | "schedule" | "washroom" | "qa-changeovers" | "qa-walk";
 // "both" prints Line Assignments first, then the Production Schedule.
 type PrintTarget = PrintChoice | null;
 // What the Print button prints - remembered on this device separately for
@@ -57,7 +67,8 @@ function printChoiceKey(shift: ShiftKey | null): string {
 function loadPrintChoice(shift: ShiftKey | null): PrintChoice {
   try {
     const saved = localStorage.getItem(printChoiceKey(shift));
-    if (saved === "both" || saved === "assignments" || saved === "schedule" || saved === "washroom") return saved;
+    const choices: PrintChoice[] = ["both", "assignments", "schedule", "washroom", "qa-changeovers", "qa-walk"];
+    if (choices.includes(saved as PrintChoice)) return saved as PrintChoice;
   } catch {
     // Storage unavailable - fall back to the default.
   }
@@ -187,6 +198,8 @@ function App() {
     settings: data.scheduleRunSettings,
   };
   const washroom = washroomList(schedule.lines, asOf, schedule.end, data.scheduleRunSettings);
+  const qaChangeovers = qaChangeoverList(schedule.lines, asOf, schedule.end, data.scheduleRunSettings);
+  const qaWalk = qaWalkLines(schedule.lines);
   // The other designs box the lines that run this shift in green, tag
   // READY / PM / OT from the line's status, and show the running work
   // order's estimated time.
@@ -700,6 +713,16 @@ function App() {
         <div className="print-slot print-slot-washroom">
           <div className="print-washroom">
             <WashroomList rows={washroom} asOf={asOf} end={schedule.end} shiftLabel={boxes.shiftLabel} />
+          </div>
+        </div>
+        <div className="print-slot print-slot-qa-changeovers">
+          <div className="print-qa-changeovers">
+            <QaChangeoverList rows={qaChangeovers} asOf={asOf} end={schedule.end} shiftLabel={boxes.shiftLabel} />
+          </div>
+        </div>
+        <div className="print-slot print-slot-qa-walk">
+          <div className="print-qa-walk">
+            <QaWalkSheet lines={qaWalk} asOf={asOf} shiftLabel={boxes.shiftLabel} />
           </div>
         </div>
       </div>
