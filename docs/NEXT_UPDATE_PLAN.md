@@ -74,7 +74,12 @@ together.
      initials) and notes; lines not running get "idle and clear".
    Both come from the same schedule, statuses and times, and have QA / Date
    / Lead lines at the bottom.
-7. **Printing fix: pages centered, nothing cut off.** With 🖨 Print Both,
+7. **Only from the company's network and home (optional, off until set up):**
+   the unlock screen explains a sign-in refused by the new network check
+   ("LineUp can only be opened from the company's network or from home").
+   The check itself is set up once in Firebase: see
+   `docs/NETWORK_ACCESS_PLAN.md`.
+8. **Printing fix: pages centered, nothing cut off.** With 🖨 Print Both,
    Chrome lays every page out at the first page's width: when Line
    Assignments and the Production Schedule had different margins (or
    orientations), one page came out shrunk and off to the left, and its
@@ -83,7 +88,7 @@ together.
    right margins split what's left evenly (top and bottom stay as set),
    and anything sticking out past a report is cut off at its edge instead
    of shrinking every page. Printing one report alone is unchanged.
-8. The Hub's **Stored Data → Cotton** section, which this reads, is already
+9. The Hub's **Stored Data → Cotton** section, which this reads, is already
    live (released on its own, 2026-11-04, see Released below).
 
 **Not in it yet:** the workbook's product list (oily / powdery and

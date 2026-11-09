@@ -98,6 +98,11 @@ export function useShiftAuth(): ShiftAuth {
 // Plain-language reason a password didn't work.
 export function unlockErrorMessage(err: unknown, shiftLabel: string): string {
   const code = (err as { code?: string })?.code ?? "";
+  // Refused by the sign-in check (functions/index.js): not from an allowed
+  // network, whatever the password.
+  if (String((err as { message?: string })?.message ?? "").includes("can only be opened from")) {
+    return "LineUp can only be opened from the company's network or from home. This computer's network isn't on the list.";
+  }
   if (code === "auth/too-many-requests") {
     return "Too many tries. Wait a few minutes, then try again.";
   }
