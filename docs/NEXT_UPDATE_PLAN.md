@@ -20,6 +20,18 @@ together.
    of that line's box", so it gets a new revision at step 2 of the release.
    **How to check it:** a line with a note shows it at the top of its box,
    after a blue NOTE tag.
+2. **Automatic PM prep note.** A line that runs this shift (Running,
+   Partial shift or Overtime) with **PM / Cleaning** next shift gets a line
+   note by itself, in the same blue NOTE band at the top of its box: "Prepare
+   line for Planned Maintenance at the end of the shift, Remove Caps &
+   Bottles from hoppers and components in Zone 1 must be off the line"
+   (**wording to be confirmed**: a grammar-corrected version was offered).
+   A typed note still prints too, after it. The Lines panel shows "+ PM prep
+   note (next shift is PM)" under that line's note box. Tested: unit tests
+   (which statuses get it, with and without a typed note) and the printout
+   tests.
+   **How to check it:** set a running line's Next shift to PM; its box gets
+   the PM prep note.
 
 ---
 

@@ -24,7 +24,7 @@ import {
   formatClock,
   parseClock,
 } from "../scheduleLogic";
-import { asOfNow, defaultLineSetup, LINE_NOTE_MAX, lineKey, lineNumber, thisShiftStatus, whenText } from "../scheduleRun";
+import { asOfNow, defaultLineSetup, LINE_NOTE_MAX, lineKey, lineNumber, PM_PREP_NOTE, thisShiftStatus, whenText } from "../scheduleRun";
 import type { ScheduleLine } from "../scheduleRun";
 import type { AllergenList, CottonList, DesiccantList } from "../hubData";
 import ProgressBar from "./ProgressBar";
@@ -452,6 +452,11 @@ function LinesPanel({
                       value={line.setup.note}
                       onCommit={(v) => update([line], () => ({ note: v.replace(/\s+/g, " ").trim() }))}
                     />
+                    {line.lineNotes.includes(PM_PREP_NOTE) && (
+                      <span className="run-note-auto" title={PM_PREP_NOTE}>
+                        + PM prep note (next shift is PM)
+                      </span>
+                    )}
                   </td>
                   <td className="run-est">
                     {!line.runs ? (

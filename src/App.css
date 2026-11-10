@@ -4753,6 +4753,13 @@ table.run-lines {
   font: inherit;
   font-size: 13px;
 }
+.run-note-auto {
+  display: block;
+  margin-top: 3px;
+  color: #0ea5e9;
+  font-size: 12px;
+  font-weight: 600;
+}
 .run-note-input::placeholder {
   color: var(--muted);
 }

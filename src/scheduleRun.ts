@@ -429,6 +429,20 @@ export interface ScheduleLine {
   next: RunStatus | "";
   runs: boolean;
   rows: ScheduleRow[];
+  // The notes printed across the top of the line's box: the automatic ones
+  // (PM prep) first, then the one typed in the Lines panel.
+  lineNotes: string[];
+}
+
+// A line that runs this shift with PM / Cleaning next shift gets this note.
+export const PM_PREP_NOTE =
+  "Prepare line for Planned Maintenance at the end of the shift, Remove Caps & Bottles from hoppers and components in Zone 1 must be off the line";
+
+// The notes for a line's box: PM prep when it runs this shift and next shift
+// is PM / Cleaning, then the typed note.
+export function lineNotesFor(runs: boolean, next: RunStatus | "", typed: string | undefined): string[] {
+  const note = String(typed ?? "").replace(/\s+/g, " ").trim();
+  return [...(runs && next === "PM / CLEANING" ? [PM_PREP_NOTE] : []), ...(note ? [note] : [])];
 }
 
 export interface ScheduleRunInput {
@@ -479,7 +493,8 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
         desiccant: desiccantOf(wo, input.desiccantListed?.(wo.item) ?? null),
       };
     });
-    return { line, setup, name: setup.name || line, status, next: nextShiftStatus(setup), runs, rows: out };
+    const next = nextShiftStatus(setup);
+    return { line, setup, name: setup.name || line, status, next, runs, rows: out, lineNotes: lineNotesFor(runs, next, setup.note) };
   });
   return { lines, end };
 }

@@ -183,7 +183,6 @@ export function ScheduleBoxes({
         {view.lines.map((line, li) => {
           const cls = statusClass(line.status);
           const grey = line.status === "NOT SCHEDULED" || line.status === "PM / CLEANING";
-          const lineNote = line.setup.note.trim();
           const span = line.rows.reduce((sum, r) => sum + 1 + (r.notes ? 1 : 0) + (r.wo.remarks.trim() ? 1 : 0), 0);
           return (
             <Fragment key={line.line}>
@@ -195,16 +194,17 @@ export function ScheduleBoxes({
                 </tbody>
               )}
               <tbody className={`sb-line sb-st-${cls}${grey ? " sb-grey" : ""}${line.runs ? " sb-scheduled" : ""}`}>
-                {/* The line's own note (Lines panel): across the top of its box,
-                    so it reads as the line's, not a work order's. */}
-                {lineNote && (
-                  <tr className="sb-line-note">
+                {/* The line's notes (automatic PM prep, then the Lines panel's):
+                    across the top of its box, so they read as the line's, not
+                    a work order's. */}
+                {line.lineNotes.map((note, n) => (
+                  <tr className="sb-line-note" key={`note-${n}`}>
                     <td colSpan={cols.length}>
                       <b className="sb-note-tag">NOTE</b>
-                      {lineNote}
+                      {note}
                     </td>
                   </tr>
-                )}
+                ))}
                 {line.rows.map((r, i) => {
                   const wo = r.wo;
                   const hl = isAllergenRow(wo) ? "sb-hl-allergen" : isOilRow(wo) ? "sb-hl-oil" : isBulkHighlightRow(wo) ? "sb-hl-bulk" : "";
