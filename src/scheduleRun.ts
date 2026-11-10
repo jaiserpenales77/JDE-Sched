@@ -603,6 +603,17 @@ export function fileLineStatus(status: RunStatus | ""): "Ready" | "PM" | "OT" | 
 // ---- QA sheets ----
 
 // An allergen code that counts ("" for none: blank or N).
+// The work orders with the Hub's allergen filled in where a work order's
+// own Allergen box is empty (a box with anything in it, N included, wins).
+// For the schedule and printouts; the saved work orders don't change.
+export function withListedAllergen(workOrders: WorkOrder[], listed: (item: string) => string | null): WorkOrder[] {
+  return workOrders.map((wo) => {
+    if (String(wo.allergen ?? "").trim()) return wo;
+    const code = (listed(wo.item) ?? "").trim();
+    return code ? { ...wo, allergen: code } : wo;
+  });
+}
+
 export function allergenOf(wo: WorkOrder): string {
   const a = wo.allergen.trim().toUpperCase();
   return a && a !== "N" ? a : "";

@@ -17,6 +17,7 @@ import {
   scheduleSummary,
   washroomList,
   whenText,
+  withListedAllergen,
 } from "./scheduleRun";
 import { sceneSizeFor } from "./holidayThemes";
 import { tightenCrewBadges } from "./printLayout";
@@ -177,8 +178,11 @@ function App() {
   };
   const now = useMinuteClock();
   const asOf = scheduleAsOfDate(data.scheduleAsOf, now);
+  // The Hub's allergen fills an empty Allergen box, for the schedule and
+  // printouts (the saved work orders keep theirs).
+  const scheduleWorkOrders = withListedAllergen(workOrders, (item) => hub.allergen[item.trim().toUpperCase()] ?? null);
   const schedule = buildSchedule({
-    workOrders,
+    workOrders: scheduleWorkOrders,
     lines: data.scheduleLines,
     asOf,
     clock: changeoverClock,
@@ -206,7 +210,7 @@ function App() {
   // order's estimated time.
   const runningLines = schedule.lines.filter((l) => l.runs).map((l) => l.line);
   const tagOf = new Map(schedule.lines.map((l) => [l.line, fileLineStatus(l.status)]));
-  const printWorkOrders = workOrders.map((w) => {
+  const printWorkOrders = scheduleWorkOrders.map((w) => {
     const tag = tagOf.get(w.line.trim()) ?? w.lineStatus;
     return tag === w.lineStatus ? w : { ...w, lineStatus: tag };
   });
@@ -592,6 +596,7 @@ function App() {
             printData={printData}
             hubCotton={hub.cotton}
             hubDesiccant={hub.desiccant}
+            hubAllergen={hub.allergen}
             columnWidths={printScheduleColumnWidths}
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}

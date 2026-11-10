@@ -26,7 +26,7 @@ import {
 } from "../scheduleLogic";
 import { asOfNow, defaultLineSetup, lineKey, lineNumber, thisShiftStatus, whenText } from "../scheduleRun";
 import type { ScheduleLine } from "../scheduleRun";
-import type { CottonList, DesiccantList } from "../hubData";
+import type { AllergenList, CottonList, DesiccantList } from "../hubData";
 import ProgressBar from "./ProgressBar";
 import { PrintSchedule } from "./PrintViews";
 import SchedulePrintDesign from "./SchedulePrintDesign";
@@ -50,6 +50,8 @@ interface Props {
   hubCotton: CottonList;
   // The Hub's desiccant list, the same way, shown in a blank Desiccant box.
   hubDesiccant: DesiccantList;
+  // The Hub's allergen list (FG item -> its code), shown in a blank Allergen box.
+  hubAllergen: AllergenList;
   // What the printout shows (see App.tsx), for the preview.
   printData: {
     workOrders: WorkOrder[];
@@ -632,6 +634,7 @@ export default function ProductionSchedule({
   printData,
   hubCotton,
   hubDesiccant,
+  hubAllergen,
   columnWidths,
   setColumnWidths,
   hiddenColumns,
@@ -884,17 +887,20 @@ export default function ProductionSchedule({
                 <tbody>
                   {group.rows.map((row, idx) => {
                     const chg = changeoverInto(group.rows, idx);
-                    const hl = rowHighlightClass(row);
+                    // A blank Allergen box takes the Hub's allergen, for the highlight too.
+                    const listedAllergen = row.allergen.trim() ? "" : (hubAllergen[row.item.trim().toUpperCase()] ?? "");
+                    const hl = rowHighlightClass(listedAllergen ? { ...row, allergen: listedAllergen } : row);
                     // On an "S1 Count Change" the count that changed is this
                     // row's own Count cell.
                     const countChanged = chg === "S1 Count Change";
                     // A blank Remarks box shows "Cap Change" (in gray) when the
                     // cap changes here; typing a remark replaces it.
                     const capChange = capChangeInto(group.rows, idx);
-                    // A blank Cotton or Desiccant box shows the Hub's list (in
-                    // gray); typing in the box replaces it (N for none).
+                    // A blank Cotton, Desiccant or Allergen box shows the Hub's
+                    // list (in gray); typing in the box replaces it (N for none).
                     const listed = (key: string) => {
-                      const list = key === "cotton" ? hubCotton : key === "desiccant" ? hubDesiccant : null;
+                      const list =
+                        key === "cotton" ? hubCotton : key === "desiccant" ? hubDesiccant : key === "allergen" ? hubAllergen : null;
                       return list?.[row.item.trim().toUpperCase()];
                     };
                     return (

@@ -55,6 +55,27 @@ together.
    under it, smaller (RUNNING / NEXT SHIFT, OVERTIME / NEXT SHIFT, PM /
    CLEANING / NEXT SHIFT). Tested with the other printout tests.
    **How to check it:** the last column of the preview.
+4. **Allergen from the Hub.** The Hub gets a **Stored Data → Allergen**
+   section, like Cotton and Desiccant: the FG items with an allergen and
+   its code as the schedule's Allergen column has it (M, S, C, R, I; the
+   code must be typed, and is saved in capitals). Saved as `allergenItems`.
+   In LineUp, a work order's own Allergen box still wins (the Excel file
+   usually fills it, N included); when it's empty, the Hub's code fills it
+   in for the schedule and printouts (the saved work order keeps its empty
+   box): the allergen highlight, the A column, the Washroom Prep List and
+   the QA Changeover List's allergen test (REQUIRED when an allergen comes
+   off the line), and the table shows it in gray.
+   Tested on the test database: the Hub's section as an Owner and a Lead
+   (the code required, capitals, the database refusing a Lead), and in
+   LineUp the gray box, the highlight, the A column, N in a box winning,
+   the REQUIRED allergen test and the washroom list.
+   **With the release:** the 76 FG items with an allergen in the Line Lead
+   MDI Router (Attribute19: M 29, S 21, C 13, R 7, I 3) are added to the
+   live Stored Data (`tools/pk030_db.py`, as an Admin; the list is in chat,
+   not this public repository). Seven items show N on some lines and a
+   code on others; they're added with the code.
+   **Firebase:** no rules change. **Job Instruction:** no change.
+   **How to check it:** Hub → Stored Data → Allergen lists 76 items.
 
 ---
 
