@@ -4418,6 +4418,17 @@ td.time-off-is-today {
   text-align: center;
   white-space: normal !important;
 }
+/* Next shift's status, with "NEXT SHIFT" under it, smaller. */
+.sb-next-status,
+.sb-next-when {
+  display: block;
+}
+.sb-next-when {
+  margin-top: 1px;
+  font-size: 0.82em;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
 .sb-next-running { background: #e2f0d9; color: #2e7d32; }
 .sb-next-partial { background: #fbe5d6; color: #c55a11; }
 .sb-next-overtime { background: #fff2cc; color: #9c6500; }

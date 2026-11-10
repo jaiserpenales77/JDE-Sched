@@ -263,7 +263,12 @@ export function ScheduleBoxes({
                         ))}
                         {i === 0 && show("next") && (
                           <td rowSpan={span} className={`sb-nextcell sb-next-${statusClass(line.next)}`} data-col="next">
-                            {line.next}
+                            {line.next && (
+                              <>
+                                <span className="sb-next-status">{line.next}</span>
+                                <span className="sb-next-when">NEXT SHIFT</span>
+                              </>
+                            )}
                           </td>
                         )}
                       </tr>

@@ -50,6 +50,11 @@ together.
    database with the other printout tests.
    **How to check it:** the preview shows each scheduled line in a thicker
    box in its status color.
+3. **Line boxes printout: "NEXT SHIFT" under next shift's status.** The
+   last column's cells say what the line does next shift with "NEXT SHIFT"
+   under it, smaller (RUNNING / NEXT SHIFT, OVERTIME / NEXT SHIFT, PM /
+   CLEANING / NEXT SHIFT). Tested with the other printout tests.
+   **How to check it:** the last column of the preview.
 
 ---
 
