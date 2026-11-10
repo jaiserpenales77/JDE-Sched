@@ -39,8 +39,8 @@ export function ScheduleBoxes({
   title: string;
   hidden?: readonly string[];
   // A holiday theme: its color on the title bar, the band under it and the
-  // column titles, its icons by the title and in a strip under the bar, and
-  // its greeting by the date. The status colors never change.
+  // column titles, its icons and greeting in the title bar, and a strip of
+  // icons under the bar. The status colors never change.
   theme?: HolidayTheme | null;
   stripCount?: number;
 }) {
@@ -72,6 +72,7 @@ export function ScheduleBoxes({
           </span>
           {sideIcons(1)}
         </h1>
+        {theme && <span className="sb-greeting">{theme.greeting(asOf)}</span>}
         <div className="sb-legend sb-legend-status">
           <b>STATUS</b>
           {(Object.keys(STATUS_CLASS) as RunStatus[]).map((s) => (
@@ -86,11 +87,6 @@ export function ScheduleBoxes({
       <div className="sb-sub">
         <span className="sb-date">
           {date} · as of {clockText(asOf)}
-          {theme && (
-            <span className="sb-greeting" style={{ color: theme.greetingColor }}>
-              {theme.greeting(asOf)}
-            </span>
-          )}
         </span>
         <span className="sb-legend">
           <b>CHANGEOVER</b>

@@ -4212,10 +4212,14 @@ td.time-off-is-today {
 .sb-themed .holiday-strip {
   margin: 3px 0;
 }
+/* A holiday theme's greeting, in the title bar's empty space: right of the
+   title, or between the title and the status legend when they share a row. */
 .sb-greeting {
-  margin-left: 14px;
-  font-size: 0.85em;
+  font-size: calc(var(--sched-title-size, 16pt) * 0.72);
   font-style: italic;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
 }
 .sb-sub {
   display: flex;

@@ -17,6 +17,13 @@ together.
    the test database: a wrong password, the right one, and a refused
    network. Nothing changes in Firebase or the Job Instruction.
    **How to check it:** type a wrong password: it still says "isn't right".
+2. **Line boxes printout: the holiday greeting in the title bar.** "Thank
+   you, veterans", "Happy Thanksgiving!" and the rest move from the date
+   line into the title bar's empty space, in white: right of the title
+   (with the status legend under it), or between the title and the legend
+   when they share a row. Tested with every theme on the test database.
+   **How to check it:** with a holiday theme on (Automatic, on a holiday's
+   dates), the greeting is in the dark title bar, not by the date.
 
 ---
 
