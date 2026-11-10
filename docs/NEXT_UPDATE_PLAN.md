@@ -8,6 +8,38 @@ together.
 
 ## What's in the next update
 
+Nothing yet.
+
+---
+
+## Running the update
+
+| # | Step | Who | Time |
+|---|------|-----|------|
+| 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
+| 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
+| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
+| 4 | Check the new version (each item lists what to look at) | You | 5 min |
+| 5 | Send the announcement (written with each item) | You | – |
+
+## If something goes wrong
+
+Claude puts the previous version back, and it's live again in a few
+minutes.
+
+## Adding to this plan
+
+Each new change is built and tested on this branch first, then added
+under "What's in the next update": what changes for people, anything it
+needs outside the app (rules, logins), how to check it, and what to do
+once it's live.
+
+---
+
+## Released
+
+### 2026-11-10 (evening): Filler Slate Setup, line notes, a slimmer Lines panel
+
 1. **Changeover note "Filler Slate Setup".** On a Merrill filler line (3, 7,
    8 and 11: the **Merrill filler lines** setting in Estimated times, so
    it follows that setting), an **S1 Count Change** also gets "Filler Slate
@@ -40,39 +72,24 @@ together.
    panel says so). The Line boxes printout keeps its EE column, blank, to
    write the crew in by hand. Tested: unit tests (a saved Yes / No ignored,
    Lines 1-7 vs 8 and up) and the printout tests.
-   **Job Instruction:** Part B step 4 ("Check breaks and crew") and the
-   quick card's step B3 describe the removed boxes, so it gets a new
-   revision at step 2 of the release.
+   **Job Instruction:** a new revision, **Rev. 2026-11-10** (14 pages): Part
+   B step 4 is now "Add a line note (optional)" (in place of "Check breaks
+   and crew"), the quick card's B3 says the same, the troubleshooting row
+   for wrong times gives the breaks rule, Extras step 8 lists the
+   changeover notes as they are now (count and Filler Slate Setup on the
+   Merrill lines), and the screenshots show the new printout look (sample
+   data only).
    **How to check it:** the Lines panel shows the statuses, the line note
    and the running WO's time; the printout's EE column is blank.
 
----
+Nothing changed in Firebase or the Hub.
 
-## Running the update
-
-| # | Step | Who | Time |
-|---|------|-----|------|
-| 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
-| 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
-| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
-| 4 | Check the new version (each item lists what to look at) | You | 5 min |
-| 5 | Send the announcement (written with each item) | You | – |
-
-## If something goes wrong
-
-Claude puts the previous version back, and it's live again in a few
-minutes.
-
-## Adding to this plan
-
-Each new change is built and tested on this branch first, then added
-under "What's in the next update": what changes for people, anything it
-needs outside the app (rules, logins), how to check it, and what to do
-once it's live.
-
----
-
-## Released
+**Announcement:** "Production Schedule: each line has a Line note box in the
+Lines panel; the note prints at the bottom of the line's box, in blue. On
+Lines 3, 7, 8 and 11, an S1 count change now says Filler Slate Setup. The
+Breaks & lunch and Crew boxes are gone from the Lines panel (the times use
+the standard break rule, and the printout's EE column is left blank to
+write the crew in). The Job Instruction is updated (Rev. 2026-11-10)."
 
 ### 2026-11-10 (later): desiccant and allergen from the Hub, the Line boxes look
 
