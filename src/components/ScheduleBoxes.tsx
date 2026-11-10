@@ -28,6 +28,30 @@ const statusClass = (s: RunStatus | "") => (s ? STATUS_CLASS[s] : "none");
 
 const CODE_CLASS: Record<string, string> = { S1: "s1", "S1 Count Change": "count", S3: "s3", S4: "s4" };
 
+// A gold four-point sparkle.
+const Sparkle = () => (
+  <svg className="sb-sparkle" viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 0 L14.6 9.4 L24 12 L14.6 14.6 L12 24 L9.4 14.6 L0 12 L9.4 9.4 Z" fill="currentColor" />
+  </svg>
+);
+
+// A holiday theme's greeting as a festive ribbon in the title bar: cream
+// with gold trim and notched ends, the greeting in the theme's color, its
+// icons and gold sparkles each side.
+function GreetingBanner({ theme, date }: { theme: HolidayTheme; date: Date }) {
+  const first = theme.strip[0];
+  const second = theme.strip.find((i) => i.icon !== first.icon || i.color !== first.color) ?? first;
+  return (
+    <span className="sb-greeting" style={{ "--sb-greet": theme.greetingColor } as CSSProperties}>
+      <HolidayIconSvg icon={first} />
+      <Sparkle />
+      <span className="sb-greeting-text">{theme.greeting(date)}</span>
+      <Sparkle />
+      <HolidayIconSvg icon={second} />
+    </span>
+  );
+}
+
 export function ScheduleBoxes({
   view,
   title,
@@ -72,7 +96,7 @@ export function ScheduleBoxes({
           </span>
           {sideIcons(1)}
         </h1>
-        {theme && <span className="sb-greeting">{theme.greeting(asOf)}</span>}
+        {theme && <GreetingBanner theme={theme} date={asOf} />}
         <div className="sb-legend sb-legend-status">
           <b>STATUS</b>
           {(Object.keys(STATUS_CLASS) as RunStatus[]).map((s) => (

@@ -4212,14 +4212,44 @@ td.time-off-is-today {
 .sb-themed .holiday-strip {
   margin: 3px 0;
 }
-/* A holiday theme's greeting, in the title bar's empty space: right of the
-   title, or between the title and the status legend when they share a row. */
+/* A holiday theme's greeting, in the title bar's empty space (right of the
+   title, or between the title and the status legend when they share a row),
+   as a festive ribbon: cream with gold trim, notched ends and a slight tilt,
+   the greeting in the theme's color with its icons and gold sparkles. */
 .sb-greeting {
-  font-size: calc(var(--sched-title-size, 16pt) * 0.72);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28em;
+  padding: 0.2em 1.25em;
+  font-size: calc(var(--sched-title-size, 16pt) * 0.95);
   font-style: italic;
-  font-weight: 600;
-  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  color: var(--sb-greet, #b91c1c);
+  background: linear-gradient(#fffdf5, #fbefcf);
+  box-shadow:
+    inset 0 2px 0 #d4a017,
+    inset 0 -2px 0 #d4a017;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 0.75em) 50%, 100% 100%, 0 100%, 0.75em 50%);
+  transform: rotate(-1.5deg);
   white-space: nowrap;
+  /* Centered in the empty space it's in: between the title and the legend,
+     right of the title, or on its own row on a narrow page. */
+  margin: 0 auto;
+}
+.sb-greeting svg {
+  flex: none;
+  width: 1.05em;
+  height: 1.05em;
+}
+.sb-greeting .sb-sparkle {
+  width: 0.6em;
+  height: 0.6em;
+  color: #d4a017;
+}
+.sb-greeting-text {
+  padding: 0 0.15em;
 }
 .sb-sub {
   display: flex;

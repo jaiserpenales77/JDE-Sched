@@ -17,13 +17,18 @@ together.
    the test database: a wrong password, the right one, and a refused
    network. Nothing changes in Firebase or the Job Instruction.
    **How to check it:** type a wrong password: it still says "isn't right".
-2. **Line boxes printout: the holiday greeting in the title bar.** "Thank
-   you, veterans", "Happy Thanksgiving!" and the rest move from the date
-   line into the title bar's empty space, in white: right of the title
-   (with the status legend under it), or between the title and the legend
-   when they share a row. Tested with every theme on the test database.
+2. **Line boxes printout: the holiday greeting as a festive banner in the
+   title bar.** "Thank you, veterans", "Happy Thanksgiving!" and the rest
+   move from the date line into the title bar's empty space, as a ribbon:
+   cream with gold trim and notched ends, tilted a little, the greeting
+   almost as big as the title in the holiday's color, with the holiday's
+   icons and gold sparkles each side. It sits centered in the empty space:
+   between the title and the status legend, right of the title on a
+   landscape page, or on its own row under the title on a portrait page.
+   Tested on the test database: all 12 themes fit in the bar, on screen and
+   printed landscape and portrait, and the other printouts are unchanged.
    **How to check it:** with a holiday theme on (Automatic, on a holiday's
-   dates), the greeting is in the dark title bar, not by the date.
+   dates), the greeting is a banner in the title bar, not by the date.
 
 ---
 
