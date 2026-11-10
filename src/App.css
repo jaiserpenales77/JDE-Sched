@@ -4327,14 +4327,14 @@ td.time-off-is-today {
   line-height: 1.25;
 }
 /* The work order rows a little bigger than the table text size (7 pt prints
-   as about 7.8 pt), for reading on the floor, with a little less line
+   as about 7.35 pt), for reading on the floor, with a little less line
    spacing and padding so each row is no taller than before and the
    schedule still fits its page. */
 .sb-table tr.sb-row > td {
   padding-top: 1.5px;
   padding-bottom: 1.5px;
-  font-size: 1.12em;
-  line-height: 1.12;
+  font-size: 1.05em;
+  line-height: 1.15;
 }
 .sb-table th {
   padding: 3px 2px;
