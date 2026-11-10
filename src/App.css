@@ -4388,7 +4388,7 @@ td.time-off-is-today {
 /* A line scheduled this shift (Running, Partial shift, Overtime): a green
    border that stands out. */
 .sb-line.sb-scheduled {
-  border: 3px solid #2e7d32;
+  border: 2.25px solid #2e7d32;
 }
 .sb-gap td {
   height: 12px;
