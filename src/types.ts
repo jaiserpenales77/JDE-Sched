@@ -44,6 +44,8 @@ export interface ScheduleLineSetup {
   breaks: boolean;
   // People on the line (EE); null = not given.
   crew: number | null;
+  // A note for the line, printed at the bottom of its box ("" = none).
+  note: string;
 }
 
 // The estimated times and the washroom prep list (the workbook's 5. Settings).

@@ -30,7 +30,7 @@ export function defaultBreaks(line: string): boolean {
 
 export function defaultLineSetup(line: string): ScheduleLineSetup {
   const n = lineNumber(line);
-  return { name: n === null ? line.trim() : `LINE ${n}`, thisShift: "", nextShift: "", breaks: defaultBreaks(line), crew: null };
+  return { name: n === null ? line.trim() : `LINE ${n}`, thisShift: "", nextShift: "", breaks: defaultBreaks(line), crew: null, note: "" };
 }
 
 // The setup saved for a schedule line, else the defaults.
@@ -160,6 +160,9 @@ export function normalizeRunSettings(raw: unknown): ScheduleRunSettings {
   };
 }
 
+// The longest line note kept.
+export const LINE_NOTE_MAX = 200;
+
 // The saved line setups, cleaned up. Before this setup existed, a line was
 // ticked under Scheduled Lines to run: those lines start as RUNNING.
 export function normalizeScheduleLines(raw: unknown, ticked: unknown): ScheduleLineSetup[] {
@@ -182,6 +185,7 @@ export function normalizeScheduleLines(raw: unknown, ticked: unknown): ScheduleL
       nextShift: readStatus(s.nextShift),
       breaks: typeof s.breaks === "boolean" ? s.breaks : defaultBreaks(name),
       crew: typeof s.crew === "number" && Number.isFinite(s.crew) && s.crew >= 0 ? Math.round(s.crew) : null,
+      note: typeof s.note === "string" ? s.note.replace(/\s+/g, " ").trim().slice(0, LINE_NOTE_MAX) : "",
     });
   }
   return out;

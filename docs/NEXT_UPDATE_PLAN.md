@@ -24,6 +24,15 @@ together.
    **How to check it:** a Merrill line with a count change shows "Count
    Change, Filler Slate Setup" under that work order on the printout; a
    Cremer line's count change shows only Minor · Count.
+2. **Line notes.** The Lines panel has a **Line note** box for each line
+   (up to 200 characters); the note prints at the bottom of that line's
+   box on the Line boxes printout as "Line Note: …" on a light sky-blue
+   band (the changeover notes and remarks stay yellow). Saved with the
+   shift's lines, so it stays from day to day like the statuses; empty the
+   box to take it off. Tested on the test database: saving, a reload, the
+   printout row, its color, the box reaching down over it, and clearing it.
+   **How to check it:** type a note for a line in the Lines panel; the
+   preview shows it at the bottom of that line's box.
 
 ---
 

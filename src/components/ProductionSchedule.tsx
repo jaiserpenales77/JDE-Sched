@@ -24,7 +24,7 @@ import {
   formatClock,
   parseClock,
 } from "../scheduleLogic";
-import { asOfNow, defaultLineSetup, lineKey, lineNumber, thisShiftStatus, whenText } from "../scheduleRun";
+import { asOfNow, defaultLineSetup, LINE_NOTE_MAX, lineKey, lineNumber, thisShiftStatus, whenText } from "../scheduleRun";
 import type { ScheduleLine } from "../scheduleRun";
 import type { AllergenList, CottonList, DesiccantList } from "../hubData";
 import ProgressBar from "./ProgressBar";
@@ -280,12 +280,32 @@ function DraftNumber({
 }
 
 // A text box that saves when you leave it.
-function DraftText({ id, value, onCommit }: { id: string; value: string; onCommit: (value: string) => void }) {
+function DraftText({
+  id,
+  value,
+  onCommit,
+  label,
+  placeholder,
+  maxLength,
+  className,
+}: {
+  id?: string;
+  value: string;
+  onCommit: (value: string) => void;
+  label?: string;
+  placeholder?: string;
+  maxLength?: number;
+  className?: string;
+}) {
   const [draft, setDraft] = useState<string | null>(null);
   return (
     <input
       id={id}
       type="text"
+      aria-label={label}
+      placeholder={placeholder}
+      maxLength={maxLength}
+      className={className}
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => {
@@ -391,6 +411,7 @@ function LinesPanel({
               <th>Next shift</th>
               <th>Breaks &amp; lunch</th>
               <th>Crew (EE)</th>
+              <th>Line note</th>
               <th>Running WO done</th>
             </tr>
           </thead>
@@ -472,6 +493,16 @@ function LinesPanel({
                         +
                       </button>
                     </span>
+                  </td>
+                  <td className="run-note">
+                    <DraftText
+                      label={`${line.name} note`}
+                      placeholder="Note for the printout"
+                      maxLength={LINE_NOTE_MAX}
+                      className="run-note-input"
+                      value={line.setup.note}
+                      onCommit={(v) => update([line], () => ({ note: v.replace(/\s+/g, " ").trim() }))}
+                    />
                   </td>
                   <td className="run-est">
                     {!line.runs ? (

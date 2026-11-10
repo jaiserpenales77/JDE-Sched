@@ -183,7 +183,9 @@ export function ScheduleBoxes({
         {view.lines.map((line, li) => {
           const cls = statusClass(line.status);
           const grey = line.status === "NOT SCHEDULED" || line.status === "PM / CLEANING";
-          const span = line.rows.reduce((sum, r) => sum + 1 + (r.notes ? 1 : 0) + (r.wo.remarks.trim() ? 1 : 0), 0);
+          const lineNote = line.setup.note.trim();
+          const span =
+            line.rows.reduce((sum, r) => sum + 1 + (r.notes ? 1 : 0) + (r.wo.remarks.trim() ? 1 : 0), 0) + (lineNote ? 1 : 0);
           return (
             <Fragment key={line.line}>
               {li > 0 && (
@@ -277,6 +279,22 @@ export function ScheduleBoxes({
                     </Fragment>
                   );
                 })}
+                {/* The line's own note (Lines panel), at the bottom of its box. */}
+                {lineNote && (
+                  <tr className="sb-note sb-line-note">
+                    {inner.map((c, k) =>
+                      k === 0 ? (
+                        <td key={c.key} className="sb-arrow">
+                          ↳
+                        </td>
+                      ) : k === 1 ? (
+                        <td key={c.key} colSpan={inner.length - 1}>
+                          Line Note: {lineNote}
+                        </td>
+                      ) : null,
+                    )}
+                  </tr>
+                )}
               </tbody>
             </Fragment>
           );

@@ -4505,6 +4505,14 @@ td.time-off-is-today {
   font-style: normal;
   text-align: center;
 }
+/* A line's own note (Lines panel): light sky blue, apart from the yellow
+   changeover notes and remarks. */
+.sb-line-note td:not(.sb-arrow) {
+  background: #e0f2fe;
+  color: #075985;
+  font-style: normal;
+  font-weight: 600;
+}
 
 /* The washroom prep list. */
 .wr-table td {
@@ -4718,6 +4726,24 @@ table.run-lines {
   outline-offset: -2px;
 }
 /* Crew: - [number] +. */
+.run-note-input {
+  width: 100%;
+  min-width: 150px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.run-note-input::placeholder {
+  color: var(--muted);
+}
+.run-note-input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: -1px;
+}
 .run-stepper {
   display: inline-flex;
   align-items: center;
