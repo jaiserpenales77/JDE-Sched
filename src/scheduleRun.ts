@@ -332,9 +332,15 @@ export function cottonOf(wo: WorkOrder, listed: string | null = null): string {
   return ["Y", "YES", "X", "TRUE", "1"].includes(v.toUpperCase()) ? "Yes" : v;
 }
 
-export function desiccantOf(wo: WorkOrder): string {
-  const v = String(wo.desiccant ?? "").trim();
-  return NONE_WORDS.includes(v.toUpperCase()) ? "" : v;
+// A work order's desiccant, the same way: its own DES box (from the file, or
+// typed), else the Hub's desiccant list for its FG item (`listed`). "Yes",
+// the desiccant it takes, or "" for none (N / No / - in the box means none,
+// whatever the list says).
+export function desiccantOf(wo: WorkOrder, listed: string | null = null): string {
+  const own = String(wo.desiccant ?? "").trim();
+  const v = own || (listed ?? "").trim();
+  if (!v || NONE_WORDS.includes(v.toUpperCase())) return "";
+  return ["Y", "YES", "X", "TRUE", "1"].includes(v.toUpperCase()) ? "Yes" : v;
 }
 
 const sameText = (a: string, b: string) => a.trim().replace(/\s+/g, " ").toUpperCase() === b.trim().replace(/\s+/g, " ").toUpperCase();
@@ -352,12 +358,14 @@ export function isDumping(wo: WorkOrder): boolean {
 
 // What the changeover into rows[i] changes from the work order before it:
 // "Cap & Bottle Change, Add Cotton, Dumping, Prepare For INTERNATIONAL WO".
-// cottonListed: the Hub's cotton for an FG item, if it lists it.
+// cottonListed / desiccantListed: the Hub's cotton or desiccant for an FG
+// item, if it lists it.
 export function changeoverNotes(
   rows: WorkOrder[],
   i: number,
   intl: boolean,
   cottonListed?: (item: string) => string | null,
+  desiccantListed?: (item: string) => string | null,
 ): string {
   if (i <= 0) return "";
   const before = rows[i - 1];
@@ -373,8 +381,8 @@ export function changeoverNotes(
   if (cot && !cotBefore) parts.push(`Add Cotton${cot === "Yes" ? "" : ` (${cot})`}`);
   else if (cot && cot.toUpperCase() !== cotBefore.toUpperCase()) parts.push(`Change Cotton (${cot})`);
   else if (!cot && cotBefore) parts.push("Remove Cotton");
-  const des = desiccantOf(wo);
-  const desBefore = desiccantOf(before);
+  const des = desiccantOf(wo, desiccantListed?.(wo.item) ?? null);
+  const desBefore = desiccantOf(before, desiccantListed?.(before.item) ?? null);
   if (des && !desBefore) parts.push("Add Desiccant");
   else if (des && des.toUpperCase() !== desBefore.toUpperCase()) parts.push("Change Desiccant");
   else if (!des && desBefore) parts.push("Remove Desiccant");
@@ -400,6 +408,8 @@ export interface ScheduleRow {
   // Its cotton ("Yes", the cotton it takes, or "" for none): its own Cotton
   // box, else the Hub's cotton list.
   cotton: string;
+  // Its desiccant, the same way: its own DES box, else the Hub's list.
+  desiccant: string;
 }
 
 export interface ScheduleLine {
@@ -423,6 +433,8 @@ export interface ScheduleRunInput {
   internationalOf?: (item: string) => boolean | null;
   // The Hub's cotton list: the cotton an FG item takes ("Yes" or its type), or null.
   cottonListed?: (item: string) => string | null;
+  // The Hub's desiccant list, the same way.
+  desiccantListed?: (item: string) => string | null;
 }
 
 export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[]; end: Date } {
@@ -447,8 +459,10 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
         countChanged: code === "S1 Count Change",
         estimate: estimates[i],
         changeoverAt,
-        notes: changeoverAt && changeoverAt < end ? changeoverNotes(rows, i, intl, input.cottonListed) : "",
+        notes:
+          changeoverAt && changeoverAt < end ? changeoverNotes(rows, i, intl, input.cottonListed, input.desiccantListed) : "",
         cotton: cottonOf(wo, input.cottonListed?.(wo.item) ?? null),
+        desiccant: desiccantOf(wo, input.desiccantListed?.(wo.item) ?? null),
       };
     });
     return { line, setup, name: setup.name || line, status, next: nextShiftStatus(setup), runs, rows: out };
@@ -622,6 +636,7 @@ export function qaChecks(
   cotton: { off: string; next: string },
   intl: boolean,
   oily: { off: boolean; next: boolean },
+  desiccant: { off: string; next: string } = { off: desiccantOf(off), next: desiccantOf(next) },
 ): string[] {
   const out: string[] = [];
   if (changed(off.item, next.item)) out.push(`Item / label ${off.item.trim()} → ${next.item.trim()}`);
@@ -629,10 +644,10 @@ export function qaChecks(
   if (changed(off.capDescription, next.capDescription)) out.push(`Cap ${capShort(off.capDescription)} → ${capShort(next.capDescription)}`);
   if (changed(String(off.bottleSize), String(next.bottleSize))) out.push(`Bottle ${off.bottleSize} → ${next.bottleSize}`);
   if (changed(String(off.count), String(next.count))) out.push(`Count ${off.count} → ${next.count}`);
-  const dOff = desiccantOf(off);
-  const dNext = desiccantOf(next);
-  if (dNext && !dOff) out.push(`Desiccant: add ${dNext}`);
-  else if (!dNext && dOff) out.push(`Desiccant: remove ${dOff}`);
+  const dOff = desiccant.off;
+  const dNext = desiccant.next;
+  if (dNext && !dOff) out.push(`Desiccant: add${dNext === "Yes" ? "" : ` ${dNext}`}`);
+  else if (!dNext && dOff) out.push(`Desiccant: remove${dOff === "Yes" ? "" : ` ${dOff}`}`);
   else if (dNext && !sameText(dOff, dNext)) out.push(`Desiccant ${dOff} → ${dNext}`);
   if (cotton.next && !cotton.off) out.push(`Cotton: add${cotton.next === "Yes" ? "" : ` ${cotton.next}`}`);
   else if (!cotton.next && cotton.off) out.push("Cotton: remove");
@@ -670,7 +685,14 @@ export function qaChangeoverList(
         major: r.code === "S3" || r.code === "S4",
         off: before.wo,
         next: r.wo,
-        checks: qaChecks(before.wo, r.wo, { off: before.cotton, next: r.cotton }, r.intl, { off: oily(before.wo), next: oily(r.wo) }),
+        checks: qaChecks(
+          before.wo,
+          r.wo,
+          { off: before.cotton, next: r.cotton },
+          r.intl,
+          { off: oily(before.wo), next: oily(r.wo) },
+          { off: before.desiccant, next: r.desiccant },
+        ),
         sameItem: !changed(before.wo.item, r.wo.item),
         offAllergen,
         nextAllergen,
@@ -718,7 +740,7 @@ export function qaWalkLines(lines: ScheduleLine[]): QaWalkLine[] {
       { label: "Cap", value: capShort(wo.capDescription) || "—" },
       ...(allergen ? [{ label: "Allergen", value: allergen, flag: true }] : []),
       // Desiccant and cotton only when the work order has them.
-      ...(desiccantOf(wo) ? [{ label: "Desiccant", value: desiccantOf(wo) }] : []),
+      ...(first.desiccant ? [{ label: "Desiccant", value: first.desiccant }] : []),
       ...(first.cotton ? [{ label: "Cotton", value: first.cotton }] : []),
     ];
     const second = l.rows[1];

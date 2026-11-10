@@ -8,7 +8,39 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+1. **Desiccant from the Hub.** The Packaging Lead Hub gets a **Stored Data →
+   Desiccant** section, like Cotton: Admins and Owners add, change and
+   remove the FG items that take desiccant ("Yes", or the desiccant it
+   takes); Leads see the list. Saved as `desiccantItems` in
+   `pk030/storedData`; in the Hub's Export / Import (import: admins only),
+   the Activity Log and `tools/pk030_db.py`. Each Stored Data list's heading
+   now shows how many FG items it has.
+   In LineUp, a work order's own **DES** box still wins (from the Excel
+   file, or typed; N means none); when it's blank, the Hub's list fills it
+   in: the Line boxes DES column, the changeover notes (Add / Change /
+   Remove Desiccant), the QA Changeover List and the QA Gemba Walk (a
+   Desiccant box only when the work order has one), and the table shows it
+   in gray in the blank box.
+   Tested on the test database: the Hub's section as an Owner and a Lead
+   (and the database refusing a Lead's change), the export and import, and
+   LineUp's DES column, note, QA sheets, the gray box and N in the box;
+   the other Hub and printout tests are unchanged.
+   **With the release:** the 70 FG items whose limiting machine is the
+   desiccant machine in the Line Lead MDI Router are added to the live
+   Stored Data as "Yes" (`tools/pk030_db.py`, as an Admin; one Activity Log
+   entry each; the list is in chat, not this public repository). Like
+   cotton, the router only names the limiting machine, so other FG items
+   that take desiccant are added by hand.
+   **Firebase:** no rules change (admins can already write Stored Data, and
+   LineUp's shift accounts can already read it). **Job Instruction:** no
+   change (it doesn't cover the Hub, and the DES column was already there).
+   **How to check it:** in the Hub, Stored Data → Desiccant lists 70 items;
+   in LineUp, a work order for one of them (for example 1717 or 4066 on
+   Line 8) shows Yes in its DES column on the printout, and its blank
+   Desiccant box in the table shows Yes in gray.
+   **Announcement:** "Stored Data has a new Desiccant section, like Cotton.
+   LineUp uses it when a work order's DES box is empty: on the printout,
+   in the changeover notes and on the QA sheets."
 
 ---
 

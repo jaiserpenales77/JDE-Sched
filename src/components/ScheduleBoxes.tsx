@@ -210,7 +210,7 @@ export function ScheduleBoxes({
                     bottleSize: wo.bottleSize,
                     capDescription: <span className={r.capChanged ? "sb-cap-changed" : ""}>{capShort(wo.capDescription)}</span>,
                     allergen: wo.allergen,
-                    desiccant: wo.desiccant,
+                    desiccant: r.desiccant,
                     woQuantity: typeof wo.woQuantity === "number" ? wo.woQuantity.toLocaleString("en-US") : wo.woQuantity,
                     progress: r.first ? (
                       <span className={wo.percentComplete ? "sb-progress" : "sb-not-started"}>{progressText(wo)}</span>

@@ -169,7 +169,7 @@ function App() {
   } = data;
   // The estimated times, from the Hub's Line Rates (bottles per hour) and
   // when this shift starts - the JDE Schedule workbook's rules - and the
-  // cotton notes, from the Hub's cotton list.
+  // cotton and desiccant notes, from the Hub's cotton and desiccant lists.
   const hub = useHubData(!!shift);
   const changeoverClock = {
     ...data.changeoverClock,
@@ -185,6 +185,7 @@ function App() {
     settings: data.scheduleRunSettings,
     rateOf: (line, item) => findLineRate(hub.lineRates, line, item)?.fullHour ?? null,
     cottonListed: (item) => hub.cotton[item.trim().toUpperCase()] ?? null,
+    desiccantListed: (item) => hub.desiccant[item.trim().toUpperCase()] ?? null,
   });
   const shiftIndex = SHIFT_KEYS.indexOf(shift ?? "1st");
   const boxes: BoxesView = {
@@ -590,6 +591,7 @@ function App() {
             scheduleLines={schedule.lines}
             printData={printData}
             hubCotton={hub.cotton}
+            hubDesiccant={hub.desiccant}
             columnWidths={printScheduleColumnWidths}
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}

@@ -5,17 +5,20 @@ import type { LineRate, LineRates } from "./scheduleLogic";
 
 // What LineUp reads from the Packaging Lead Hub's Stored Data tab, kept up
 // to date: its Line Rates ("LINE|FG ITEM" -> bottles in a full hour, an
-// hour with lunch and an hour with a break) and its cotton list (FG item ->
-// "Yes" or the cotton it takes). Empty when they can't be read (not
-// allowed, or offline), so the estimates and cotton notes just don't show.
+// hour with lunch and an hour with a break) and its cotton and desiccant
+// lists (FG item -> "Yes" or the one it takes). Empty when they can't be read
+// (not allowed, or offline), so the estimates and the cotton and desiccant
+// notes just don't show.
 export type CottonList = Record<string, string>;
+export type DesiccantList = Record<string, string>;
 
 export interface HubData {
   lineRates: LineRates;
   cotton: CottonList;
+  desiccant: DesiccantList;
 }
 
-const NONE: HubData = { lineRates: {}, cotton: {} };
+const NONE: HubData = { lineRates: {}, cotton: {}, desiccant: {} };
 
 export function useHubData(enabled: boolean): HubData {
   const [data, setData] = useState<HubData>(NONE);
@@ -25,10 +28,14 @@ export function useHubData(enabled: boolean): HubData {
       doc(db, "pk030", "storedData"),
       (snap) => {
         const raw = snap.data();
-        setData({ lineRates: cleanRates(raw?.lineRates), cotton: cleanCotton(raw?.cottonItems) });
+        setData({
+          lineRates: cleanRates(raw?.lineRates),
+          cotton: cleanCotton(raw?.cottonItems),
+          desiccant: cleanCotton(raw?.desiccantItems),
+        });
       },
       (err) => {
-        console.info("The Hub's Stored Data isn't available, so no estimates or cotton list.", err.code);
+        console.info("The Hub's Stored Data isn't available, so no estimates, cotton or desiccant list.", err.code);
         setData(NONE);
       },
     );
@@ -49,8 +56,8 @@ function cleanRates(raw: unknown): LineRates {
   return out;
 }
 
-// The Hub's cotton list: FG item -> "Yes" (or true) or the cotton it takes.
-// Items with no cotton ("", "No", false) are left out.
+// The Hub's cotton (or desiccant) list: FG item -> "Yes" (or true) or the
+// one it takes. Items with none ("", "No", false) are left out.
 export function cleanCotton(raw: unknown): CottonList {
   const out: CottonList = {};
   if (!raw || typeof raw !== "object") return out;
