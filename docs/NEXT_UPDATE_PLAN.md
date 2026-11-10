@@ -76,6 +76,13 @@ together.
    code on others; they're added with the code.
    **Firebase:** no rules change. **Job Instruction:** no change.
    **How to check it:** Hub → Stored Data → Allergen lists 76 items.
+5. **Line boxes printout: bigger work order text.** The work order rows
+   print 12% bigger than the Table text size (7 pt prints as about 7.8 pt),
+   with a little less line spacing and padding, so each row is no taller
+   than before and a full schedule still fits its page. Headers, notes
+   and remarks are unchanged. Tested with the other printout tests
+   (centering and page count included).
+   **How to check it:** the work order rows in the preview read larger.
 
 ---
 
