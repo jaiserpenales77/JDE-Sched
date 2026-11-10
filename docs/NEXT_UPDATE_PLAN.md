@@ -83,6 +83,20 @@ together.
    and remarks are unchanged. Tested with the other printout tests
    (centering and page count included).
    **How to check it:** the work order rows in the preview read larger.
+6. **Line boxes printout, Washroom Prep List and QA sheets in Roboto.** A
+   clear, professional font built into LineUp (like its Barlow), so they
+   print the same on every computer (it was Calibri, which depends on the
+   computer); it loads when LineUp opens, so a printout never waits for it.
+   Roboto is a little wider than Calibri, so the Line boxes columns were
+   rebalanced from measurements at the printed width: more room for BULK,
+   EST. TIME and the line and next-shift cells, less for the columns that
+   had room to spare (DES, CAP, BTL, WO, WO QTY, LEFT); nothing is cut off.
+   The status words in the line and next-shift cells are a little smaller
+   so NOT SCHEDULED and PARTIAL SHIFT fit on one line, and the summary line
+   is 8.5 pt (was 9). The other designs (Classic and so on) keep Calibri.
+   Tested with the other printout tests (centering and page count).
+   **How to check it:** the preview's text looks rounder and crisper; BULK
+   and EST. TIME show in full.
 
 ---
 

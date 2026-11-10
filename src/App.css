@@ -4173,7 +4173,7 @@ td.time-off-is-today {
 
 .sb-report,
 .wr-report {
-  font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif;
+  font-family: Roboto, Calibri, Carlito, "Segoe UI", Arial, sans-serif;
   color: #000;
   background: #fff;
 }
@@ -4277,7 +4277,7 @@ td.time-off-is-today {
   justify-content: space-between;
   gap: 2px 16px;
   padding: 3px 4px 4px;
-  font-size: 9pt;
+  font-size: 8.5pt;
   font-weight: 700;
   white-space: pre-wrap;
 }
@@ -4422,6 +4422,12 @@ td.time-off-is-today {
 }
 .sb-line-status {
   margin-top: 3px;
+}
+/* The status words a little smaller than the line name, so NOT SCHEDULED and
+   PARTIAL SHIFT fit on one line in the line and next-shift cells. */
+.sb-line-status,
+.sb-next-status {
+  font-size: 0.88em;
 }
 .sb-nextcell {
   font-weight: 700;
