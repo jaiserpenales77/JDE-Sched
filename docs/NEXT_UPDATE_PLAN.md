@@ -8,27 +8,7 @@ together.
 
 ## What's in the next update
 
-1. **Unlock screen: a failed sign-in that isn't the password says so.**
-   Only Firebase's wrong-password errors show "That password isn't right";
-   anything else (for example the network check failing, as on 2026-11-09)
-   shows "Couldn't unlock right now (the error). Try again in a minute; if
-   it keeps happening, contact the LineUp administrator." "Access
-   restricted", too many tries and no internet are unchanged. Tested on
-   the test database: a wrong password, the right one, and a refused
-   network. Nothing changes in Firebase or the Job Instruction.
-   **How to check it:** type a wrong password: it still says "isn't right".
-2. **Line boxes printout: the holiday greeting as a festive banner in the
-   title bar.** "Thank you, veterans", "Happy Thanksgiving!" and the rest
-   move from the date line into the title bar's empty space, as a ribbon:
-   cream with gold trim and notched ends, tilted a little, the greeting
-   almost as big as the title in the holiday's color, with the holiday's
-   icons and gold sparkles each side. It sits centered in the empty space:
-   between the title and the status legend, right of the title on a
-   landscape page, or on its own row under the title on a portrait page.
-   Tested on the test database: all 12 themes fit in the bar, on screen and
-   printed landscape and portrait, and the other printouts are unchanged.
-   **How to check it:** with a holiday theme on (Automatic, on a holiday's
-   dates), the greeting is a banner in the title bar, not by the date.
+Nothing yet.
 
 ---
 
@@ -57,6 +37,37 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-11-10: unlock message, holiday greeting banner
+
+1. **Unlock screen: a failed sign-in that isn't the password says so.**
+   Only Firebase's wrong-password errors show "That password isn't right";
+   anything else (for example the network check failing, as on 2026-11-09)
+   shows "Couldn't unlock right now (the error). Try again in a minute; if
+   it keeps happening, contact the LineUp administrator." "Access
+   restricted", too many tries and no internet are unchanged. Tested on
+   the test database: a wrong password, the right one, and a refused
+   network. Nothing changes in Firebase or the Job Instruction.
+   **How to check it:** type a wrong password: it still says "isn't right".
+2. **Line boxes printout: the holiday greeting as a festive banner in the
+   title bar.** "Thank you, veterans", "Happy Thanksgiving!" and the rest
+   move from the date line into the title bar's empty space, as a ribbon:
+   cream with gold trim and notched ends, tilted a little, the greeting
+   almost as big as the title in the holiday's color, with the holiday's
+   icons and gold sparkles each side. It sits centered in the empty space:
+   between the title and the status legend, right of the title on a
+   landscape page, or on its own row under the title on a portrait page.
+   Tested on the test database: all 12 themes fit in the bar, on screen and
+   printed landscape and portrait, and the other printouts are unchanged.
+   **How to check it:** with a holiday theme on (Automatic, on a holiday's
+   dates), the greeting is a banner in the title bar, not by the date.
+
+Nothing changed in Firebase. The Job Instruction stays at Rev. 2026-11-09
+(its troubleshooting still covers a wrong password, and Extras step 7's
+"greeting in the preview" still holds).
+
+**Announcement (optional):** "On holidays, the Production Schedule
+printout now has a holiday banner in its title bar."
 
 ### 2026-11-09: Production Schedule in the workbook's look, Washroom and QA printouts, network check
 
