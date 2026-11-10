@@ -193,7 +193,7 @@ export function ScheduleBoxes({
                   </tr>
                 </tbody>
               )}
-              <tbody className={`sb-line sb-st-${cls}${grey ? " sb-grey" : ""}`}>
+              <tbody className={`sb-line sb-st-${cls}${grey ? " sb-grey" : ""}${line.runs ? " sb-scheduled" : ""}`}>
                 {line.rows.map((r, i) => {
                   const wo = r.wo;
                   const hl = isAllergenRow(wo) ? "sb-hl-allergen" : isOilRow(wo) ? "sb-hl-oil" : isBulkHighlightRow(wo) ? "sb-hl-bulk" : "";
