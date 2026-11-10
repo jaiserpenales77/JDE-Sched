@@ -133,6 +133,10 @@ into `claude/modest-gauss-y18sdh`).
    **How to check it:** the preview's text looks rounder and crisper; BULK
    and EST. TIME show in full.
 
+**Done with the release (2026-11-10):** the 70 desiccant and 76 allergen
+FG items from the router were added to the live Stored Data as an Admin
+(`tools/pk030_db.py`, one Activity Log entry each; read back: all stored).
+
 Nothing changed in the Firebase rules. The Job Instruction stays at Rev.
 2026-11-09: the steps don't change (its screenshots show the printout
 before these looks).
