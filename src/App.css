@@ -4385,10 +4385,10 @@ td.time-off-is-today {
 .sb-st-ready { --st: #7030a0; --st-tint: #e4dfec; --st-text: #7030a0; }
 .sb-st-pm { --st: #0070c0; --st-tint: #ddebf7; --st-text: #0070c0; }
 .sb-st-not { --st: #8c8c8c; --st-tint: #ededed; --st-text: #6f6f6f; }
-/* A line scheduled this shift (Running, Partial shift, Overtime): a green
-   border that stands out. */
+/* A line scheduled this shift (Running, Partial shift, Overtime): a thicker
+   border in its own status color, so it stands out. */
 .sb-line.sb-scheduled {
-  border: 2.25px solid #2e7d32;
+  border-width: 2.25px;
 }
 .sb-gap td {
   height: 12px;

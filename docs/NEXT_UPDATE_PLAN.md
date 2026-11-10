@@ -42,13 +42,14 @@ together.
    LineUp uses it when a work order's DES box is empty: on the printout,
    in the changeover notes and on the QA sheets."
 2. **Line boxes printout: scheduled lines stand out.** Each line scheduled
-   this shift (Running, Partial shift or Overtime) has a thicker green
-   border (2.25 px); the other lines keep their thin border in their status
-   color, and every line's name cell keeps its status color. The gap
+   this shift (Running, Partial shift or Overtime) has a thicker border
+   (2.25 px) in its own status color: green for Running, orange for Partial
+   shift, gold for Overtime; the other lines keep their thin border in
+   their status color. The gap
    between lines is a little bigger (12 px, was 7). Tested on the test
    database with the other printout tests.
-   **How to check it:** the preview shows each running line in a thick
-   green box.
+   **How to check it:** the preview shows each scheduled line in a thicker
+   box in its status color.
 
 ---
 
