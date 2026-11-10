@@ -8,7 +8,18 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+1. **Changeover note "Filler Slate Setup".** On a Merrill filler line (3, 7,
+   8 and 11: the **Merrill filler lines** setting in Estimated times, so
+   it follows that setting), an **S1 Count Change** also gets "Filler Slate
+   Setup" in its changeover notes, after "Count Change" (for example
+   "Count Change, Filler Slate Setup"). Not on Cremer lines, and not on
+   S3 / S4 (a full changeover that also changes the count). Shown wherever
+   the changeover notes are: the Line boxes printout. Tested: unit tests
+   in three time zones (Merrill and Cremer lines, S1, S3, the setting) and
+   the printout on the test database.
+   **Firebase:** no change. **Job Instruction:** no change.
+   **How to check it:** a Merrill line with a count change shows "Count
+   Change, Filler Slate Setup" under that work order on the printout.
 
 ---
 

@@ -359,13 +359,15 @@ export function isDumping(wo: WorkOrder): boolean {
 // What the changeover into rows[i] changes from the work order before it:
 // "Cap & Bottle Change, Add Cotton, Dumping, Prepare For INTERNATIONAL WO".
 // cottonListed / desiccantListed: the Hub's cotton or desiccant for an FG
-// item, if it lists it.
+// item, if it lists it. merrill: the line has a Merrill filler, where an S1
+// count change also needs the filler's slate set up.
 export function changeoverNotes(
   rows: WorkOrder[],
   i: number,
   intl: boolean,
   cottonListed?: (item: string) => string | null,
   desiccantListed?: (item: string) => string | null,
+  merrill = false,
 ): string {
   if (i <= 0) return "";
   const before = rows[i - 1];
@@ -376,6 +378,7 @@ export function changeoverNotes(
   const bottle = !!before.bottleSize && !!wo.bottleSize && before.bottleSize !== wo.bottleSize;
   const changes = [cap && "Cap", count && "Count", bottle && "Bottle"].filter(Boolean) as string[];
   if (changes.length) parts.push(`${changes.length === 3 ? `${changes[0]}, ${changes[1]} & ${changes[2]}` : changes.join(" & ")} Change`);
+  if (count && merrill) parts.push("Filler Slate Setup");
   const cot = cottonOf(wo, cottonListed?.(wo.item) ?? null);
   const cotBefore = cottonOf(before, cottonListed?.(before.item) ?? null);
   if (cot && !cotBefore) parts.push(`Add Cotton${cot === "Yes" ? "" : ` (${cot})`}`);
@@ -439,8 +442,11 @@ export interface ScheduleRunInput {
 
 export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[]; end: Date } {
   const end = shiftEnd(input.asOf, input.clock.start);
+  const merrillLines = lineNumbersIn(input.settings.merrillLines);
   const lines = groupByLine(input.workOrders).map(({ line, rows }) => {
     const setup = setupFor(input.lines, line);
+    const n = lineNumber(line);
+    const merrill = n !== null && merrillLines.includes(n);
     const status = thisShiftStatus(setup, rows);
     const runs = runsThisShift(status);
     const estimates = runs
@@ -460,7 +466,9 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
         estimate: estimates[i],
         changeoverAt,
         notes:
-          changeoverAt && changeoverAt < end ? changeoverNotes(rows, i, intl, input.cottonListed, input.desiccantListed) : "",
+          changeoverAt && changeoverAt < end
+            ? changeoverNotes(rows, i, intl, input.cottonListed, input.desiccantListed, merrill)
+            : "",
         cotton: cottonOf(wo, input.cottonListed?.(wo.item) ?? null),
         desiccant: desiccantOf(wo, input.desiccantListed?.(wo.item) ?? null),
       };
