@@ -359,8 +359,10 @@ export function isDumping(wo: WorkOrder): boolean {
 // What the changeover into rows[i] changes from the work order before it:
 // "Cap & Bottle Change, Add Cotton, Dumping, Prepare For INTERNATIONAL WO".
 // cottonListed / desiccantListed: the Hub's cotton or desiccant for an FG
-// item, if it lists it. merrill: the line has a Merrill filler, where an S1
-// count change also needs the filler's slate set up.
+// item, if it lists it. merrill: the line has a Merrill filler, where a
+// count change is noted, and an S1 count change also needs the filler's
+// slate set up; on the other lines a count change isn't noted (the
+// changeover code and the Count column already show it).
 export function changeoverNotes(
   rows: WorkOrder[],
   i: number,
@@ -376,7 +378,7 @@ export function changeoverNotes(
   const cap = !!before.capDescription.trim() && !!wo.capDescription.trim() && !sameText(before.capDescription, wo.capDescription);
   const count = changeoverInto(rows, i) === "S1 Count Change";
   const bottle = !!before.bottleSize && !!wo.bottleSize && before.bottleSize !== wo.bottleSize;
-  const changes = [cap && "Cap", count && "Count", bottle && "Bottle"].filter(Boolean) as string[];
+  const changes = [cap && "Cap", count && merrill && "Count", bottle && "Bottle"].filter(Boolean) as string[];
   if (changes.length) parts.push(`${changes.length === 3 ? `${changes[0]}, ${changes[1]} & ${changes[2]}` : changes.join(" & ")} Change`);
   if (count && merrill) parts.push("Filler Slate Setup");
   const cot = cottonOf(wo, cottonListed?.(wo.item) ?? null);

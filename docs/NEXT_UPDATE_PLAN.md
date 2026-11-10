@@ -17,9 +17,13 @@ together.
    the changeover notes are: the Line boxes printout. Tested: unit tests
    in three time zones (Merrill and Cremer lines, S1, S3, the setting) and
    the printout on the test database.
+   On the other (Cremer) lines a count change is no longer noted at all
+   ("Cap & Count Change" becomes "Cap Change"); the changeover code (Minor ·
+   Count) and the Count column's highlight still show it.
    **Firebase:** no change. **Job Instruction:** no change.
    **How to check it:** a Merrill line with a count change shows "Count
-   Change, Filler Slate Setup" under that work order on the printout.
+   Change, Filler Slate Setup" under that work order on the printout; a
+   Cremer line's count change shows only Minor · Count.
 
 ---
 
