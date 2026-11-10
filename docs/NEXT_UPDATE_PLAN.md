@@ -8,7 +8,18 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+1. **Line notes across the top of the line's box.** A line's note (Lines
+   panel) now prints as a light sky-blue band across the **top** of the
+   line's box, full width, with a small solid blue **NOTE** tag in front,
+   so it reads as the line's note, not part of a work order (it was a row
+   under the last work order, with an arrow). Tested on the test database:
+   the band's place, width, colors and tag, the line and next-shift cells
+   covering just the work orders, saving, reload and clearing; the other
+   printout tests unchanged.
+   **Job Instruction:** Part B step 4 says the note prints "at the bottom
+   of that line's box", so it gets a new revision at step 2 of the release.
+   **How to check it:** a line with a note shows it at the top of its box,
+   after a blue NOTE tag.
 
 ---
 

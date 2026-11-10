@@ -4505,13 +4505,29 @@ td.time-off-is-today {
   font-style: normal;
   text-align: center;
 }
-/* A line's own note (Lines panel): light sky blue, apart from the yellow
-   changeover notes and remarks. */
-.sb-line-note td:not(.sb-arrow) {
+/* A line's own note (Lines panel), across the top of its box: light sky
+   blue with a small solid blue NOTE tag, apart from the yellow changeover
+   notes and remarks. */
+.sb-table tr.sb-line-note > td {
+  padding: 3px 10px;
+  border-bottom: 1px solid #bae6fd;
   background: #e0f2fe;
   color: #075985;
-  font-style: normal;
+  font-size: 1.08em;
   font-weight: 600;
+  white-space: normal;
+}
+.sb-note-tag {
+  display: inline-block;
+  margin-right: 9px;
+  padding: 0 7px;
+  border-radius: 9px;
+  background: #0284c7;
+  color: #fff;
+  font-size: 0.82em;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  vertical-align: 0.05em;
 }
 
 /* The washroom prep list. */

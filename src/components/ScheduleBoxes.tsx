@@ -184,8 +184,7 @@ export function ScheduleBoxes({
           const cls = statusClass(line.status);
           const grey = line.status === "NOT SCHEDULED" || line.status === "PM / CLEANING";
           const lineNote = line.setup.note.trim();
-          const span =
-            line.rows.reduce((sum, r) => sum + 1 + (r.notes ? 1 : 0) + (r.wo.remarks.trim() ? 1 : 0), 0) + (lineNote ? 1 : 0);
+          const span = line.rows.reduce((sum, r) => sum + 1 + (r.notes ? 1 : 0) + (r.wo.remarks.trim() ? 1 : 0), 0);
           return (
             <Fragment key={line.line}>
               {li > 0 && (
@@ -196,6 +195,16 @@ export function ScheduleBoxes({
                 </tbody>
               )}
               <tbody className={`sb-line sb-st-${cls}${grey ? " sb-grey" : ""}${line.runs ? " sb-scheduled" : ""}`}>
+                {/* The line's own note (Lines panel): across the top of its box,
+                    so it reads as the line's, not a work order's. */}
+                {lineNote && (
+                  <tr className="sb-line-note">
+                    <td colSpan={cols.length}>
+                      <b className="sb-note-tag">NOTE</b>
+                      {lineNote}
+                    </td>
+                  </tr>
+                )}
                 {line.rows.map((r, i) => {
                   const wo = r.wo;
                   const hl = isAllergenRow(wo) ? "sb-hl-allergen" : isOilRow(wo) ? "sb-hl-oil" : isBulkHighlightRow(wo) ? "sb-hl-bulk" : "";
@@ -280,22 +289,6 @@ export function ScheduleBoxes({
                     </Fragment>
                   );
                 })}
-                {/* The line's own note (Lines panel), at the bottom of its box. */}
-                {lineNote && (
-                  <tr className="sb-note sb-line-note">
-                    {inner.map((c, k) =>
-                      k === 0 ? (
-                        <td key={c.key} className="sb-arrow">
-                          ↳
-                        </td>
-                      ) : k === 1 ? (
-                        <td key={c.key} colSpan={inner.length - 1}>
-                          Line Note: {lineNote}
-                        </td>
-                      ) : null,
-                    )}
-                  </tr>
-                )}
               </tbody>
             </Fragment>
           );
