@@ -8,6 +8,41 @@ together.
 
 ## What's in the next update
 
+Nothing yet.
+
+---
+
+## Running the update
+
+| # | Step | Who | Time |
+|---|------|-----|------|
+| 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
+| 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
+| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
+| 4 | Check the new version (each item lists what to look at) | You | 5 min |
+| 5 | Send the announcement (written with each item) | You | – |
+
+## If something goes wrong
+
+Claude puts the previous version back, and it's live again in a few
+minutes.
+
+## Adding to this plan
+
+Each new change is built and tested on this branch first, then added
+under "What's in the next update": what changes for people, anything it
+needs outside the app (rules, logins), how to check it, and what to do
+once it's live.
+
+---
+
+## Released
+
+### 2026-11-10 (later): desiccant and allergen from the Hub, the Line boxes look
+
+Released to LineUp and to the Packaging Lead Hub (its `claude/next-update`
+into `claude/modest-gauss-y18sdh`).
+
 1. **Desiccant from the Hub.** The Packaging Lead Hub gets a **Stored Data →
    Desiccant** section, like Cotton: Admins and Owners add, change and
    remove the FG items that take desiccant ("Yes", or the desiccant it
@@ -98,33 +133,16 @@ together.
    **How to check it:** the preview's text looks rounder and crisper; BULK
    and EST. TIME show in full.
 
----
+Nothing changed in the Firebase rules. The Job Instruction stays at Rev.
+2026-11-09: the steps don't change (its screenshots show the printout
+before these looks).
 
-## Running the update
-
-| # | Step | Who | Time |
-|---|------|-----|------|
-| 1 | Bring in anything newer from the live app, then re-run the checks and browser tests | Claude | 10 min |
-| 2 | Update the Job Instruction, if the update changes what people do | Claude | 10 min |
-| 3 | Release it: LineUp, and (when this update has Hub changes) the Hub's `claude/next-update` into its live branch `claude/modest-gauss-y18sdh` | Claude | 2–15 min |
-| 4 | Check the new version (each item lists what to look at) | You | 5 min |
-| 5 | Send the announcement (written with each item) | You | – |
-
-## If something goes wrong
-
-Claude puts the previous version back, and it's live again in a few
-minutes.
-
-## Adding to this plan
-
-Each new change is built and tested on this branch first, then added
-under "What's in the next update": what changes for people, anything it
-needs outside the app (rules, logins), how to check it, and what to do
-once it's live.
-
----
-
-## Released
+**Announcement:** "Stored Data has new Desiccant and Allergen sections, like
+Cotton, filled from the Line Lead MDI Router. LineUp uses them when a work
+order's DES or Allergen box is empty. The Production Schedule printout has a
+new font (Roboto), slightly bigger work order text, a thicker border in
+each scheduled line's status color, and NEXT SHIFT under next shift's
+status."
 
 ### 2026-11-10: unlock message, holiday greeting banner
 
