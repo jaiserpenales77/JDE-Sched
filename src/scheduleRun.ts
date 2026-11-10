@@ -22,7 +22,7 @@ export function lineNumber(line: string): number | null {
 }
 
 // Lines 8 and up run through breaks and lunch; the others stop for them
-// (as on the workbook's 3. Lines). Changed per line in the Lines panel.
+// (as on the workbook's 3. Lines). The estimated times always use this rule.
 export function defaultBreaks(line: string): boolean {
   const n = lineNumber(line);
   return n === null || n < 8;
@@ -456,7 +456,7 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
     const status = thisShiftStatus(setup, rows);
     const runs = runsThisShift(status);
     const estimates = runs
-      ? estimateLine(rows, (wo) => input.rateOf(line, wo.item), input.asOf, setup.breaks, input.clock, input.settings)
+      ? estimateLine(rows, (wo) => input.rateOf(line, wo.item), input.asOf, defaultBreaks(line), input.clock, input.settings)
       : rows.map(() => ({ done: null, missing: "" as const }));
     const out: ScheduleRow[] = rows.map((wo, i) => {
       const intl = isInternational(wo, input.internationalOf?.(wo.item));

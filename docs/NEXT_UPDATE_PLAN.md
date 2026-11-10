@@ -33,6 +33,18 @@ together.
    printout row, its color, the box reaching down over it, and clearing it.
    **How to check it:** type a note for a line in the Lines panel; the
    preview shows it at the bottom of that line's box.
+3. **Lines panel without Breaks & lunch and Crew (EE).** The two columns
+   are gone from the Lines panel. The estimated times always use the
+   standard rule: Lines 1 to 7 stop for breaks and lunch, Lines 8 and up run
+   through them (a Yes / No picked before is ignored; the Estimated times
+   panel says so). The Line boxes printout keeps its EE column, blank, to
+   write the crew in by hand. Tested: unit tests (a saved Yes / No ignored,
+   Lines 1-7 vs 8 and up) and the printout tests.
+   **Job Instruction:** Part B step 4 ("Check breaks and crew") and the
+   quick card's step B3 describe the removed boxes, so it gets a new
+   revision at step 2 of the release.
+   **How to check it:** the Lines panel shows the statuses, the line note
+   and the running WO's time; the printout's EE column is blank.
 
 ---
 

@@ -317,9 +317,8 @@ function DraftText({
   );
 }
 
-// Each line's status this shift and next, whether it stops for breaks and
-// lunch, and its crew - the workbook's 3. Lines - and the time the schedule
-// is from.
+// Each line's status this shift and next and its note - the workbook's 3.
+// Lines - and the time the schedule is from.
 function LinesPanel({
   lines,
   setLineSetups,
@@ -409,8 +408,6 @@ function LinesPanel({
               <th>Line</th>
               <th>This shift</th>
               <th>Next shift</th>
-              <th>Breaks &amp; lunch</th>
-              <th>Crew (EE)</th>
               <th>Line note</th>
               <th>Running WO done</th>
             </tr>
@@ -445,54 +442,6 @@ function LinesPanel({
                       small
                       onChange={(v) => update([line], () => ({ nextShift: v }))}
                     />
-                  </td>
-                  <td>
-                    <span
-                      className="run-switch"
-                      role="radiogroup"
-                      aria-label={`${line.name} stops for breaks and lunch`}
-                      title="Yes: the line stops for breaks and lunch. No: it runs through them."
-                    >
-                      {[true, false].map((stops) => (
-                        <button
-                          key={String(stops)}
-                          type="button"
-                          role="radio"
-                          aria-checked={line.setup.breaks === stops}
-                          className={line.setup.breaks === stops ? "on" : ""}
-                          onClick={() => update([line], () => ({ breaks: stops }))}
-                        >
-                          {stops ? "Yes" : "No"}
-                        </button>
-                      ))}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="run-stepper">
-                      <button
-                        type="button"
-                        aria-label={`One less on ${line.name}`}
-                        disabled={line.setup.crew === null}
-                        onClick={() => update([line], (st) => ({ crew: st.crew === null || st.crew <= 1 ? null : st.crew - 1 }))}
-                      >
-                        −
-                      </button>
-                      <DraftNumber
-                        label={`${line.name} crew`}
-                        value={line.setup.crew}
-                        min={0}
-                        max={99}
-                        allowBlank
-                        onCommit={(n) => update([line], () => ({ crew: n === null ? null : Math.round(n) }))}
-                      />
-                      <button
-                        type="button"
-                        aria-label={`One more on ${line.name}`}
-                        onClick={() => update([line], (st) => ({ crew: Math.min(99, (st.crew ?? 0) + 1) }))}
-                      >
-                        +
-                      </button>
-                    </span>
                   </td>
                   <td className="run-note">
                     <DraftText
@@ -577,8 +526,8 @@ function EstimateSettings({
         Every work order on a line that runs this shift (Running, Partial shift or Overtime) gets an estimated time:
         from Schedule as of, the changeover minutes before each work order, then its bottles left (WO Qty less %
         Complete) at the line's Full Hour rate for that FG item from the Packaging Lead Hub's Line Rates, times the
-        line efficiency. On a line that stops for breaks and lunch, the break hours and the lunch hour make only their
-        share of a full hour's bottles; past the end of the shift the times carry on with the same hours. A work order
+        line efficiency. Lines 1 to 7 stop for breaks and lunch (Lines 8 and up run through them): there, the break
+        hours and the lunch hour make only their share of a full hour's bottles; past the end of the shift the times carry on with the same hours. A work order
         with no rate or WO Qty stops the times below it.
       </p>
       <div className="estimate-fields">

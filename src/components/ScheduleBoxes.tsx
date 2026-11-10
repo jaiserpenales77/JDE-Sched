@@ -231,7 +231,8 @@ export function ScheduleBoxes({
                     ) : (
                       ""
                     ),
-                    crew: line.setup.crew ?? "",
+                    // Left blank, to write the crew in by hand.
+                    crew: "",
                     est: <span className={r.estimate.done ? (r.first ? "sb-est-first" : "") : "sb-est-missing"}>{est}</span>,
                   };
                   const noteRow = (text: string, key: string) => (
