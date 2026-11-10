@@ -436,7 +436,7 @@ export interface ScheduleLine {
 
 // A line that runs this shift with PM / Cleaning next shift gets this note.
 export const PM_PREP_NOTE =
-  "Prepare line for Planned Maintenance at the end of the shift, Remove Caps & Bottles from hoppers and components in Zone 1 must be off the line";
+  "Prepare the line for Planned Maintenance at the end of the shift: remove the caps and bottles from the hoppers, and make sure all Zone 1 components are off the line.";
 
 // The notes for a line's box: PM prep when it runs this shift and next shift
 // is PM / Cleaning, then the typed note.

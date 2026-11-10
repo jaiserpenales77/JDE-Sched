@@ -22,10 +22,10 @@ together.
    after a blue NOTE tag.
 2. **Automatic PM prep note.** A line that runs this shift (Running,
    Partial shift or Overtime) with **PM / Cleaning** next shift gets a line
-   note by itself, in the same blue NOTE band at the top of its box: "Prepare
-   line for Planned Maintenance at the end of the shift, Remove Caps &
-   Bottles from hoppers and components in Zone 1 must be off the line"
-   (**wording to be confirmed**: a grammar-corrected version was offered).
+   note by itself, in the same blue NOTE band at the top of its box:
+   "Prepare the line for Planned Maintenance at the end of the shift:
+   remove the caps and bottles from the hoppers, and make sure all Zone 1
+   components are off the line."
    A typed note still prints too, after it. The Lines panel shows "+ PM prep
    note (next shift is PM)" under that line's note box. Tested: unit tests
    (which statuses get it, with and without a typed note) and the printout
