@@ -12,11 +12,18 @@
 //                               (username@pk030.local); default false
 //   temporary: [{ ip, label, by, until }] - networks an Owner allowed from
 //              the Hub (lineupNetwork, below), each until its date
+//   logSignIns: true / false - false stops the sign-in log (below); default on
 // Changes apply to the next sign-in, with no redeploy.
+//
+// Every sign-in to the database's apps - LineUp, Cremer Recipes and the
+// Packaging Lead Hub - also goes in the Hub's Activity Log (pk030-activity),
+// with the app, the account and the network's IP address, whether the check
+// is on or off: "Signed in", or "Sign-in refused (network)" when the check
+// turned it away. Only the Hub's Admins and Owners can read that log.
 const { beforeUserSignedIn, HttpsError: AuthError } = require("firebase-functions/v2/identity");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, Timestamp } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue, Timestamp } = require("firebase-admin/firestore");
 const { isAllowed, plainIp } = require("./allowed");
 const net = require("node:net");
 
@@ -37,16 +44,62 @@ function allowedNow(settings, now = Date.now()) {
   return [...(Array.isArray(settings?.allowed) ? settings.allowed : []), ...temporary];
 }
 
+const ACTIVITY = "pk030-activity";
+// How long a sign-in waits for its log entry before going ahead without it.
+const LOG_WAIT_MS = 2000;
+
+// Which app an account belongs to, by its email.
+function appOf(email) {
+  const name = email.split("@")[0];
+  if (HUB.test(email)) return "Packaging Lead Hub";
+  if (LINEUP.test(email)) return name.startsWith("cremer-") ? "Cremer Recipes" : "LineUp";
+  return "Other";
+}
+
+// Adds the sign-in to the Activity Log. Never holds a sign-in up for more
+// than LOG_WAIT_MS, and never refuses one because the log couldn't be written.
+async function logSignIn(event, action, detail = "") {
+  try {
+    const email = String(event.data?.email ?? "").toLowerCase();
+    const entry = {
+      uid: String(event.data?.uid ?? ""),
+      username: email.split("@")[0] || email,
+      action,
+      detail,
+      app: appOf(email),
+      ip: plainIp(event.ipAddress),
+      at: FieldValue.serverTimestamp(),
+    };
+    await Promise.race([
+      getFirestore().collection(ACTIVITY).add(entry),
+      new Promise((resolve) => setTimeout(resolve, LOG_WAIT_MS)),
+    ]);
+  } catch (err) {
+    console.warn("Couldn't log the sign-in.", err);
+  }
+}
+
 exports.allowedNetworksOnly = beforeUserSignedIn(async (event) => {
   const email = event.data?.email ?? "";
   const isLineUp = LINEUP.test(email);
   const isHub = HUB.test(email);
-  if (!isLineUp && !isHub) return;
-  const snap = await getFirestore().doc(NETWORK_DOC).get();
-  const settings = snap.exists ? snap.data() : null;
-  if (!settings || settings.enabled !== true) return;
-  if (isHub && settings.hub !== true) return;
-  if (isAllowed(event.ipAddress, allowedNow(settings))) return;
+  // The settings decide the check for LineUp and Hub accounts (a failed read
+  // fails their sign-in, as before) and whether sign-ins are logged.
+  let settings = null;
+  try {
+    const snap = await getFirestore().doc(NETWORK_DOC).get();
+    settings = snap.exists ? snap.data() : null;
+  } catch (err) {
+    if (isLineUp || isHub) throw err;
+  }
+  const refused = (isLineUp || isHub)
+    && settings?.enabled === true
+    && !(isHub && settings.hub !== true)
+    && !isAllowed(event.ipAddress, allowedNow(settings));
+  if (settings?.logSignIns !== false) {
+    await logSignIn(event, refused ? "Sign-in refused (network)" : "Signed in", refused ? "Not an approved network" : "");
+  }
+  if (!refused) return;
   console.warn(`Sign-in refused for ${email} from ${event.ipAddress}`);
   throw new AuthError(
     "permission-denied",
