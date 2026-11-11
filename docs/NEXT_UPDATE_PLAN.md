@@ -8,30 +8,7 @@ together.
 
 ## What's in the next update
 
-1. **Line notes across the top of the line's box.** A line's note (Lines
-   panel) now prints as a light sky-blue band across the **top** of the
-   line's box, full width, with a small solid blue **NOTE** tag in front,
-   so it reads as the line's note, not part of a work order (it was a row
-   under the last work order, with an arrow). Tested on the test database:
-   the band's place, width, colors and tag, the line and next-shift cells
-   covering just the work orders, saving, reload and clearing; the other
-   printout tests unchanged.
-   **Job Instruction:** Part B step 4 says the note prints "at the bottom
-   of that line's box", so it gets a new revision at step 2 of the release.
-   **How to check it:** a line with a note shows it at the top of its box,
-   after a blue NOTE tag.
-2. **Automatic PM prep note.** A line that runs this shift (Running,
-   Partial shift or Overtime) with **PM / Cleaning** next shift gets a line
-   note by itself, in the same blue NOTE band at the top of its box:
-   "Prepare the line for Planned Maintenance at the end of the shift:
-   remove the caps and bottles from the hoppers, and make sure all Zone 1
-   components are off the line."
-   A typed note still prints too, after it. The Lines panel shows "+ PM prep
-   note (next shift is PM)" under that line's note box. Tested: unit tests
-   (which statuses get it, with and without a typed note) and the printout
-   tests.
-   **How to check it:** set a running line's Next shift to PM; its box gets
-   the PM prep note.
+Nothing yet.
 
 ---
 
@@ -60,6 +37,41 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-11-11: line notes across the top, the automatic PM prep note
+
+1. **Line notes across the top of the line's box.** A line's note (Lines
+   panel) now prints as a light sky-blue band across the **top** of the
+   line's box, full width, with a small solid blue **NOTE** tag in front,
+   so it reads as the line's note, not part of a work order (it was a row
+   under the last work order, with an arrow). Tested on the test database:
+   the band's place, width, colors and tag, the line and next-shift cells
+   covering just the work orders, saving, reload and clearing; the other
+   printout tests unchanged.
+   **Job Instruction:** a new revision, **Rev. 2026-11-11**: Part B step 4
+   says the note prints across the top of the line's box (and about the PM
+   prep note), Extras step 8 the same, and the screenshots show the band.
+   **How to check it:** a line with a note shows it at the top of its box,
+   after a blue NOTE tag.
+2. **Automatic PM prep note.** A line that runs this shift (Running,
+   Partial shift or Overtime) with **PM / Cleaning** next shift gets a line
+   note by itself, in the same blue NOTE band at the top of its box:
+   "Prepare the line for Planned Maintenance at the end of the shift:
+   remove the caps and bottles from the hoppers, and make sure all Zone 1
+   components are off the line."
+   A typed note still prints too, after it. The Lines panel shows "+ PM prep
+   note (next shift is PM)" under that line's note box. Tested: unit tests
+   (which statuses get it, with and without a typed note) and the printout
+   tests.
+   **How to check it:** set a running line's Next shift to PM; its box gets
+   the PM prep note.
+
+Nothing changed in Firebase or the Hub.
+
+**Announcement:** "Production Schedule: line notes now print across the top
+of the line's box with a blue NOTE tag. A line that runs this shift with PM
+next shift gets a note by itself: prepare the line for Planned Maintenance at
+the end of the shift. The Job Instruction is updated (Rev. 2026-11-11)."
 
 ### 2026-11-10 (evening): Filler Slate Setup, line notes, a slimmer Lines panel
 
