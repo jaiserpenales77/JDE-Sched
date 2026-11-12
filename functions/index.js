@@ -10,8 +10,10 @@
 //              (IPv4 or IPv6 addresses, or CIDR ranges; set in the console)
 //   hub:       true / false   - also the Packaging Lead Hub's accounts
 //                               (username@pk030.local); default false
-//   temporary: [{ ip, label, by, until }] - networks an Owner allowed from
-//              the Hub (lineupNetwork, below), each until its date
+//   temporary: [{ ip, label, by, until, listed? }] - networks allowed from
+//              the Hub (lineupNetwork, below), each until its date: an
+//              Owner's own (home), or with `listed` one added from the
+//              Activity Log or the Admin list for a number of days
 //   labels:    { "<entry in allowed>": { label, by, at } } - the names of the
 //              networks Owners added to `allowed` from the Hub's Activity Log
 //   logSignIns: true / false - false stops the sign-in log (below); default on
@@ -36,6 +38,16 @@ const HUB = /@pk030\.local$/i;
 const NETWORK_DOC = "jde-sched-access/network";
 // How long a network allowed from the Hub stays allowed.
 const TEMPORARY_DAYS = 30;
+
+// An entry for the allowed networks: an IP address, or a range like
+// 198.51.100.0/24 (IPv4 or IPv6).
+function validEntry(entry) {
+  const [address, prefix, extra] = entry.split("/");
+  if (extra !== undefined) return false;
+  if (prefix === undefined) return net.isIP(address) !== 0;
+  const max = net.isIPv6(address) ? 128 : net.isIPv4(address) ? 32 : 0;
+  return max > 0 && /^\d{1,3}$/.test(prefix) && Number(prefix) <= max;
+}
 
 // The networks allowed now: the console's list, and the Hub's that haven't
 // run out.
@@ -126,8 +138,9 @@ function requestIp(req) {
 // take an entry off them.
 //   { action: "status", checkIps?: [ip, ...] }  (which of those are allowed)
 //   { action: "allow" | "remove" }               (this network, 30 days)
-//   { action: "allowIp", ip, label? }            (an address, until removed)
-//   { action: "removeIp", ip }                   (an entry of the allowed list)
+//   { action: "allowIp", ip, label?, days? }     (an address or range: until
+//                                                 removed, or for `days` days)
+//   { action: "removeIp", ip }                   (that entry, wherever it is)
 exports.lineupNetwork = onCall(async (request) => {
   const email = request.auth?.token?.email ?? "";
   if (!HUB.test(email)) throw new HttpsError("permission-denied", "Sign in to the Packaging Lead Hub first.");
@@ -144,8 +157,10 @@ exports.lineupNetwork = onCall(async (request) => {
     await db.runTransaction(async (tx) => {
       const snap = await tx.get(ref);
       const now = Date.now();
-      // Keep the others' entries that haven't run out; this Owner has one.
-      const temporary = (snap.data()?.temporary ?? []).filter((t) => t?.by !== username && t?.until?.toMillis?.() > now);
+      // Keep the others' entries that haven't run out; this Owner has one
+      // (their home network; not the ones they listed with allowIp).
+      const temporary = (snap.data()?.temporary ?? [])
+        .filter((t) => (t?.by !== username || t?.listed) && t?.until?.toMillis?.() > now);
       if (action === "allow") {
         if (!ip) throw new HttpsError("failed-precondition", "Couldn't tell which network this is.");
         temporary.push({
@@ -159,24 +174,35 @@ exports.lineupNetwork = onCall(async (request) => {
     });
   }
   if (action === "allowIp" || action === "removeIp") {
-    const entry = action === "allowIp" ? plainIp(request.data?.ip) : String(request.data?.ip ?? "").trim();
-    if (action === "allowIp" && !net.isIP(entry)) throw new HttpsError("invalid-argument", "That isn't an IP address.");
+    const raw = String(request.data?.ip ?? "").trim();
+    const entry = raw.includes("/") ? raw : plainIp(raw);
+    if (action === "allowIp" && !validEntry(entry)) throw new HttpsError("invalid-argument", "That isn't an IP address or range.");
     if (!entry) throw new HttpsError("invalid-argument", "Which network?");
+    const days = request.data?.days == null ? 0 : Number(request.data.days);
+    if (action === "allowIp" && days && !(Number.isInteger(days) && days >= 1 && days <= 365)) {
+      throw new HttpsError("invalid-argument", "Days must be a whole number from 1 to 365.");
+    }
     await db.runTransaction(async (tx) => {
       const data = (await tx.get(ref)).data() ?? {};
+      const now = Date.now();
+      // The entry comes off wherever it is (the list, its name, the temporary
+      // ones), so it's in one place at a time: until removed, or for `days`.
       const allowed = (Array.isArray(data.allowed) ? data.allowed : []).filter((a) => String(a).trim() !== entry);
       const labels = { ...(data.labels ?? {}) };
       delete labels[entry];
+      const temporary = (Array.isArray(data.temporary) ? data.temporary : [])
+        .filter((t) => t?.until?.toMillis?.() > now && String(t?.ip ?? "").trim() !== entry);
       if (action === "allowIp") {
-        allowed.push(entry);
-        labels[entry] = {
-          label: String(request.data?.label ?? "").trim().slice(0, 60) || `Added by ${username}`,
-          by: username,
-          at: Timestamp.now(),
-        };
+        const label = String(request.data?.label ?? "").trim().slice(0, 60) || `Added by ${username}`;
+        if (days) {
+          temporary.push({ ip: entry, label, by: username, until: Timestamp.fromMillis(now + days * 86_400_000), listed: true });
+        } else {
+          allowed.push(entry);
+          labels[entry] = { label, by: username, at: Timestamp.now() };
+        }
       }
-      // Both fields replaced whole (a merge would keep a removed label).
-      tx.set(ref, { allowed, labels }, { mergeFields: ["allowed", "labels"] });
+      // All three replaced whole (a merge would keep a removed label).
+      tx.set(ref, { allowed, labels, temporary }, { mergeFields: ["allowed", "labels", "temporary"] });
     });
   }
   const settings = (await ref.get()).data() ?? {};
@@ -198,7 +224,8 @@ exports.lineupNetwork = onCall(async (request) => {
     allowedNow: !!ip && isAllowed(ip, allowedNow(settings, now)),
     temporary: (settings.temporary ?? [])
       .filter((t) => t?.until?.toMillis?.() > now)
-      .map((t) => ({ ip: t.ip, label: t.label, by: t.by, until: t.until.toMillis(), mine: t.by === username })),
+      .map((t) => ({ ip: t.ip, label: t.label, by: t.by, until: t.until.toMillis(), listed: t.listed === true,
+        mine: t.by === username && !t.listed })),
     days: TEMPORARY_DAYS,
   };
 });

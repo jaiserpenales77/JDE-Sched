@@ -51,7 +51,7 @@ document ID `network`, with these fields:
 | `enabled` | boolean | `false` while setting up; `true` to turn the check on |
 | `allowed` | array of strings | each network: an address like `203.0.113.7`, or a range like `198.51.100.0/24` (IPv6 works too) |
 | `hub` | boolean | `true` to also check the Hub's accounts; leave out or `false` for LineUp only (keep it `false`, so the Hub's button can be reached from home) |
-| `temporary` | (made by the Hub's button) | the networks Owners allowed from the Hub, each with its end date; don't type here |
+| `temporary` | (made by the Hub) | the networks allowed from the Hub for a while, each with its end date: Owners' home networks, and (`listed`) those added or made temporary from the Activity Log or the Admin list; don't type here |
 | `labels` | (made by the Hub's Allow button) | the names of the networks added to `allowed` from the Hub's Activity Log; don't type here |
 | `logSignIns` | boolean | leave out (or `true`) to log every sign-in (below); `false` to stop logging |
 
@@ -91,19 +91,26 @@ app, the account, the IP address and the time; a refusal is logged as one;
 
 **Allowing a network from the log:** in the Hub's **Activity Log**, each
 account shows the networks (IP addresses) it signed in from. An Owner can
-press **Allow** beside one to add it to `allowed`, with a name (for example
-"Plant - packaging office"); it stays until removed. The Hub's **Admin →
-LineUp: Network Access** lists every entry of `allowed` (the console's too,
-without a name) with **Remove**. Both go through `lineupNetwork`, which only
-Owners can use; the console's entries are kept as typed.
+press **Allow** beside one, give it a name (for example "Plant - packaging
+office") and choose **Until removed** (it goes in `allowed`) or **For 30
+days** (it goes in `temporary`). The Hub's **Admin → LineUp: Network
+Access** lists both (the console's entries too, without a name), each with
+**Make temporary** (30 days) or **Make permanent**, and **Remove**. An entry
+is in one place at a time: making it one takes it out of the other. An
+Owner's own "Allow LineUp from this network" (home) is kept apart: pressing
+it again only replaces their home entry. All of it goes through
+`lineupNetwork`, which only Owners can use.
 
 Tested on the test database (Firebase emulators): only Owners can add or
 remove; an address is added with its name, who added it and when, once
 however often it's added; LineUp then signs in from it, and is refused again
-once it's removed; a range or a bad address can't be added this way; the
+once it's removed; bad addresses, ranges and day counts are refused; the
 console's entries and the other settings are kept; a console range can be
 removed by its entry; and the Hub learns which addresses are allowed,
-ranges included.
+ranges included. Temporary: added for 30 days with its date, LineUp signs
+in from it, and an Owner's home allow (or Remove mine) leaves it alone;
+making it permanent and temporary again moves it (with its name), a console
+range can be made temporary, and Remove takes a temporary entry off.
 
 **Installing it:** the log comes with the check, so after this update
 deploy the functions again, in Cloud Shell as in step 3 below (from a
