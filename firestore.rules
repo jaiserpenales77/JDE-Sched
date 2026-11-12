@@ -35,6 +35,21 @@ service cloud.firestore {
         && request.resource.data.names.size() <= 1000;
     }
 
+    // The week plan (which lines run each shift), imported from the weekly
+    // packaging schedule and shared by every shift.
+    match /jde-sched-plan/{doc} {
+      allow read: if jdeAnyShiftAccount();
+      allow write: if jdeAnyShiftAccount()
+        && doc == 'week'
+        && request.resource.data.keys().hasOnly(['shifts', 'file', 'importedAt', 'importedBy'])
+        && request.resource.data.shifts is map
+        && request.resource.data.shifts.size() <= 200
+        && request.resource.data.file is string
+        && request.resource.data.file.size() <= 200
+        && request.resource.data.importedAt is number
+        && request.resource.data.importedBy in ['1st', '2nd', '3rd'];
+    }
+
     // Packaging Lead Hub. Accounts are username@pk030.local.
     function signedIn() {
       return request.auth != null

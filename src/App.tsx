@@ -5,6 +5,7 @@ import { lockApp, useShiftAuth } from "./auth";
 import { rememberedUntil, rememberedUntilLabel } from "./rememberDevice";
 import { IDLE_LOCK_MINUTES, useIdleLock } from "./useIdleLock";
 import { useHubData } from "./hubData";
+import { linePlanFor, parseLinePlan, planShiftKey, planShiftLabel, saveWeekPlan, useWeekPlan } from "./linePlan";
 import { useShiftNames } from "./shiftNames";
 import { DEFAULT_SHIFT_START, findLineRate } from "./scheduleLogic";
 import {
@@ -178,6 +179,23 @@ function App() {
   };
   const now = useMinuteClock();
   const asOf = scheduleAsOfDate(data.scheduleAsOf, now);
+  // The week plan every shift shares (imported from the weekly packaging
+  // schedule): which lines run each shift.
+  const weekPlan = useWeekPlan(!!shift);
+  const planKey = shift ? planShiftKey(asOf, shift, changeoverClock.start) : "";
+  async function importWeekPlan(file: File): Promise<string> {
+    if (!shift) throw new Error("Unlock a shift first.");
+    const parsed = parseLinePlan(await readWorkbookSheets(file));
+    try {
+      await saveWeekPlan(weekPlan, parsed, file.name, shift);
+    } catch (err) {
+      if ((err as { code?: string }).code === "permission-denied")
+        throw new Error("The database doesn't take week plans yet: its rules need the week plan rule (see the update notes).");
+      throw err;
+    }
+    const count = Object.keys(parsed.shifts).length;
+    return `Imported ${count} shift${count === 1 ? "" : "s"} (${planShiftLabel(parsed.first)} to ${planShiftLabel(parsed.last)}, ${parsed.lines} lines) for every shift.`;
+  }
   // The Hub's allergen fills an empty Allergen box, for the schedule and
   // printouts (the saved work orders keep theirs).
   const scheduleWorkOrders = withListedAllergen(workOrders, (item) => hub.allergen[item.trim().toUpperCase()] ?? null);
@@ -190,6 +208,7 @@ function App() {
     rateOf: (line, item) => findLineRate(hub.lineRates, line, item)?.fullHour ?? null,
     cottonListed: (item) => hub.cotton[item.trim().toUpperCase()] ?? null,
     desiccantListed: (item) => hub.desiccant[item.trim().toUpperCase()] ?? null,
+    planFor: (line) => linePlanFor(weekPlan, planKey, line),
   });
   const shiftIndex = SHIFT_KEYS.indexOf(shift ?? "1st");
   const boxes: BoxesView = {
@@ -597,6 +616,9 @@ function App() {
             hubCotton={hub.cotton}
             hubDesiccant={hub.desiccant}
             hubAllergen={hub.allergen}
+            weekPlan={weekPlan}
+            planKey={planKey}
+            onImportPlan={importWeekPlan}
             columnWidths={printScheduleColumnWidths}
             setColumnWidths={setScheduleColumnWidths}
             hiddenColumns={printScheduleHiddenColumns}

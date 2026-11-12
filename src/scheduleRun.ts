@@ -1,3 +1,4 @@
+import type { LinePlanFor } from "./linePlan";
 import type { ChangeoverCode, LineStatusPick, RunStatus, ScheduleLineSetup, ScheduleRunSettings, WorkOrder } from "./types";
 import { RUN_STATUSES } from "./types";
 import { changeoverInto, groupByLine, SHIFT_HOURS } from "./scheduleLogic";
@@ -30,7 +31,7 @@ export function defaultBreaks(line: string): boolean {
 
 export function defaultLineSetup(line: string): ScheduleLineSetup {
   const n = lineNumber(line);
-  return { name: n === null ? line.trim() : `LINE ${n}`, thisShift: "", nextShift: "", breaks: defaultBreaks(line), crew: null, note: "" };
+  return { name: n === null ? line.trim() : `LINE ${n}`, thisShift: "", nextShift: "", breaks: defaultBreaks(line), crew: null, note: "", pickedFor: "" };
 }
 
 // The setup saved for a schedule line, else the defaults.
@@ -53,21 +54,32 @@ export function readStatus(value: unknown): LineStatusPick {
   return (RUN_STATUSES as readonly string[]).includes(s) ? (s as RunStatus) : "";
 }
 
-// A line's status this shift: the one picked, else its file's Line Status
-// (Ready, PM, OT), else NOT SCHEDULED. NONE = no status ("").
-export function thisShiftStatus(setup: ScheduleLineSetup, rows: WorkOrder[]): RunStatus | "" {
-  if (setup.thisShift === "NONE") return "";
-  if (setup.thisShift) return setup.thisShift;
+// Whether a pick counts: when the week plan covers the shift, only a pick
+// made on this shift does (so yesterday's picks don't hide today's plan).
+function pickCounts(setup: ScheduleLineSetup, covered: boolean, plan?: LinePlanFor): boolean {
+  return !plan || !covered || setup.pickedFor === plan.key;
+}
+
+// A line's status this shift: the one picked, else the week plan's, else
+// its file's Line Status (Ready, PM, OT), else NOT SCHEDULED. NONE = no
+// status ("").
+export function thisShiftStatus(setup: ScheduleLineSetup, rows: WorkOrder[], plan?: LinePlanFor): RunStatus | "" {
+  const pick = setup.thisShift && pickCounts(setup, !!plan?.thisCovered, plan) ? setup.thisShift : "";
+  if (pick === "NONE") return "";
+  if (pick) return pick;
+  if (plan?.thisShift) return plan.thisShift;
   if (rows.some((r) => r.lineStatus === "Ready")) return "READY LINE";
   if (rows.some((r) => r.lineStatus === "PM")) return "PM / CLEANING";
   if (rows.some((r) => r.lineStatus === "OT")) return "OVERTIME";
   return "NOT SCHEDULED";
 }
 
-// Next shift: the one picked, else NOT SCHEDULED; NONE = no status ("").
-export function nextShiftStatus(setup: ScheduleLineSetup): RunStatus | "" {
-  if (setup.nextShift === "NONE") return "";
-  return setup.nextShift || "NOT SCHEDULED";
+// Next shift: the one picked, else the week plan's, else NOT SCHEDULED;
+// NONE = no status ("").
+export function nextShiftStatus(setup: ScheduleLineSetup, plan?: LinePlanFor): RunStatus | "" {
+  const pick = setup.nextShift && pickCounts(setup, !!plan?.nextCovered, plan) ? setup.nextShift : "";
+  if (pick === "NONE") return "";
+  return pick || plan?.nextShift || "NOT SCHEDULED";
 }
 
 // Lines that get estimated times.
@@ -186,6 +198,7 @@ export function normalizeScheduleLines(raw: unknown, ticked: unknown): ScheduleL
       breaks: typeof s.breaks === "boolean" ? s.breaks : defaultBreaks(name),
       crew: typeof s.crew === "number" && Number.isFinite(s.crew) && s.crew >= 0 ? Math.round(s.crew) : null,
       note: typeof s.note === "string" ? s.note.replace(/\s+/g, " ").trim().slice(0, LINE_NOTE_MAX) : "",
+      pickedFor: typeof s.pickedFor === "string" ? s.pickedFor.slice(0, 20) : "",
     });
   }
   return out;
@@ -432,6 +445,13 @@ export interface ScheduleLine {
   // The notes printed across the top of the line's box: the automatic ones
   // (PM prep) first, then the one typed in the Lines panel.
   lineNotes: string[];
+  // The statuses it would have with nothing picked (the week plan's, else
+  // the file's tags), for the Lines panel's dashed "automatic" outline, and
+  // whether they come from the week plan.
+  auto: { thisShift: RunStatus | ""; nextShift: RunStatus | ""; thisFromPlan: boolean; nextFromPlan: boolean };
+  // The picks that count (a pick from an earlier shift doesn't, once the
+  // week plan covers the shift), as the Lines panel shows them.
+  picks: { thisShift: LineStatusPick; nextShift: LineStatusPick };
 }
 
 // A line that runs this shift with PM / Cleaning next shift gets this note.
@@ -458,6 +478,8 @@ export interface ScheduleRunInput {
   cottonListed?: (item: string) => string | null;
   // The Hub's desiccant list, the same way.
   desiccantListed?: (item: string) => string | null;
+  // The week plan for a line, this shift and next.
+  planFor?: (line: string) => LinePlanFor;
 }
 
 export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[]; end: Date } {
@@ -467,7 +489,8 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
     const setup = setupFor(input.lines, line);
     const n = lineNumber(line);
     const merrill = n !== null && merrillLines.includes(n);
-    const status = thisShiftStatus(setup, rows);
+    const plan = input.planFor?.(line);
+    const status = thisShiftStatus(setup, rows, plan);
     const runs = runsThisShift(status);
     const estimates = runs
       ? estimateLine(rows, (wo) => input.rateOf(line, wo.item), input.asOf, defaultBreaks(line), input.clock, input.settings)
@@ -493,8 +516,18 @@ export function buildSchedule(input: ScheduleRunInput): { lines: ScheduleLine[];
         desiccant: desiccantOf(wo, input.desiccantListed?.(wo.item) ?? null),
       };
     });
-    const next = nextShiftStatus(setup);
-    return { line, setup, name: setup.name || line, status, next, runs, rows: out, lineNotes: lineNotesFor(runs, next, setup.note) };
+    const next = nextShiftStatus(setup, plan);
+    const auto = {
+      thisShift: thisShiftStatus({ ...setup, thisShift: "" }, rows, plan),
+      nextShift: nextShiftStatus({ ...setup, nextShift: "" }, plan),
+      thisFromPlan: !!plan?.thisShift,
+      nextFromPlan: !!plan?.nextShift,
+    };
+    const picks = {
+      thisShift: setup.thisShift && pickCounts(setup, !!plan?.thisCovered, plan) ? setup.thisShift : ("" as LineStatusPick),
+      nextShift: setup.nextShift && pickCounts(setup, !!plan?.nextCovered, plan) ? setup.nextShift : ("" as LineStatusPick),
+    };
+    return { line, setup, name: setup.name || line, status, next, runs, rows: out, lineNotes: lineNotesFor(runs, next, setup.note), auto, picks };
   });
   return { lines, end };
 }

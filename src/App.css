@@ -5008,3 +5008,28 @@ table.run-lines {
 .qa-row {
   break-inside: avoid;
 }
+
+/* The week plan import, in the Lines panel. */
+.run-plan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 4px 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel-2);
+}
+.run-plan-state {
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+.run-plan-ok {
+  font-size: 0.9em;
+  color: #15803d;
+}
+.run-plan-err {
+  font-size: 0.9em;
+  color: #b91c1c;
+}

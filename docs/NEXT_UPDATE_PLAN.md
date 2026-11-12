@@ -8,7 +8,59 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+1. **Import week plan: the line statuses fill in by themselves, for every
+   shift.** The Lines panel has a new **Import week plan** button. Pick the
+   weekly packaging schedule (the workbook with the **Daily Line Sched**
+   sheet) and LineUp reads which lines run each shift: a number (1, or a
+   part like 0.5) is Running or Partial shift, PM is PM / Cleaning, Ready
+   is Ready line, OT is Overtime, blank is Off. One import is shared by all
+   three shifts, so only one person needs to do it each week. Every line's
+   this-shift and next-shift status then comes from the plan (shown with a
+   dashed outline), the estimated times, the PM prep note and the
+   printout follow it, and nobody has to tick the lines by hand. Clicking
+   a status still changes it, for this shift only: at the next shift the
+   plan decides again. A line left blank in the plan falls back to the
+   JDE file's Line Status, as now. Shifts the plan doesn't cover work as
+   they do today, and the panel says whether this shift is in the plan.
+   Importing again (next week's file) replaces those shifts and keeps the
+   rest for 4 weeks. Only the line statuses are saved (no products or
+   counts), and the weekly file itself is never stored or committed.
+   Tested on the test database with the 11/09–11/13 workbook: 54 shifts
+   read; 11/11 3rd shift shows lines 5, 9, 10 and 12 Running, as on the
+   printout, and Line 5's PM next shift adds the PM prep note; 1st shift
+   sees the same plan; a pick wins for its shift only; the rules refuse
+   signed-out access, other documents, extra fields and a bad shift name.
+   **Needs outside the app (you, before the release):** publish the new
+   rule in the Firebase console (Firestore Database → Rules), inside
+   `match /databases/{database}/documents { ... }`, next to the
+   `jde-sched-names` block:
+
+   ```
+   match /jde-sched-plan/{doc} {
+     allow read: if jdeAnyShiftAccount();
+     allow write: if jdeAnyShiftAccount()
+       && doc == 'week'
+       && request.resource.data.keys().hasOnly(['shifts', 'file', 'importedAt', 'importedBy'])
+       && request.resource.data.shifts is map
+       && request.resource.data.shifts.size() <= 200
+       && request.resource.data.file is string
+       && request.resource.data.file.size() <= 200
+       && request.resource.data.importedAt is number
+       && request.resource.data.importedBy in ['1st', '2nd', '3rd'];
+   }
+   ```
+
+   (It's also in `firestore.rules` in the repo.) Without it, the import
+   says the database doesn't take week plans yet, and nothing else
+   changes.
+   **Job Instruction:** Part B gets an "Import the week plan" step and a
+   note that the dashed statuses come from it.
+   **How to check it:** import this week's file on any shift, then open
+   LineUp on another shift: the running lines are already marked.
+   **Announcement:** "LineUp can now read the weekly packaging schedule.
+   Once a week, click Import week plan in the Lines panel and pick the
+   file: every shift's line statuses fill in by themselves. You can still
+   click a status to change it for your shift."
 
 ---
 

@@ -44,8 +44,13 @@ export interface ScheduleLineSetup {
   breaks: boolean;
   // People on the line (EE); null = not given.
   crew: number | null;
-  // A note for the line, printed at the bottom of its box ("" = none).
+  // A note for the line, printed across the top of its box ("" = none).
   note: string;
+  // The week plan's shift (planShiftKey) this shift's and next shift's
+  // picks were made on: when the week plan covers a shift, a pick counts
+  // only on the shift it was made, so yesterday's picks don't hide today's
+  // plan ("" = before the week plan).
+  pickedFor: string;
 }
 
 // The estimated times and the washroom prep list (the workbook's 5. Settings).

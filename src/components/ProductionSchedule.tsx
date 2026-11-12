@@ -24,7 +24,9 @@ import {
   formatClock,
   parseClock,
 } from "../scheduleLogic";
-import { asOfNow, defaultLineSetup, LINE_NOTE_MAX, lineKey, lineNumber, PM_PREP_NOTE, thisShiftStatus, whenText } from "../scheduleRun";
+import { asOfNow, defaultLineSetup, LINE_NOTE_MAX, lineKey, lineNumber, PM_PREP_NOTE, whenText } from "../scheduleRun";
+import { compareKeys, planShiftLabel } from "../linePlan";
+import type { WeekPlan } from "../linePlan";
 import type { ScheduleLine } from "../scheduleRun";
 import type { AllergenList, CottonList, DesiccantList } from "../hubData";
 import ProgressBar from "./ProgressBar";
@@ -52,6 +54,10 @@ interface Props {
   hubDesiccant: DesiccantList;
   // The Hub's allergen list (FG item -> its code), shown in a blank Allergen box.
   hubAllergen: AllergenList;
+  // The shared week plan, this shift's key in it, and importing a new one.
+  weekPlan: WeekPlan | null;
+  planKey: string;
+  onImportPlan: (file: File) => Promise<string>;
   // What the printout shows (see App.tsx), for the preview.
   printData: {
     workOrders: WorkOrder[];
@@ -325,13 +331,24 @@ function LinesPanel({
   scheduleAsOf,
   setScheduleAsOf,
   boxes,
+  weekPlan,
+  planKey,
+  onImportPlan,
 }: {
   lines: ScheduleLine[];
   setLineSetups: (updater: (lines: ScheduleLineSetup[]) => ScheduleLineSetup[]) => void;
   scheduleAsOf: string;
   setScheduleAsOf: (asOf: string) => void;
   boxes: BoxesView;
+  weekPlan: WeekPlan | null;
+  planKey: string;
+  onImportPlan: (file: File) => Promise<string>;
 }) {
+  const planInput = useRef<HTMLInputElement>(null);
+  const [planMsg, setPlanMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const planCovers = !!planKey && !!weekPlan?.shifts[planKey];
+  const planKeys = weekPlan ? Object.keys(weekPlan.shifts).sort(compareKeys) : [];
   // Saves a change to some lines' setups, worked out from each one's
   // current setup (so quick clicks on + add up).
   function update(
@@ -344,7 +361,12 @@ function LinesPanel({
         const key = lineKey(line.line);
         const i = next.findIndex((s) => lineKey(s.name) === key);
         const current = i >= 0 ? next[i] : line.setup;
-        const changed = { ...current, ...patch(current, line) };
+        const p = patch(current, line);
+        // A status pick is for this shift: a pick from an earlier shift that
+        // no longer counts is dropped, so it can't come back.
+        const picking = "thisShift" in p || "nextShift" in p;
+        const base = picking && planKey ? { ...current, ...line.picks, pickedFor: planKey } : current;
+        const changed = { ...base, ...p };
         if (i >= 0) next[i] = changed;
         else next.push(changed);
       }
@@ -356,10 +378,49 @@ function LinesPanel({
       <h2>Lines</h2>
       <p className="panel-hint">
         Each line's status this shift and next shift, as on the printout. Running, Partial shift and Overtime lines get
-        estimated times. Statuses stay from day to day, so check them at the start of each shift, then click{" "}
-        <strong>Set to now</strong>: until Schedule as of is today, the printout shows a red CHECK in place of its
-        summary.
+        estimated times. With a <strong>week plan</strong> imported, the statuses fill in from it for every shift (a
+        dashed outline); click a status to change it for this shift. Then click <strong>Set to now</strong>: until
+        Schedule as of is today, the printout shows a red CHECK in place of its summary.
       </p>
+      <div className="run-plan">
+        <button className="btn" disabled={importing} onClick={() => planInput.current?.click()}>
+          📅 Import week plan
+        </button>
+        <input
+          ref={planInput}
+          type="file"
+          accept=".xlsx,.xlsm,.xls"
+          aria-label="Week plan file"
+          style={{ display: "none" }}
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.target.value = "";
+            if (!file) return;
+            setImporting(true);
+            setPlanMsg(null);
+            try {
+              setPlanMsg({ text: await onImportPlan(file), ok: true });
+            } catch (err) {
+              setPlanMsg({ text: err instanceof Error ? err.message : String(err), ok: false });
+            } finally {
+              setImporting(false);
+            }
+          }}
+        />
+        <span className="run-plan-state" role="status">
+          {weekPlan && planKeys.length ? (
+            <>
+              Week plan: {planShiftLabel(planKeys[0])} to {planShiftLabel(planKeys[planKeys.length - 1])}
+              {weekPlan.importedBy ? `, imported by ${weekPlan.importedBy} shift` : ""}
+              {weekPlan.importedAt ? ` on ${new Date(weekPlan.importedAt).toLocaleString("en-US", { month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" })}` : ""}
+              {planKey ? (planCovers ? ` · this shift (${planShiftLabel(planKey)}) is in it` : ` · this shift (${planShiftLabel(planKey)}) isn't in it`) : ""}
+            </>
+          ) : (
+            "No week plan yet: import the weekly packaging schedule (its Daily Line Sched sheet) to fill in the statuses for every shift."
+          )}
+        </span>
+        {planMsg && <span className={planMsg.ok ? "run-plan-ok" : "run-plan-err"}>{planMsg.text}</span>}
+      </div>
       <div className="run-asof">
         <label className="estimate-field" htmlFor="sched-asof">
           Schedule as of
@@ -414,7 +475,6 @@ function LinesPanel({
           </thead>
           <tbody>
             {lines.map((line) => {
-              const auto = thisShiftStatus({ ...line.setup, thisShift: "" }, line.rows.map((r) => r.wo));
               const first = line.rows[0]?.estimate;
               return (
                 <tr key={line.line} className={`run-line run-line-${line.status ? STATUS_CLASS[line.status] : "none"}`}>
@@ -427,18 +487,18 @@ function LinesPanel({
                   <td>
                     <StatusChips
                       label={`${line.name} this shift`}
-                      value={line.setup.thisShift}
-                      auto={auto}
-                      autoNote="from the file's Line Status, else Off"
+                      value={line.picks.thisShift}
+                      auto={line.auto.thisShift}
+                      autoNote={line.auto.thisFromPlan ? "from the week plan" : "from the file's Line Status, else Off"}
                       onChange={(v) => update([line], () => ({ thisShift: v }))}
                     />
                   </td>
                   <td>
                     <StatusChips
                       label={`${line.name} next shift`}
-                      value={line.setup.nextShift}
-                      auto="NOT SCHEDULED"
-                      autoNote="not picked yet"
+                      value={line.picks.nextShift}
+                      auto={line.auto.nextShift || "NOT SCHEDULED"}
+                      autoNote={line.auto.nextFromPlan ? "from the week plan" : "not picked yet"}
                       small
                       onChange={(v) => update([line], () => ({ nextShift: v }))}
                     />
@@ -620,6 +680,9 @@ export default function ProductionSchedule({
   hubCotton,
   hubDesiccant,
   hubAllergen,
+  weekPlan,
+  planKey,
+  onImportPlan,
   columnWidths,
   setColumnWidths,
   hiddenColumns,
@@ -654,10 +717,12 @@ export default function ProductionSchedule({
   // This shift's status for a line, from its header.
   function setThisShift(line: ScheduleLine, status: LineStatusPick) {
     const key = lineKey(line.line);
+    // A pick for this shift (see the Lines panel's update).
+    const picked = (s: ScheduleLineSetup) => (planKey ? { ...s, ...line.picks, pickedFor: planKey } : s);
     setLineSetups((all) =>
       all.some((s) => lineKey(s.name) === key)
-        ? all.map((s) => (lineKey(s.name) === key ? { ...s, thisShift: status } : s))
-        : [...all, { ...line.setup, thisShift: status }],
+        ? all.map((s) => (lineKey(s.name) === key ? { ...picked(s), thisShift: status } : s))
+        : [...all, { ...picked(line.setup), thisShift: status }],
     );
   }
 
@@ -753,6 +818,9 @@ export default function ProductionSchedule({
           scheduleAsOf={scheduleAsOf}
           setScheduleAsOf={setScheduleAsOf}
           boxes={printData.boxes}
+          weekPlan={weekPlan}
+          planKey={planKey}
+          onImportPlan={onImportPlan}
         />
       )}
 
@@ -844,8 +912,8 @@ export default function ProductionSchedule({
               {line && (
                 <StatusSelect
                   label={`${group.line} this shift`}
-                  value={line.setup.thisShift}
-                  auto={thisShiftStatus({ ...line.setup, thisShift: "" }, group.rows)}
+                  value={line.picks.thisShift}
+                  auto={line.auto.thisShift}
                   onChange={(v) => setThisShift(line, v)}
                   className="run-pick-head"
                 />
