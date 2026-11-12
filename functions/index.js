@@ -12,6 +12,8 @@
 //                               (username@pk030.local); default false
 //   temporary: [{ ip, label, by, until }] - networks an Owner allowed from
 //              the Hub (lineupNetwork, below), each until its date
+//   labels:    { "<entry in allowed>": { label, by, at } } - the names of the
+//              networks Owners added to `allowed` from the Hub's Activity Log
 //   logSignIns: true / false - false stops the sign-in log (below); default on
 // Changes apply to the next sign-in, with no redeploy.
 //
@@ -118,9 +120,14 @@ function requestIp(req) {
   return forwarded || plainIp(req.ip || req.socket?.remoteAddress || "");
 }
 
-// For the Hub's Admin tab, Owners only: see the network check, and allow the
-// network they're on now (home) for TEMPORARY_DAYS, or take theirs off.
-//   { action: "status" | "allow" | "remove" }
+// For the Hub, Owners only: see the network check, and allow the network
+// they're on now (home) for TEMPORARY_DAYS, or take theirs off; add an IP
+// address from the Activity Log to the allowed networks (until removed), or
+// take an entry off them.
+//   { action: "status", checkIps?: [ip, ...] }  (which of those are allowed)
+//   { action: "allow" | "remove" }               (this network, 30 days)
+//   { action: "allowIp", ip, label? }            (an address, until removed)
+//   { action: "removeIp", ip }                   (an entry of the allowed list)
 exports.lineupNetwork = onCall(async (request) => {
   const email = request.auth?.token?.email ?? "";
   if (!HUB.test(email)) throw new HttpsError("permission-denied", "Sign in to the Packaging Lead Hub first.");
@@ -151,13 +158,43 @@ exports.lineupNetwork = onCall(async (request) => {
       tx.set(ref, { temporary }, { merge: true });
     });
   }
+  if (action === "allowIp" || action === "removeIp") {
+    const entry = action === "allowIp" ? plainIp(request.data?.ip) : String(request.data?.ip ?? "").trim();
+    if (action === "allowIp" && !net.isIP(entry)) throw new HttpsError("invalid-argument", "That isn't an IP address.");
+    if (!entry) throw new HttpsError("invalid-argument", "Which network?");
+    await db.runTransaction(async (tx) => {
+      const data = (await tx.get(ref)).data() ?? {};
+      const allowed = (Array.isArray(data.allowed) ? data.allowed : []).filter((a) => String(a).trim() !== entry);
+      const labels = { ...(data.labels ?? {}) };
+      delete labels[entry];
+      if (action === "allowIp") {
+        allowed.push(entry);
+        labels[entry] = {
+          label: String(request.data?.label ?? "").trim().slice(0, 60) || `Added by ${username}`,
+          by: username,
+          at: Timestamp.now(),
+        };
+      }
+      // Both fields replaced whole (a merge would keep a removed label).
+      tx.set(ref, { allowed, labels }, { mergeFields: ["allowed", "labels"] });
+    });
+  }
   const settings = (await ref.get()).data() ?? {};
   const now = Date.now();
+  const checkIps = (Array.isArray(request.data?.checkIps) ? request.data.checkIps : [])
+    .slice(0, 500).map((c) => plainIp(c)).filter((c) => net.isIP(c));
   return {
     ip,
     enabled: settings.enabled === true,
     hub: settings.hub === true,
     permanent: Array.isArray(settings.allowed) ? settings.allowed.length : 0,
+    // The allowed list itself, with the names of entries added from the Hub
+    // (entries typed in the console have none).
+    permanentList: (Array.isArray(settings.allowed) ? settings.allowed : []).map((a) => {
+      const named = settings.labels?.[String(a).trim()];
+      return { ip: String(a).trim(), label: named?.label ?? "", by: named?.by ?? "", at: named?.at?.toMillis?.() ?? null };
+    }),
+    allowedIps: checkIps.filter((c) => isAllowed(c, allowedNow(settings, now))),
     allowedNow: !!ip && isAllowed(ip, allowedNow(settings, now)),
     temporary: (settings.temporary ?? [])
       .filter((t) => t?.until?.toMillis?.() > now)

@@ -52,6 +52,7 @@ document ID `network`, with these fields:
 | `allowed` | array of strings | each network: an address like `203.0.113.7`, or a range like `198.51.100.0/24` (IPv6 works too) |
 | `hub` | boolean | `true` to also check the Hub's accounts; leave out or `false` for LineUp only (keep it `false`, so the Hub's button can be reached from home) |
 | `temporary` | (made by the Hub's button) | the networks Owners allowed from the Hub, each with its end date; don't type here |
+| `labels` | (made by the Hub's Allow button) | the names of the networks added to `allowed` from the Hub's Activity Log; don't type here |
 | `logSignIns` | boolean | leave out (or `true`) to log every sign-in (below); `false` to stop logging |
 
 Changes apply to the next sign-in; nothing needs redeploying.
@@ -87,6 +88,22 @@ Tested on the test database (Firebase emulators): with no settings, the
 check off, refusing and allowing, each app's accounts are logged with the
 app, the account, the IP address and the time; a refusal is logged as one;
 `logSignIns` false logs nothing and the check still works the same.
+
+**Allowing a network from the log:** in the Hub's **Activity Log**, each
+account shows the networks (IP addresses) it signed in from. An Owner can
+press **Allow** beside one to add it to `allowed`, with a name (for example
+"Plant - packaging office"); it stays until removed. The Hub's **Admin →
+LineUp: Network Access** lists every entry of `allowed` (the console's too,
+without a name) with **Remove**. Both go through `lineupNetwork`, which only
+Owners can use; the console's entries are kept as typed.
+
+Tested on the test database (Firebase emulators): only Owners can add or
+remove; an address is added with its name, who added it and when, once
+however often it's added; LineUp then signs in from it, and is refused again
+once it's removed; a range or a bad address can't be added this way; the
+console's entries and the other settings are kept; a console range can be
+removed by its entry; and the Hub learns which addresses are allowed,
+ranges included.
 
 **Installing it:** the log comes with the check, so after this update
 deploy the functions again, in Cloud Shell as in step 3 below (from a
