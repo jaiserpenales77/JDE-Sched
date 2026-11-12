@@ -8,16 +8,7 @@ together.
 
 ## What's in the next update
 
-1. **Bold labels on changeover notes and remarks.** On the Line boxes
-   printout, "Changeover Notes:" and "Remarks:" print in **bold** (upright)
-   and the note itself stays in italics, so the two are easy to tell apart.
-   Same colors and size as before. Tested on the test database: the
-   remarks and changeover note rows read the same as before, with the
-   label bold; the other printout tests (one page, notes, slate, cotton,
-   desiccant) unchanged.
-   **Job Instruction:** no change (the screenshots show the same rows).
-   **How to check it:** a row under a work order reads "**Changeover
-   Notes:** *Cap Change*" or "**Remarks:** *...*".
+Nothing yet.
 
 ---
 
@@ -46,6 +37,27 @@ once it's live.
 ---
 
 ## Released
+
+### 2026-11-12 (later): bold labels on changeover notes and remarks
+
+1. **Bold labels on changeover notes and remarks.** On the Line boxes
+   printout, "Changeover Notes:" and "Remarks:" print in **bold** (upright)
+   and the note itself stays in italics, so the two are easy to tell apart.
+   Same colors and size as before. Tested on the test database: the
+   remarks and changeover note rows read the same as before, with the
+   label bold; the other printout tests (one page, notes, slate, cotton,
+   desiccant) unchanged.
+   **Job Instruction:** no change (the screenshots show the same rows).
+   **How to check it:** a row under a work order reads "**Changeover
+   Notes:** *Cap Change*" or "**Remarks:** *...*".
+
+2. **Network check: allow or remove a network from the Hub (from another
+   session, in the same release).** The `lineupNetwork` function can now
+   add an IP address or range to the allowed networks, until removed or
+   for a number of days, and take an entry off; Owners only. See
+   `docs/NETWORK_ACCESS_PLAN.md`. Only in the repo until the functions are
+   deployed again from Cloud Shell; after deploying, don't click Save on
+   the Blocking functions page.
 
 ### 2026-11-12: Import week plan
 
