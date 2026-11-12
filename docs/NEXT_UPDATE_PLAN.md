@@ -36,10 +36,10 @@ together.
    `jde-sched-names` block:
 
    ```
-   match /jde-sched-plan/{doc} {
+   match /jde-sched-plan/{id} {
      allow read: if jdeAnyShiftAccount();
      allow write: if jdeAnyShiftAccount()
-       && doc == 'week'
+       && id == 'week'
        && request.resource.data.keys().hasOnly(['shifts', 'file', 'importedAt', 'importedBy'])
        && request.resource.data.shifts is map
        && request.resource.data.shifts.size() <= 200

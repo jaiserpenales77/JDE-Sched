@@ -37,10 +37,10 @@ service cloud.firestore {
 
     // The week plan (which lines run each shift), imported from the weekly
     // packaging schedule and shared by every shift.
-    match /jde-sched-plan/{doc} {
+    match /jde-sched-plan/{id} {
       allow read: if jdeAnyShiftAccount();
       allow write: if jdeAnyShiftAccount()
-        && doc == 'week'
+        && id == 'week'
         && request.resource.data.keys().hasOnly(['shifts', 'file', 'importedAt', 'importedBy'])
         && request.resource.data.shifts is map
         && request.resource.data.shifts.size() <= 200
