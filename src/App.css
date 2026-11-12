@@ -4500,6 +4500,12 @@ td.time-off-is-today {
   font-style: italic;
   white-space: normal;
 }
+/* The label ("Changeover Notes:", "Remarks:") bold and upright; the note
+   itself stays italic. */
+.sb-note-label {
+  font-weight: 700;
+  font-style: normal;
+}
 .sb-note td.sb-arrow {
   background: transparent;
   font-style: normal;

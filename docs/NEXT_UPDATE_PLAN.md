@@ -8,7 +8,16 @@ together.
 
 ## What's in the next update
 
-Nothing yet.
+1. **Bold labels on changeover notes and remarks.** On the Line boxes
+   printout, "Changeover Notes:" and "Remarks:" print in **bold** (upright)
+   and the note itself stays in italics, so the two are easy to tell apart.
+   Same colors and size as before. Tested on the test database: the
+   remarks and changeover note rows read the same as before, with the
+   label bold; the other printout tests (one page, notes, slate, cotton,
+   desiccant) unchanged.
+   **Job Instruction:** no change (the screenshots show the same rows).
+   **How to check it:** a row under a work order reads "**Changeover
+   Notes:** *Cap Change*" or "**Remarks:** *...*".
 
 ---
 

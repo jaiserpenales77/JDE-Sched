@@ -244,7 +244,7 @@ export function ScheduleBoxes({
                     crew: "",
                     est: <span className={r.estimate.done ? (r.first ? "sb-est-first" : "") : "sb-est-missing"}>{est}</span>,
                   };
-                  const noteRow = (text: string, key: string) => (
+                  const noteRow = (label: string, text: string, key: string) => (
                     <tr className="sb-note" key={key}>
                       {inner.map((c, k) =>
                         k === 0 ? (
@@ -253,7 +253,7 @@ export function ScheduleBoxes({
                           </td>
                         ) : k === 1 ? (
                           <td key={c.key} colSpan={inner.length - 1}>
-                            {text}
+                            <b className="sb-note-label">{label}:</b> {text}
                           </td>
                         ) : null,
                       )}
@@ -284,8 +284,8 @@ export function ScheduleBoxes({
                           </td>
                         )}
                       </tr>
-                      {r.notes && noteRow(`Changeover Notes: ${r.notes}`, `${wo.id}-notes`)}
-                      {wo.remarks.trim() && noteRow(`Remarks: ${wo.remarks.trim()}`, `${wo.id}-remarks`)}
+                      {r.notes && noteRow("Changeover Notes", r.notes, `${wo.id}-notes`)}
+                      {wo.remarks.trim() && noteRow("Remarks", wo.remarks.trim(), `${wo.id}-remarks`)}
                     </Fragment>
                   );
                 })}
